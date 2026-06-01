@@ -12,6 +12,5 @@ pnpm-lock.yaml
 yarn.lock
 Dockerfile.local
 tmp
-uploads
 *.tsbuildinfo
 apps/api/src/generated
