@@ -1,0 +1,24 @@
+import Joi from "joi";
+
+export const envValidationSchema = Joi.object({
+  NODE_ENV: Joi.string().valid("development", "test", "production").default("development"),
+  API_PORT: Joi.number().default(3333),
+  WEB_PUBLIC_URL: Joi.string().uri().default("http://localhost:3000"),
+  DATABASE_URL: Joi.string().required(),
+  REDIS_URL: Joi.string().default("redis://localhost:6379"),
+  JWT_ACCESS_SECRET: Joi.string().min(24).required(),
+  JWT_REFRESH_SECRET: Joi.string().min(24).required(),
+  JWT_ACCESS_EXPIRES_IN: Joi.string().default("15m"),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default("7d"),
+  STORAGE_PROVIDER: Joi.string().valid("s3", "r2").default("s3"),
+  S3_ENDPOINT: Joi.string().allow("").optional(),
+  S3_REGION: Joi.string().default("us-east-1"),
+  S3_BUCKET: Joi.string().default("anselmo-marketplace-dev"),
+  S3_ACCESS_KEY_ID: Joi.string().allow("").optional(),
+  S3_SECRET_ACCESS_KEY: Joi.string().allow("").optional(),
+  S3_PUBLIC_URL: Joi.string().allow("").optional(),
+  STRIPE_SECRET_KEY: Joi.string().allow("").optional(),
+  STRIPE_WEBHOOK_SECRET: Joi.string().allow("").optional(),
+  ASAAS_API_KEY: Joi.string().allow("").optional(),
+  MERCADO_PAGO_ACCESS_TOKEN: Joi.string().allow("").optional()
+});

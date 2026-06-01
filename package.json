@@ -1,0 +1,28 @@
+{
+  "name": "anselmo-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Marketplace SaaS para arquitetura, terrenos, simulacoes e checkout com split.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev -w @anselmo/api\" \"npm:dev -w @anselmo/web\"",
+    "dev:api": "npm run dev -w @anselmo/api",
+    "dev:web": "npm run dev -w @anselmo/web",
+    "build": "npm run build -w @anselmo/api && npm run build -w @anselmo/web",
+    "lint": "npm run lint -w @anselmo/api && npm run lint -w @anselmo/web",
+    "typecheck": "npm run typecheck -w @anselmo/api && npm run typecheck -w @anselmo/web",
+    "prisma:generate": "npm run prisma:generate -w @anselmo/api",
+    "prisma:migrate": "npm run prisma:migrate -w @anselmo/api",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
+  }
+}
