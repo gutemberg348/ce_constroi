@@ -3,7 +3,7 @@ import { Bath, BedDouble, Heart, Map, Ruler, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
-import { area, money } from "@/lib/format";
+import { area, money, toNumber } from "@/lib/format";
 import { getProject } from "@/services/projects";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -69,7 +69,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <div key={compatibility.id}>
                 <TerrainCard terrain={compatibility.terrain} />
                 <div className="mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-3 text-sm text-[var(--muted)]">
-                  Score {Number(compatibility.score).toFixed(0)}% - {compatibility.notes ?? "Terreno compativel."}
+                  Score {toNumber(compatibility.score).toFixed(0)}% - {compatibility.notes ?? "Terreno compativel."}
                 </div>
               </div>
             ))}

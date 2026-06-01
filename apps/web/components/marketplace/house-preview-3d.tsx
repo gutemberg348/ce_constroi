@@ -3,7 +3,7 @@
 import { Home, Ruler, Rotate3D } from "lucide-react";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { area } from "@/lib/format";
+import { area, toNumber, type NumericValue } from "@/lib/format";
 import type { Project, Terrain } from "@/types/domain";
 
 type ProjectPreviewVariant = "stone" | "patio" | "compact";
@@ -33,8 +33,8 @@ type BlockOptions = {
   receiveShadow?: boolean;
 };
 
-function numeric(value: number | string | undefined) {
-  return Number(value ?? 0);
+function numeric(value: NumericValue) {
+  return toNumber(value);
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -507,6 +507,7 @@ export function HousePreview3D({
   const rooms = `${project.bedrooms} quartos, ${project.bathrooms} banheiros`;
   const terrainFrontage = numeric(terrain.frontageM) || 5;
   const terrainDepth = numeric(terrain.depthM) || 20;
+  const compatibilityScore = score === undefined ? null : numeric(score);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -582,10 +583,10 @@ export function HousePreview3D({
             <h3 className="mt-1 text-2xl font-semibold">{project.title}</h3>
             <p className="mt-1 max-w-md text-sm leading-6 text-[var(--muted)]">{note ?? "Projeto encaixado neste terreno."}</p>
           </div>
-          {score ? (
+          {compatibilityScore !== null ? (
             <div className="rounded-[8px] bg-[#11150f] px-4 py-3 text-right text-white shadow-xl dark:bg-white dark:text-[#11150f]">
               <span className="block text-[11px] uppercase opacity-70">Compatibilidade</span>
-              <strong className="text-xl">{Number(score).toFixed(0)}%</strong>
+              <strong className="text-xl">{compatibilityScore.toFixed(0)}%</strong>
             </div>
           ) : null}
         </div>

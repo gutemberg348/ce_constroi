@@ -1,4 +1,4 @@
-type NumericValue =
+export type NumericValue =
   | number
   | string
   | undefined
@@ -10,7 +10,7 @@ type NumericValue =
       toString?: () => string;
     };
 
-function toNumber(value: NumericValue) {
+export function toNumber(value: NumericValue) {
   if (value === undefined || value === null || value === "") {
     return 0;
   }
@@ -26,8 +26,16 @@ function toNumber(value: NumericValue) {
   }
 
   if (Array.isArray(value.d) && typeof value.e === "number") {
-    const digits = value.d.join("");
-    const parsed = Number(`${value.s === -1 ? "-" : ""}${digits}`) * Math.pow(10, value.e - digits.length + 1);
+    const [firstChunk, ...chunks] = value.d;
+    const digits = `${firstChunk ?? 0}${chunks.map((chunk) => String(chunk).padStart(7, "0")).join("")}`;
+    const decimalIndex = value.e + 1;
+    const normalized =
+      decimalIndex <= 0
+        ? `0.${"0".repeat(Math.abs(decimalIndex))}${digits}`
+        : decimalIndex >= digits.length
+          ? `${digits}${"0".repeat(decimalIndex - digits.length)}`
+          : `${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
+    const parsed = Number(`${value.s === -1 ? "-" : ""}${normalized}`);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 

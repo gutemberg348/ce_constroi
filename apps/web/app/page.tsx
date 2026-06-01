@@ -3,7 +3,7 @@ import { ArrowRight, Banknote, Building2, CheckCircle2, ClipboardCheck, Hammer, 
 import { Button } from "@/components/ui/button";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
-import { area, money } from "@/lib/format";
+import { area, money, toNumber } from "@/lib/format";
 import { projectMocks, terrainMocks } from "@/services/mock-data";
 
 const steps = [
@@ -30,7 +30,7 @@ const steps = [
 const featuredTerrain = terrainMocks[0];
 const featuredProject = featuredTerrain.compatibilities?.[0]?.project ?? projectMocks[0];
 const packageTotal =
-  Number(featuredTerrain.price) + Number(featuredProject.price) + Number(featuredProject.estimatedBuildCost);
+  toNumber(featuredTerrain.price) + toNumber(featuredProject.price) + toNumber(featuredProject.estimatedBuildCost);
 
 export default function HomePage() {
   return (

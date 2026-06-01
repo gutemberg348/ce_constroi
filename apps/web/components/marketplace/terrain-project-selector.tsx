@@ -7,13 +7,13 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { HousePreview3D } from "@/components/marketplace/house-preview-3d";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
-import { area, money } from "@/lib/format";
+import { area, money, toNumber, type NumericValue } from "@/lib/format";
 import { Project, Terrain } from "@/types/domain";
 
 type Compatibility = NonNullable<Terrain["compatibilities"]>[number];
 
-function numeric(value: number | string | undefined) {
-  return Number(value ?? 0);
+function numeric(value: NumericValue) {
+  return toNumber(value);
 }
 
 function buildSimulationHref(terrain: Terrain, project: Project) {
@@ -41,6 +41,7 @@ function ProjectOption({
 }) {
   const { project } = compatibility;
   const image = project.images?.[0]?.url ?? project.renderUrl;
+  const score = numeric(compatibility.score);
 
   return (
     <div
@@ -61,7 +62,7 @@ function ProjectOption({
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase text-[var(--muted)]">
             <span>{project.style ?? "Projeto residencial"}</span>
-            <span>Score {Number(compatibility.score).toFixed(0)}%</span>
+            <span>Score {score.toFixed(0)}%</span>
           </div>
           <h3 className="mt-2 text-xl font-semibold">{project.title}</h3>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{project.description}</p>
