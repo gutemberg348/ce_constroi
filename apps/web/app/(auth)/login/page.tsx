@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { login } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
-import { UserRole } from "@/types/domain";
 
 const demoLogins: Array<{
   label: string;
@@ -55,12 +54,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function routeFor(role: UserRole) {
-    if (role === "ADMIN") return "/admin";
-    if (role === "ARCHITECT") return "/painel-arquiteto";
-    return "/dashboard";
-  }
-
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -68,7 +61,7 @@ export default function LoginPage() {
     try {
       const session = await login({ email, password });
       setSession(session);
-      router.push(routeFor(session.user.role));
+      router.push("/");
     } catch {
       setError("Email ou senha invalidos.");
     }
