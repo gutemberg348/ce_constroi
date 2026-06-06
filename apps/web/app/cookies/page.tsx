@@ -64,7 +64,7 @@ export default function CookiesPage() {
         <section>
           <h2 className="text-2xl font-semibold text-[var(--foreground)]">6. Como mudar sua escolha</h2>
           <p className="mt-3">
-            Use o botao "Gerenciar cookies" nesta pagina ou no rodape do site para abrir as preferencias e alterar o seu
+            Use o botao &quot;Gerenciar cookies&quot; nesta pagina ou no rodape do site para abrir as preferencias e alterar o seu
             consentimento.
           </p>
         </section>

@@ -17,11 +17,15 @@ export class TerrainsRepository {
             OR: [
               { title: { contains: query.search, mode: "insensitive" } },
               { description: { contains: query.search, mode: "insensitive" } },
-              { city: { contains: query.search, mode: "insensitive" } }
+              { address: { contains: query.search, mode: "insensitive" } },
+              { neighborhood: { contains: query.search, mode: "insensitive" } },
+              { city: { contains: query.search, mode: "insensitive" } },
+              { state: { contains: query.search, mode: "insensitive" } }
             ]
           }
         : {}),
       ...(query.city ? { city: { equals: query.city, mode: "insensitive" } } : {}),
+      ...(query.neighborhood ? { neighborhood: { equals: query.neighborhood, mode: "insensitive" } } : {}),
       ...(query.state ? { state: { equals: query.state, mode: "insensitive" } } : {}),
       ...(query.minAreaM2 ? { areaM2: { gte: query.minAreaM2 } } : {}),
       ...(query.minPrice || query.maxPrice

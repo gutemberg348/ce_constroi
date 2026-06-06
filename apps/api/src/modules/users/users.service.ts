@@ -40,7 +40,10 @@ export class UsersService {
       return null;
     }
 
-    const { passwordHash: _passwordHash, refreshTokenHash: _refreshTokenHash, ...safeUser } = user;
+    const { passwordHash, refreshTokenHash, ...safeUser } = user;
+    void passwordHash;
+    void refreshTokenHash;
+
     return safeUser;
   }
 }

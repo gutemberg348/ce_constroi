@@ -67,14 +67,14 @@ export class CreateSimulationDto {
   @IsOptional()
   documentationRate?: number;
 
-  @ApiPropertyOptional({ default: 60000 })
+  @ApiPropertyOptional({ default: 0 })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   @IsOptional()
   extraReserve?: number;
 
-  @ApiPropertyOptional({ default: 18500 })
+  @ApiPropertyOptional({ default: 0 })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
@@ -96,21 +96,21 @@ export class CreateSimulationDto {
   @IsOptional()
   buyerAge?: number;
 
-  @ApiPropertyOptional({ default: 2 })
+  @ApiPropertyOptional({ default: 0 })
   @Type(() => Number)
   @IsInt()
   @Min(0)
   @IsOptional()
   dependents?: number;
 
-  @ApiPropertyOptional({ default: 330000 })
+  @ApiPropertyOptional({ default: 0 })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   @IsOptional()
   ownCash?: number;
 
-  @ApiPropertyOptional({ default: 70000 })
+  @ApiPropertyOptional({ default: 0 })
   @Type(() => Number)
   @IsNumber()
   @Min(0)

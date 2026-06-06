@@ -1,24 +1,33 @@
 import { api, unwrap } from "./api";
-import { terrainMocks } from "./mock-data";
 import { Paginated, Terrain } from "@/types/domain";
 
+export type CreateTerrainInput = {
+  title: string;
+  description: string;
+  address: string;
+  neighborhood?: string;
+  city: string;
+  state: string;
+  zipCode?: string;
+  areaM2: number;
+  price: number;
+  frontageM?: number;
+  depthM?: number;
+  zoning?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export async function getTerrains(params?: Record<string, string | number | undefined>) {
-  try {
-    const response = await api.get<Paginated<Terrain>>("/terrains", { params });
-    return unwrap<Paginated<Terrain>>(response);
-  } catch {
-    return {
-      items: terrainMocks,
-      meta: { page: 1, limit: terrainMocks.length, total: terrainMocks.length, totalPages: 1 }
-    };
-  }
+  const response = await api.get<Paginated<Terrain>>("/terrains", { params });
+  return unwrap<Paginated<Terrain>>(response);
 }
 
 export async function getTerrain(id: string) {
-  try {
-    const response = await api.get<Terrain>(`/terrains/${id}`);
-    return unwrap<Terrain>(response);
-  } catch {
-    return terrainMocks.find((terrain) => terrain.id === id) ?? terrainMocks[0];
-  }
+  const response = await api.get<Terrain>(`/terrains/${id}`);
+  return unwrap<Terrain>(response);
+}
+
+export async function createTerrain(input: CreateTerrainInput) {
+  const response = await api.post<Terrain>("/terrains", input);
+  return unwrap<Terrain>(response);
 }

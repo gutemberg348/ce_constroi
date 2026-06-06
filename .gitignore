@@ -14,3 +14,4 @@ Dockerfile.local
 tmp
 *.tsbuildinfo
 apps/api/src/generated
+test-results/*.log

@@ -19,7 +19,13 @@ export type SimulationRequest = {
   maxCredit: number;
   maxPropertyValue: number;
   maxInstallment: number;
-  suggestedEntry: number;
+  availableEntry: number;
+  requestedOptionLabel?: string;
+  requestedOptionValue?: number;
+  selectedOptionLabel?: string;
+  selectedOptionValue?: number;
+  entryGap?: number;
+  financingGap?: number;
   score: number;
   status: string;
   fitMessage: string;

@@ -8,6 +8,9 @@ type CreateUserInput = {
   passwordHash: string;
   role: UserRole;
   phone?: string;
+  companyName?: string;
+  cauNumber?: string;
+  bio?: string;
 };
 
 @Injectable()
@@ -43,7 +46,10 @@ export class UsersRepository {
       if (input.role === UserRole.ARCHITECT) {
         await tx.architect.create({
           data: {
-            userId: user.id
+            userId: user.id,
+            companyName: input.companyName || input.name,
+            cauNumber: input.cauNumber || undefined,
+            bio: input.bio || "Cadastro enviado pelo formulario publico."
           }
         });
       }

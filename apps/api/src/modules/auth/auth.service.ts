@@ -23,8 +23,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    if (dto.role === UserRole.ADMIN) {
-      throw new BadRequestException("Admin users must be created by the platform owner");
+    if (dto.role === UserRole.ADMIN || dto.role === UserRole.ARCHITECT) {
+      throw new BadRequestException("Esse perfil deve ser criado pelo admin");
     }
 
     const existingUser = await this.usersRepository.findByEmail(dto.email);
@@ -39,7 +39,10 @@ export class AuthService {
       email: dto.email,
       passwordHash,
       role: dto.role ?? UserRole.CUSTOMER,
-      phone: dto.phone
+      phone: dto.phone,
+      companyName: dto.companyName,
+      cauNumber: dto.cauNumber,
+      bio: dto.bio
     });
 
     return this.issueAndPersistTokens({
@@ -108,7 +111,10 @@ export class AuthService {
       throw new UnauthorizedException("User not found");
     }
 
-    const { passwordHash: _passwordHash, refreshTokenHash: _refreshTokenHash, ...safeUser } = user;
+    const { passwordHash, refreshTokenHash, ...safeUser } = user;
+    void passwordHash;
+    void refreshTokenHash;
+
     return safeUser;
   }
 

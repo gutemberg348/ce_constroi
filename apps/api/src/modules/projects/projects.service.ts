@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { ArchitectStatus, UserRole } from "@/generated/prisma/enums";
+import { ArchitectStatus, ProjectStatus, UserRole } from "@/generated/prisma/enums";
 import { PrismaService } from "@/database/prisma/prisma.service";
 import { getPagination } from "@/common/pagination/pagination.dto";
 import { CreateProjectDto } from "./dto/create-project.dto";
@@ -61,13 +61,25 @@ export class ProjectsService {
       price: dto.price,
       renderUrl: dto.renderUrl,
       floorPlanUrl: dto.floorPlanUrl,
+      status: ProjectStatus.PUBLISHED,
       architect: { connect: { id: architectId } }
     });
   }
 
-  async update(id: string, dto: UpdateProjectDto) {
-    await this.findOne(id);
-    return this.projectsRepository.update(id, dto);
+  async update(id: string, dto: UpdateProjectDto, user: { sub: string; role: string }) {
+    const project = await this.findOne(id);
+    const architectId = user.role === UserRole.ADMIN ? project.architectId : await this.resolveArchitectId(undefined, user);
+
+    if (user.role !== UserRole.ADMIN && project.architectId !== architectId) {
+      throw new ForbiddenException("You can only update your own project");
+    }
+
+    const { architectId: dtoArchitectId, ...data } = dto;
+
+    return this.projectsRepository.update(id, {
+      ...data,
+      ...(user.role === UserRole.ADMIN && dtoArchitectId ? { architect: { connect: { id: dtoArchitectId } } } : {})
+    });
   }
 
   private async resolveArchitectId(dtoArchitectId: string | undefined, user: { sub: string; role: string }) {

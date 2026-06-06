@@ -1,19 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { register } from "@/services/auth";
+import { getSafePostAuthPath } from "@/lib/navigation";
+import { register, type RegisterInput } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { UserRole } from "@/types/domain";
 
+function getInitialRole(value: string | null): UserRole {
+  if (value === "TERRAIN_OWNER" || value === "CUSTOMER") {
+    return value;
+  }
+
+  return "CUSTOMER";
+}
+
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">Carregando cadastro...</section>}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setSession = useAuthStore((state) => state.setSession);
-  const [role, setRole] = useState<UserRole>("CUSTOMER");
+  const [role, setRole] = useState<UserRole>(() => getInitialRole(searchParams.get("role")));
   const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -39,17 +57,28 @@ export default function RegisterPage() {
     event.preventDefault();
     setError("");
     const formData = new FormData(event.currentTarget);
+    const companyName = String(formData.get("companyName") ?? "").trim();
+    const cauNumber = String(formData.get("cauNumber") ?? "").trim();
+    const bio = String(formData.get("bio") ?? "").trim();
 
     try {
-      const session = await register({
+      const input: RegisterInput = {
         name: String(formData.get("name")),
         email: String(formData.get("email")),
         password: String(formData.get("password")),
         role,
         phone: String(formData.get("phone"))
-      });
+      };
+
+      if (role === "ARCHITECT") {
+        input.companyName = companyName;
+        input.cauNumber = cauNumber;
+        input.bio = bio;
+      }
+
+      const session = await register(input);
       setSession(session);
-      router.push("/dashboard");
+      router.push(getSafePostAuthPath(searchParams.get("next")));
     } catch {
       setError("Nao foi possivel criar a conta.");
     }
@@ -59,9 +88,9 @@ export default function RegisterPage() {
     <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
       <div>
         <p className="text-sm uppercase text-[var(--muted)]">Cadastro</p>
-        <h1 className="mt-3 text-4xl font-semibold">Crie sua conta para comprar, vender ou publicar projetos.</h1>
+        <h1 className="mt-3 text-4xl font-semibold">Crie sua conta para acessar o catálogo e anunciar terreno.</h1>
         <p className="mt-4 max-w-xl text-[var(--muted)]">
-          Cadastros de arquiteto entram em analise e precisam ser aprovados no painel admin antes de publicar projetos.
+          Aqui entram cliente e proprietario. Arquitetos sao criados pelo admin e aprovados antes de publicar projetos.
         </p>
       </div>
       <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6" onSubmit={onSubmit}>
@@ -81,8 +110,7 @@ export default function RegisterPage() {
           <div className="grid grid-cols-3 gap-2">
             {[
               ["CUSTOMER", "Cliente"],
-              ["ARCHITECT", "Arquiteto"],
-              ["TERRAIN_OWNER", "Dono"]
+              ["TERRAIN_OWNER", "Proprietario"]
             ].map(([value, label]) => (
               <button
                 className={`focus-ring h-11 rounded-[8px] border text-sm font-semibold ${
@@ -97,6 +125,9 @@ export default function RegisterPage() {
                 {label}
               </button>
             ))}
+          </div>
+          <div className="rounded-[8px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--accent)_4%,var(--panel))] p-4 text-sm text-[var(--muted)]">
+            Arquitetos sao criados pelo admin. Aqui o cadastro fica para cliente e proprietario.
           </div>
           <label className="flex items-start gap-3 rounded-[8px] border border-[var(--line)] p-3 text-sm leading-6 text-[var(--muted)]">
             <input className="mt-1 h-4 w-4 accent-[var(--accent)]" required type="checkbox" />

@@ -17,3 +17,13 @@ export async function getArchitectStats() {
   const response = await api.get<ArchitectStats>("/architects/me/stats");
   return unwrap<ArchitectStats>(response);
 }
+
+export async function updateArchitectProfile(input: {
+  companyName?: string;
+  bio?: string;
+  cauNumber?: string;
+  website?: string;
+}) {
+  const response = await api.patch<ArchitectProfile>("/architects/me", input);
+  return unwrap<ArchitectProfile>(response);
+}

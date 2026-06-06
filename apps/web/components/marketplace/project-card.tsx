@@ -1,28 +1,31 @@
+"use client";
+
 import Link from "next/link";
 import type { Route } from "next";
 import { ArrowRight, Bath, BedDouble, Ruler } from "lucide-react";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { area, money } from "@/lib/format";
 import { Project } from "@/types/domain";
+import { FavoriteButton } from "./favorite-button";
 
 export function ProjectCard({ project }: { project: Project }) {
   const image = project.images?.[0]?.url ?? project.renderUrl;
 
   return (
-    <Link
-      className="group block overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)] transition hover:-translate-y-0.5 hover:shadow-xl"
-      href={`/projetos/${project.id}` as Route}
-    >
-      <div className="aspect-[16/10] overflow-hidden bg-[#dfe4dc]">
-        {image ? (
-          <PrivacyImage
-            alt={project.images?.[0]?.altText ?? project.title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-            src={image}
-          />
-        ) : null}
+    <article className="group overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)] transition hover:-translate-y-0.5 hover:shadow-xl">
+      <div className="relative">
+        <Link className="block aspect-[16/10] overflow-hidden bg-[#dfe4dc]" href={`/projetos/${project.id}` as Route}>
+          {image ? (
+            <PrivacyImage
+              alt={project.images?.[0]?.altText ?? project.title}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              src={image}
+            />
+          ) : null}
+        </Link>
+        <FavoriteButton className="absolute right-3 top-3" targetId={project.id} targetType="project" />
       </div>
-      <div className="space-y-4 p-4">
+      <Link className="block space-y-4 p-4" href={`/projetos/${project.id}` as Route}>
         <div>
           <div className="text-xs uppercase text-[var(--muted)]">
             {project.style ?? "Arquitetura"} - {project.architect?.user?.name ?? "Studio parceiro"}
@@ -50,7 +53,7 @@ export function ProjectCard({ project }: { project: Project }) {
             Ver projeto <ArrowRight size={16} />
           </span>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </article>
   );
 }

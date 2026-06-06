@@ -20,7 +20,7 @@ export function toNumber(value: NumericValue) {
   }
 
   if (typeof value === "string") {
-    const normalized = value.replace(/\./g, "").replace(",", ".");
+    const normalized = value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : 0;
   }

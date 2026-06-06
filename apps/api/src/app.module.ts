@@ -22,6 +22,9 @@ import { FavoritesModule } from "./modules/favorites/favorites.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { SettingsModule } from "./modules/settings/settings.module";
+import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { DashboardModule } from "./modules/dashboard/dashboard.module";
 
 @Module({
   imports: [
@@ -29,7 +32,7 @@ import { AdminModule } from "./modules/admin/admin.module";
       isGlobal: true,
       cache: true,
       validationSchema: envValidationSchema,
-      envFilePath: [".env.local", ".env"]
+      envFilePath: [".env.local", "../../.env.local", ".env", "../../.env"]
     }),
     ThrottlerModule.forRoot([
       {
@@ -52,6 +55,9 @@ import { AdminModule } from "./modules/admin/admin.module";
     FavoritesModule,
     UploadsModule,
     NotificationsModule,
+    SettingsModule,
+    AnalyticsModule,
+    DashboardModule,
     AdminModule
   ],
   providers: [

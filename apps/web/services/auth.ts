@@ -10,6 +10,9 @@ export type RegisterInput = LoginInput & {
   name: string;
   role?: UserRole;
   phone?: string;
+  companyName?: string;
+  cauNumber?: string;
+  bio?: string;
 };
 
 export async function login(input: LoginInput) {

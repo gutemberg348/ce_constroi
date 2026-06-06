@@ -1,7 +1,14 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
 import { Observable, map } from "rxjs";
 
-function isDecimalLike(value: Record<string, unknown>) {
+type DecimalLike = Record<string, unknown> & {
+  s: number;
+  e: number;
+  d: unknown[];
+  toString: () => string;
+};
+
+function isDecimalLike(value: Record<string, unknown>): value is DecimalLike {
   return (
     typeof value.s === "number" &&
     typeof value.e === "number" &&

@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { UserRole } from "@/generated/prisma/enums";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@/generated/prisma/client";
+import { TerrainStatus, UserRole } from "@/generated/prisma/enums";
 import { getPagination } from "@/common/pagination/pagination.dto";
 import { CreateTerrainDto } from "./dto/create-terrain.dto";
 import { ListTerrainsDto } from "./dto/list-terrains.dto";
@@ -45,6 +46,7 @@ export class TerrainsService {
       slug: this.slugify(dto.title),
       description: dto.description,
       address: dto.address,
+      neighborhood: dto.neighborhood,
       city: dto.city,
       state: dto.state,
       zipCode: dto.zipCode,
@@ -53,13 +55,26 @@ export class TerrainsService {
       frontageM: dto.frontageM,
       depthM: dto.depthM,
       zoning: dto.zoning,
+      metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      status: user.role === UserRole.ADMIN ? TerrainStatus.AVAILABLE : TerrainStatus.PENDING_REVIEW,
       owner: user.role === UserRole.ADMIN ? undefined : { connect: { id: user.sub } }
     });
   }
 
-  async update(id: string, dto: UpdateTerrainDto) {
-    await this.findOne(id);
-    return this.terrainsRepository.update(id, dto);
+  async update(id: string, dto: UpdateTerrainDto, user: { sub: string; role: string }) {
+    const terrain = await this.findOne(id);
+
+    if (user.role !== UserRole.ADMIN && terrain.ownerId !== user.sub) {
+      throw new ForbiddenException("You can only update your own terrain");
+    }
+
+    const { metadata, ...data } = dto;
+
+    return this.terrainsRepository.update(id, {
+      ...data,
+      ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {}),
+      ...(user.role === UserRole.ADMIN ? {} : { status: TerrainStatus.PENDING_REVIEW })
+    });
   }
 
   private slugify(value: string) {

@@ -3,17 +3,19 @@ import { Type } from "class-transformer";
 import { IsBoolean, IsInt, IsOptional, IsString, Min } from "class-validator";
 
 export class CreateProjectImageDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsString()
-  projectId!: string;
+  @IsOptional()
+  projectId?: string;
 
   @ApiProperty()
   @IsString()
   url!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsString()
-  storageKey!: string;
+  @IsOptional()
+  storageKey?: string;
 
   @ApiPropertyOptional()
   @IsString()

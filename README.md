@@ -35,3 +35,11 @@ Web: `http://localhost:3000`
 cp .env.example .env
 docker compose up --build
 ```
+
+O banco PostgreSQL usa o volume nomeado `postgres_data`, entao `docker compose up --build` recria containers/imagens sem apagar os dados. Para parar sem perder dados use:
+
+```bash
+docker compose down
+```
+
+Evite `docker compose down -v`, `docker volume rm` ou apagar volumes pelo Docker Desktop em ambiente com dados que voce quer manter.

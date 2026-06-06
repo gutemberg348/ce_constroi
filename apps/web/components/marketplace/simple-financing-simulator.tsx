@@ -14,8 +14,9 @@ import {
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
-import { money } from "@/lib/format";
+import { money, toNumber as parseMoney } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSimulationRequestsStore } from "@/stores/simulation-requests-store";
 
@@ -24,6 +25,7 @@ type IncomeType = "CLT" | "MEI" | "AUTONOMO" | "EMPRESARIO" | "INFORMAL";
 type CreditScore = "EXCELLENT" | "GOOD" | "MEDIUM" | "LOW";
 type PropertyType = "HOUSE" | "APARTMENT" | "LAND_BUILD" | "PLANT";
 type PropertyCondition = "NEW" | "USED";
+type PackageMode = "TERRAIN" | "TERRAIN_PROJECT" | "FULL" | "CUSTOM";
 
 type QuickForm = {
   name: string;
@@ -38,27 +40,37 @@ type QuickForm = {
   neighborhood: string;
   phone: string;
   email: string;
-  monthlyIncome: number;
+  monthlyIncome: string;
   hasInformalIncome: YesNo;
-  otherIncome: number;
+  otherIncome: string;
   incomeType: IncomeType;
   workTimeMonths: number;
   hasIncomeProof: YesNo;
   composeIncome: YesNo;
-  coBuyerIncome: number;
+  coBuyerIncome: string;
   coBuyerScore: CreditScore;
   hasRestriction: YesNo;
   delayedFinancing: YesNo;
-  activeLoans: number;
-  monthlySpending: number;
+  activeLoans: string;
+  monthlySpending: string;
   hasCurrentFinancing: YesNo;
-  desiredPropertyValue: number;
+  desiredPropertyValue: string;
+  packageMode: PackageMode;
   propertyType: PropertyType;
   propertyCondition: PropertyCondition;
   useFgts: YesNo;
-  fgtsValue: number;
-  downPayment: number;
+  fgtsValue: string;
+  downPayment: string;
   creditScore: CreditScore;
+};
+
+type BaseOption = {
+  key: PackageMode;
+  label: string;
+  amount: number;
+  installment: number;
+  isAvailable: boolean;
+  description: string;
 };
 
 type Result = {
@@ -67,14 +79,14 @@ type Result = {
   maxCredit: number;
   maxPropertyValue: number;
   desiredPackageValue: number;
-  minimumEntry: number;
-  suggestedEntry: number;
-  entryGap: number;
+  availableEntry: number;
   financedNeeded: number;
   estimatedInstallment: number;
+  requestedOption?: BaseOption;
+  selectedOption?: BaseOption;
+  options: BaseOption[];
   score: number;
   status: string;
-  chance: string;
   fitMessage: string;
   fgtsMessage: string;
   notes: string[];
@@ -93,26 +105,27 @@ const defaultForm: QuickForm = {
   neighborhood: "",
   phone: "",
   email: "",
-  monthlyIncome: 6000,
+  monthlyIncome: "",
   hasInformalIncome: "no",
-  otherIncome: 0,
+  otherIncome: "",
   incomeType: "CLT",
-  workTimeMonths: 24,
+  workTimeMonths: 0,
   hasIncomeProof: "yes",
   composeIncome: "no",
-  coBuyerIncome: 0,
+  coBuyerIncome: "",
   coBuyerScore: "GOOD",
   hasRestriction: "no",
   delayedFinancing: "no",
-  activeLoans: 0,
-  monthlySpending: 1800,
+  activeLoans: "",
+  monthlySpending: "",
   hasCurrentFinancing: "no",
-  desiredPropertyValue: 360000,
+  desiredPropertyValue: "",
+  packageMode: "CUSTOM",
   propertyType: "LAND_BUILD",
   propertyCondition: "NEW",
-  useFgts: "yes",
-  fgtsValue: 30000,
-  downPayment: 45000,
+  useFgts: "no",
+  fgtsValue: "",
+  downPayment: "",
   creditScore: "GOOD"
 };
 
@@ -176,15 +189,49 @@ function getSearchNumber(searchParams: URLSearchParams, key: string, fallback: n
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function getPackageAmount(mode: PackageMode, terrainPrice: number, projectPrice: number, buildCost: number, customValue: number) {
+  if (mode === "TERRAIN") {
+    return terrainPrice;
+  }
+
+  if (mode === "TERRAIN_PROJECT") {
+    return terrainPrice + projectPrice;
+  }
+
+  if (mode === "FULL") {
+    return terrainPrice + projectPrice + buildCost;
+  }
+
+  return customValue;
+}
+
+function getInitialPackageMode(terrainPrice: number, projectPrice: number, buildCost: number): PackageMode {
+  if (terrainPrice > 0 && projectPrice > 0 && buildCost > 0) {
+    return "FULL";
+  }
+
+  if (terrainPrice > 0 && projectPrice > 0) {
+    return "TERRAIN_PROJECT";
+  }
+
+  if (terrainPrice > 0) {
+    return "TERRAIN";
+  }
+
+  return "CUSTOM";
+}
+
 function getInitialForm(searchParams: URLSearchParams): QuickForm {
   const terrainPrice = getSearchNumber(searchParams, "terrainPrice", 0);
   const projectPrice = getSearchNumber(searchParams, "projectPrice", 0);
   const buildCost = getSearchNumber(searchParams, "buildCost", 0);
-  const desiredPropertyValue = terrainPrice + projectPrice + buildCost;
+  const packageMode = getInitialPackageMode(terrainPrice, projectPrice, buildCost);
+  const desiredPropertyValue = getPackageAmount(packageMode, terrainPrice, projectPrice, buildCost, 0);
 
   return {
     ...defaultForm,
-    desiredPropertyValue: desiredPropertyValue > 0 ? desiredPropertyValue : defaultForm.desiredPropertyValue,
+    packageMode,
+    desiredPropertyValue: desiredPropertyValue > 0 ? String(desiredPropertyValue) : "",
     propertyType: terrainPrice > 0 ? "LAND_BUILD" : defaultForm.propertyType
   };
 }
@@ -232,35 +279,101 @@ function propertyTypeLabel(type: PropertyType) {
   return labels[type];
 }
 
+function buildBaseOptions(terrainPrice: number, projectPrice: number, buildCost: number, maxPropertyValue: number, availableEntry: number, maxInstallment: number) {
+  const rawOptions: Array<Omit<BaseOption, "installment" | "isAvailable">> = [
+    {
+      key: "FULL",
+      label: "Terreno + projeto + obra",
+      amount: terrainPrice + projectPrice + buildCost,
+      description: "Cliente quer lote, projeto e obra no mesmo pacote."
+    },
+    {
+      key: "TERRAIN_PROJECT",
+      label: "Terreno + projeto",
+      amount: terrainPrice + projectPrice,
+      description: "Cliente quer lote e projeto, mas vai construir por fora."
+    },
+    {
+      key: "TERRAIN",
+      label: "So terreno",
+      amount: terrainPrice,
+      description: "Cliente quer comprar apenas o lote agora."
+    }
+  ];
+
+  return rawOptions
+    .filter((option) => option.amount > 0)
+    .filter((option) => {
+      if (option.key === "FULL") {
+        return terrainPrice > 0 && projectPrice > 0 && buildCost > 0;
+      }
+
+      if (option.key === "TERRAIN_PROJECT") {
+        return terrainPrice > 0 && projectPrice > 0;
+      }
+
+      return terrainPrice > 0;
+    })
+    .map((option) => {
+      const financedValue = Math.max(option.amount - availableEntry, 0);
+
+      return {
+        ...option,
+        installment: financedValue > 0 ? financedValue / 180 : 0,
+        isAvailable: maxInstallment > 0 && option.amount <= maxPropertyValue
+      };
+    });
+}
+
 function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: number, buildCost: number): Result {
-  const formalIncome = form.hasIncomeProof === "yes" ? form.monthlyIncome : form.monthlyIncome * 0.65;
-  const informalIncome = form.hasInformalIncome === "yes" ? form.otherIncome * 0.5 : 0;
-  const composedIncome = form.composeIncome === "yes" ? form.coBuyerIncome : 0;
+  const monthlyIncome = Math.max(parseMoney(form.monthlyIncome), 0);
+  const otherIncome = Math.max(parseMoney(form.otherIncome), 0);
+  const coBuyerIncome = Math.max(parseMoney(form.coBuyerIncome), 0);
+  const desiredPropertyValueInput = Math.max(parseMoney(form.desiredPropertyValue), 0);
+  const fgtsValue = Math.max(parseMoney(form.fgtsValue), 0);
+  const downPayment = Math.max(parseMoney(form.downPayment), 0);
+  const formalIncome = monthlyIncome;
+  const informalIncome = form.hasInformalIncome === "yes" ? otherIncome : 0;
+  const composedIncome = form.composeIncome === "yes" ? coBuyerIncome : 0;
   const totalIncome = Math.max(formalIncome + informalIncome + composedIncome, 0);
-  const debtPressure = form.activeLoans + (form.hasCurrentFinancing === "yes" ? form.monthlySpending * 0.25 : 0);
+  const debtPressure =
+    Math.max(parseMoney(form.activeLoans), 0) + (form.hasCurrentFinancing === "yes" ? Math.max(parseMoney(form.monthlySpending), 0) : 0);
   const maxInstallment = Math.max(totalIncome * 0.3 - debtPressure, 0);
   const maxCredit = maxInstallment * 180;
-  const usableFgts = form.useFgts === "yes" ? Math.max(form.fgtsValue, 0) : 0;
-  const desiredPackageValue = Math.max(form.desiredPropertyValue, 0);
-  const entryRate = form.propertyCondition === "USED" ? 0.2 : form.propertyType === "LAND_BUILD" ? 0.2 : 0.15;
-  const minimumEntry = desiredPackageValue * entryRate;
-  const availableEntry = Math.max(form.downPayment + usableFgts, 0);
+  const usableFgts = form.useFgts === "yes" ? fgtsValue : 0;
+  const availableEntry = Math.max(downPayment + usableFgts, 0);
   const maxPropertyValue = maxCredit + availableEntry;
-  const suggestedEntry = Math.max(minimumEntry, desiredPackageValue - maxCredit);
-  const entryGap = Math.max(suggestedEntry - availableEntry, 0);
+  const desiredPackageValue = Math.max(
+    getPackageAmount(form.packageMode, terrainPrice, projectPrice, buildCost, desiredPropertyValueInput),
+    0
+  );
   const financedNeeded = Math.max(desiredPackageValue - availableEntry, 0);
   const estimatedInstallment = financedNeeded > 0 ? financedNeeded / 180 : 0;
+  const options = buildBaseOptions(terrainPrice, projectPrice, buildCost, maxPropertyValue, availableEntry, maxInstallment);
+  const requestedOption =
+    form.packageMode === "CUSTOM" && desiredPackageValue > 0
+      ? {
+          key: "CUSTOM" as PackageMode,
+          label: "Valor escolhido",
+          amount: desiredPackageValue,
+          installment: estimatedInstallment,
+          isAvailable: maxInstallment > 0 && desiredPackageValue <= maxPropertyValue,
+          description: "Valor informado manualmente pelo cliente."
+        }
+      : options.find((option) => option.key === form.packageMode);
+  const fallbackOption = options.find((option) => option.isAvailable);
+  const selectedOption = requestedOption?.isAvailable ? requestedOption : fallbackOption;
   const age = getAge(form.birthDate);
   const notes: string[] = [];
-  let score = 20 + scoreValue(form.creditScore);
+  let score = 50 + scoreValue(form.creditScore);
 
-  score += form.hasRestriction === "no" ? 20 : -50;
+  score += form.hasRestriction === "no" ? 15 : -45;
   score += form.delayedFinancing === "no" ? 5 : -15;
-  score += form.workTimeMonths >= 24 ? 15 : form.workTimeMonths >= 12 ? 10 : form.workTimeMonths < 6 ? -10 : 0;
-  score += availableEntry >= desiredPackageValue * 0.2 ? 20 : availableEntry >= desiredPackageValue * 0.1 ? 10 : -20;
+  score += form.workTimeMonths >= 24 ? 10 : form.workTimeMonths >= 12 ? 6 : 0;
   score += form.hasIncomeProof === "yes" ? 10 : -10;
-  score += form.composeIncome === "yes" && form.coBuyerIncome > 0 ? 5 : 0;
+  score += form.composeIncome === "yes" && coBuyerIncome > 0 ? 5 : 0;
   score += form.composeIncome === "yes" ? Math.round(scoreValue(form.coBuyerScore) / 3) : 0;
+  score += requestedOption?.isAvailable ? 10 : selectedOption ? 4 : -10;
   score = Math.max(0, Math.min(100, score));
 
   if (age < 18) {
@@ -277,8 +390,14 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     notes.push("Restricao no CPF joga o caso para alto risco ou analise manual.");
   }
 
-  if (entryGap > 0) {
-    notes.push(`Faltam cerca de ${money(entryGap)} para a entrada base desta casa.`);
+  if (desiredPackageValue <= 0) {
+    notes.push("Informe o valor do imovel ou pacote para calcular a base.");
+    score = Math.min(score, 30);
+  }
+
+  if (totalIncome <= 0) {
+    notes.push("Informe a renda mensal para calcular capacidade de parcela.");
+    score = Math.min(score, 30);
   }
 
   if (maxInstallment <= 0) {
@@ -286,20 +405,23 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   }
 
   if (form.hasIncomeProof === "no") {
-    notes.push("Sem comprovacao, a renda foi considerada parcialmente para manter a pre-analise conservadora.");
+    notes.push("Sem comprovacao, a renda fica em analise manual, mas nao entra com desconto automatico.");
   }
 
-  const chance = score >= 70 ? "Boa" : score >= 40 ? "Analise manual" : "Alto risco";
-  const status = score >= 70 ? "Base aprovada para atendimento" : score >= 40 ? "Precisa de ajuste/manual" : "Base fraca agora";
-
-  let fitMessage = "Pela base, ainda nao fecha o imovel desejado.";
-  if (maxPropertyValue >= desiredPackageValue && entryGap === 0 && maxInstallment > 0) {
-    fitMessage = "Pela media, a casa desejada cabe na base informada.";
-  } else if (terrainPrice > 0 && maxPropertyValue >= terrainPrice && desiredPackageValue > terrainPrice) {
-    fitMessage = "Pela media, da para estudar o terreno; casa + obra ainda precisa ajustar entrada ou renda.";
-  } else if (terrainPrice > 0) {
-    fitMessage = "Pela media, nem o terreno sozinho ficou confortavel nessa base.";
-  }
+  const status = requestedOption?.isAvailable
+    ? `${requestedOption.label} cabe na base`
+    : selectedOption
+      ? `${requestedOption?.label ?? "Escolha"} acima da base`
+      : maxPropertyValue > 0
+        ? `Base ate ${money(maxPropertyValue)}`
+        : "Base insuficiente agora";
+  const fitMessage = requestedOption?.isAvailable
+    ? `A base do cliente e ${money(maxPropertyValue)}. A escolha dele, ${requestedOption.label.toLowerCase()}, cabe por ${money(requestedOption.amount)}.`
+    : selectedOption
+      ? `A base do cliente e ${money(maxPropertyValue)}. A escolha dele ficou acima da base; a alternativa que cabe agora e ${selectedOption.label.toLowerCase()} por ${money(selectedOption.amount)}.`
+    : maxPropertyValue > 0
+      ? `A base do cliente e ${money(maxPropertyValue)}. Use essa faixa para buscar uma opcao abaixo desse valor.`
+      : "Ainda nao existe base suficiente com os dados informados.";
 
   return {
     totalIncome,
@@ -307,14 +429,14 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     maxCredit,
     maxPropertyValue,
     desiredPackageValue,
-    minimumEntry,
-    suggestedEntry,
-    entryGap,
+    availableEntry,
     financedNeeded,
     estimatedInstallment,
+    requestedOption,
+    selectedOption,
+    options,
     score,
     status,
-    chance,
     fitMessage,
     fgtsMessage: usableFgts > 0 ? `FGTS considerado: ${money(usableFgts)}.` : "FGTS nao entrou na conta.",
     notes
@@ -333,11 +455,13 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `CEP: ${form.zipCode || "-"}`,
       `Imovel: ${propertyTypeLabel(form.propertyType)} de ${money(result.desiredPackageValue)}`,
       `Renda total considerada: ${money(result.totalIncome)}`,
-      `Credito medio estimado: ${money(result.maxCredit)}`,
-      `Faixa de imovel recomendada: ate ${money(result.maxPropertyValue)}`,
+      `Base de credito estimada: ${money(result.maxCredit)}`,
+      `Base do cliente: ate ${money(result.maxPropertyValue)}`,
       `Parcela base: ${money(result.maxInstallment)}`,
-      `Entrada sugerida: ${money(result.suggestedEntry)}`,
-      `Score interno: ${result.score}/100 - ${result.chance}`,
+      `Entrada/FGTS informado: ${money(result.availableEntry)}`,
+      `Pacote escolhido: ${result.requestedOption ? `${result.requestedOption.label} - ${money(result.requestedOption.amount)}` : "Valor manual"}`,
+      `Resultado do pacote: ${result.requestedOption?.isAvailable ? "Dentro da base" : "Acima da base"}`,
+      `Opcao indicada agora: ${result.selectedOption ? `${result.selectedOption.label} - ${money(result.selectedOption.amount)}` : "Buscar opcao abaixo da base"}`,
       `Resumo: ${result.fitMessage}`
     ].join("\n")
   );
@@ -367,6 +491,33 @@ export function SimpleFinancingSimulator() {
       projectTitle: params.get("projectTitle") ?? ""
     };
   }, [searchKey]);
+  const packageOptions = useMemo(
+    () =>
+      [
+        terrainPrice > 0
+          ? {
+              mode: "TERRAIN" as PackageMode,
+              label: "So terreno",
+              amount: terrainPrice
+            }
+          : null,
+        terrainPrice > 0 && projectPrice > 0
+          ? {
+              mode: "TERRAIN_PROJECT" as PackageMode,
+              label: "Terreno + projeto",
+              amount: terrainPrice + projectPrice
+            }
+          : null,
+        terrainPrice > 0 && projectPrice > 0 && buildCost > 0
+          ? {
+              mode: "FULL" as PackageMode,
+              label: "Terreno + projeto + obra",
+              amount: terrainPrice + projectPrice + buildCost
+            }
+          : null
+      ].filter(Boolean) as Array<{ mode: PackageMode; label: string; amount: number }>,
+    [buildCost, projectPrice, terrainPrice]
+  );
   const hasPackage = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
   const addRequest = useSimulationRequestsStore((state) => state.addRequest);
   const [form, setForm] = useState<QuickForm>(initialForm);
@@ -382,20 +533,24 @@ export function SimpleFinancingSimulator() {
       return;
     }
 
-    setForm((current) => ({
-      ...current,
-      name: current.name || user.name || "",
-      email: current.email || user.email || "",
-      phone: current.phone || maskPhone(user.phone ?? "")
-    }));
+    const timer = window.setTimeout(() => {
+      setForm((current) => ({
+        ...current,
+        name: current.name || user.name || "",
+        email: current.email || user.email || "",
+        phone: current.phone || maskPhone(user.phone ?? "")
+      }));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [user]);
 
   useEffect(() => {
     const cep = onlyDigits(form.zipCode);
 
     if (cep.length !== 8) {
-      setCepMessage("");
-      return;
+      const timer = window.setTimeout(() => setCepMessage(""), 0);
+      return () => window.clearTimeout(timer);
     }
 
     const controller = new AbortController();
@@ -444,6 +599,17 @@ export function SimpleFinancingSimulator() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updatePackageMode(mode: PackageMode) {
+    const amount = getPackageAmount(mode, terrainPrice, projectPrice, buildCost, parseMoney(form.desiredPropertyValue));
+
+    setForm((current) => ({
+      ...current,
+      packageMode: mode,
+      desiredPropertyValue: amount > 0 ? String(amount) : current.desiredPropertyValue,
+      propertyType: mode === "FULL" || mode === "TERRAIN_PROJECT" ? "LAND_BUILD" : current.propertyType
+    }));
+  }
+
   function simulate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsCalculating(true);
@@ -471,7 +637,11 @@ export function SimpleFinancingSimulator() {
       maxCredit: currentResult.maxCredit,
       maxPropertyValue: currentResult.maxPropertyValue,
       maxInstallment: currentResult.maxInstallment,
-      suggestedEntry: currentResult.suggestedEntry,
+      availableEntry: currentResult.availableEntry,
+      requestedOptionLabel: currentResult.requestedOption?.label,
+      requestedOptionValue: currentResult.requestedOption?.amount,
+      selectedOptionLabel: currentResult.selectedOption?.label,
+      selectedOptionValue: currentResult.selectedOption?.amount,
       score: currentResult.score,
       status: currentResult.status,
       fitMessage: currentResult.fitMessage
@@ -605,7 +775,7 @@ export function SimpleFinancingSimulator() {
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <FieldLabel>Renda mensal principal</FieldLabel>
-                <Input min={0} onChange={(event) => update("monthlyIncome", toNumber(event.target.value))} type="number" value={form.monthlyIncome} />
+                <CurrencyInput onValueChange={(value) => update("monthlyIncome", value)} value={form.monthlyIncome} />
               </label>
               <label>
                 <FieldLabel>Tipo de renda</FieldLabel>
@@ -632,7 +802,7 @@ export function SimpleFinancingSimulator() {
                   </label>
                   <label>
                     <FieldLabel>Outra renda mensal</FieldLabel>
-                    <Input min={0} onChange={(event) => update("otherIncome", toNumber(event.target.value))} type="number" value={form.otherIncome} />
+                    <CurrencyInput onValueChange={(value) => update("otherIncome", value)} value={form.otherIncome} />
                   </label>
                   <label>
                     <FieldLabel>Essa outra renda e informal?</FieldLabel>
@@ -652,7 +822,7 @@ export function SimpleFinancingSimulator() {
                     <>
                       <label>
                         <FieldLabel>Renda do segundo participante</FieldLabel>
-                        <Input min={0} onChange={(event) => update("coBuyerIncome", toNumber(event.target.value))} type="number" value={form.coBuyerIncome} />
+                        <CurrencyInput onValueChange={(value) => update("coBuyerIncome", value)} value={form.coBuyerIncome} />
                       </label>
                       <label>
                         <FieldLabel>Score aproximado dele(a)</FieldLabel>
@@ -685,7 +855,7 @@ export function SimpleFinancingSimulator() {
               </label>
               <label>
                 <FieldLabel>Emprestimos ativos por mes</FieldLabel>
-                <Input min={0} onChange={(event) => update("activeLoans", toNumber(event.target.value))} type="number" value={form.activeLoans} />
+                <CurrencyInput onValueChange={(value) => update("activeLoans", value)} value={form.activeLoans} />
               </label>
               {showAdvanced ? (
                 <>
@@ -698,7 +868,7 @@ export function SimpleFinancingSimulator() {
                   </label>
                   <label>
                     <FieldLabel>Media de gastos mensais</FieldLabel>
-                    <Input min={0} onChange={(event) => update("monthlySpending", toNumber(event.target.value))} type="number" value={form.monthlySpending} />
+                    <CurrencyInput onValueChange={(value) => update("monthlySpending", value)} value={form.monthlySpending} />
                   </label>
                   <label>
                     <FieldLabel>Possui financiamento atual?</FieldLabel>
@@ -718,14 +888,33 @@ export function SimpleFinancingSimulator() {
               <h2 className="text-xl font-semibold">3. Imovel e entrada</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
+              {hasPackage && packageOptions.length > 0 ? (
+                <label>
+                  <FieldLabel>O que o cliente quer comprar</FieldLabel>
+                  <select className={selectClass} onChange={(event) => updatePackageMode(event.target.value as PackageMode)} value={form.packageMode}>
+                    {packageOptions.map((option) => (
+                      <option key={option.mode} value={option.mode}>
+                        {option.label} - {money(option.amount)}
+                      </option>
+                    ))}
+                  </select>
+                  <HelpText>Essa escolha manda no resultado. As outras aparecem apenas como alternativas.</HelpText>
+                </label>
+              ) : null}
               <label>
                 <FieldLabel>Valor do imovel/casa desejada</FieldLabel>
-                <Input min={0} onChange={(event) => update("desiredPropertyValue", toNumber(event.target.value))} type="number" value={form.desiredPropertyValue} />
-                <HelpText>Se veio de um terreno/projeto, ja puxei a base do pacote.</HelpText>
+                <CurrencyInput
+                  onValueChange={(value) => {
+                    update("packageMode", "CUSTOM");
+                    update("desiredPropertyValue", value);
+                  }}
+                  value={form.desiredPropertyValue}
+                />
+                <HelpText>Esse valor e comparado com a base real do cliente.</HelpText>
               </label>
               <label>
                 <FieldLabel>Entrada em dinheiro</FieldLabel>
-                <Input min={0} onChange={(event) => update("downPayment", toNumber(event.target.value))} type="number" value={form.downPayment} />
+                <CurrencyInput onValueChange={(value) => update("downPayment", value)} value={form.downPayment} />
               </label>
               <label>
                 <FieldLabel>Vai usar FGTS?</FieldLabel>
@@ -736,7 +925,7 @@ export function SimpleFinancingSimulator() {
               </label>
               <label>
                 <FieldLabel>Valor de FGTS</FieldLabel>
-                <Input min={0} onChange={(event) => update("fgtsValue", toNumber(event.target.value))} type="number" value={form.fgtsValue} />
+                <CurrencyInput onValueChange={(value) => update("fgtsValue", value)} value={form.fgtsValue} />
               </label>
               {showAdvanced ? (
                 <>
@@ -789,24 +978,35 @@ export function SimpleFinancingSimulator() {
 
             {isCalculating ? (
               <div className="mt-6 rounded-[8px] bg-white/10 p-4 text-sm leading-6 opacity-85 dark:bg-black/10">
-                Conferindo renda, entrada, score e valor da casa...
+                Conferindo renda, entrada e pacote escolhido...
               </div>
             ) : result ? (
               <>
                 <div className="mt-6 grid gap-3 text-sm">
-                  <Metric label="Chance" value={`${result.chance} (${result.score}/100)`} />
+                  <Metric label="Base do cliente" value={`ate ${money(result.maxPropertyValue)}`} />
                   <Metric label="Renda considerada" value={money(result.totalIncome)} />
                   <Metric label="Parcela maxima" value={money(result.maxInstallment)} />
-                  <Metric label="Credito medio" value={money(result.maxCredit)} />
-                  <Metric label="Faixa recomendada" value={`ate ${money(result.maxPropertyValue)}`} />
-                  <Metric label="Entrada sugerida" value={money(result.suggestedEntry)} />
-                  <Metric label="Parcela do desejado" value={money(result.estimatedInstallment)} />
+                  <Metric label="Base de credito" value={money(result.maxCredit)} />
+                  <Metric label="Entrada/FGTS" value={money(result.availableEntry)} />
+                  <Metric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
+                  <Metric label="Valor escolhido" value={money(result.desiredPackageValue)} />
+                  <Metric label="Resultado" value={result.requestedOption?.isAvailable ? "Dentro da base" : "Acima da base"} />
+                  <Metric label="Cabe agora" value={result.selectedOption?.label ?? "Buscar abaixo da base"} />
+                  <Metric label="Parcela estimada" value={money(result.selectedOption?.installment ?? result.estimatedInstallment)} />
                 </div>
 
                 <div className="mt-5 rounded-[8px] bg-white/10 p-4 text-sm leading-6 opacity-90 dark:bg-black/10">
                   <strong className="block">{result.fitMessage}</strong>
                   <span className="mt-2 block">{result.fgtsMessage}</span>
                 </div>
+
+                {result.options.length > 0 ? (
+                  <div className="mt-4 grid gap-2">
+                    {result.options.map((option) => (
+                      <BaseOptionRow isRequested={result.requestedOption?.key === option.key} key={option.key} option={option} />
+                    ))}
+                  </div>
+                ) : null}
 
                 {result.notes.length > 0 ? (
                   <div className="mt-4 grid gap-2 text-xs leading-5 opacity-85">
@@ -833,7 +1033,7 @@ export function SimpleFinancingSimulator() {
               </>
             ) : (
               <div className="mt-6 rounded-[8px] bg-white/10 p-4 text-sm leading-6 opacity-85 dark:bg-black/10">
-                A conta usa uma base simples: parcela maxima de ate 30% da renda e credito medio de parcela x 180.
+                A conta cruza renda, entrada e pacote sem inventar valor. A faixa final segue a regra da parcela maxima de 30%.
               </div>
             )}
 
@@ -904,6 +1104,33 @@ function PackageSummary({
 
 function CalculatorIcon() {
   return <WalletCards size={28} />;
+}
+
+function BaseOptionRow({ option, isRequested }: { option: BaseOption; isRequested: boolean }) {
+  return (
+    <div className={`rounded-[8px] border p-3 text-sm ${isRequested ? "border-[var(--accent)] bg-white/10 dark:bg-black/10" : "border-white/15 dark:border-black/15"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <strong className="block">
+            {option.label}
+            {isRequested ? " - escolha do cliente" : ""}
+          </strong>
+          <span className="mt-1 block text-xs opacity-75">{option.description}</span>
+        </div>
+        <span
+          className={`shrink-0 rounded-[8px] px-2 py-1 text-xs font-semibold ${
+            option.isAvailable ? "bg-emerald-500/20 text-emerald-200 dark:text-emerald-700" : "bg-white/10 text-white/70 dark:bg-black/10 dark:text-black/60"
+          }`}
+        >
+          {option.isAvailable ? "Dentro da base" : "Acima da base"}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs opacity-85 sm:grid-cols-2">
+        <span>Valor: {money(option.amount)}</span>
+        <span>Parcela media: {money(option.installment)}</span>
+      </div>
+    </div>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

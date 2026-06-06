@@ -71,7 +71,7 @@ export class PaymentsService {
     };
   }
 
-  async handleWebhook(provider: string, payload: Record<string, unknown>) {
+  handleWebhook(provider: string, payload: Record<string, unknown>) {
     return {
       received: true,
       provider,

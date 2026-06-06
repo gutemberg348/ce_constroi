@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsNumber, IsOptional, IsString } from "class-validator";
+import { IsNumber, IsObject, IsOptional, IsString } from "class-validator";
 
 export class CreateTerrainDto {
   @ApiProperty()
@@ -14,6 +14,11 @@ export class CreateTerrainDto {
   @ApiProperty()
   @IsString()
   address!: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  neighborhood?: string;
 
   @ApiProperty()
   @IsString()
@@ -54,4 +59,9 @@ export class CreateTerrainDto {
   @IsString()
   @IsOptional()
   zoning?: string;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsObject()
+  @IsOptional()
+  metadata?: Record<string, unknown>;
 }

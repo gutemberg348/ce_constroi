@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useState } from "react";
 import { Building2, Crown, LogIn, User, UserCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { login } from "@/services/auth";
+import { getSafePostAuthPath } from "@/lib/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
 const demoLogins: Array<{
@@ -48,7 +49,16 @@ const demoLogins: Array<{
 ];
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">Carregando login...</section>}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setSession = useAuthStore((state) => state.setSession);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +71,7 @@ export default function LoginPage() {
     try {
       const session = await login({ email, password });
       setSession(session);
-      router.push("/");
+      router.push(getSafePostAuthPath(searchParams.get("next")));
     } catch {
       setError("Email ou senha invalidos.");
     }
@@ -70,12 +80,10 @@ export default function LoginPage() {
   return (
     <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
       <div>
-        <p className="text-sm font-semibold uppercase text-[var(--accent)]">Acesso demo</p>
-        <h1 className="mt-3 max-w-xl text-5xl font-semibold leading-tight">
-          Entre como admin, arquiteto ou cliente e teste o fluxo completo.
-        </h1>
+        <p className="text-sm font-semibold uppercase text-[var(--accent)]">Acesso</p>
+        <h1 className="mt-3 max-w-xl text-5xl font-semibold leading-tight">Entre no catálogo e siga pelo seu perfil.</h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-[var(--muted)]">
-          O admin aprova arquitetos. Arquitetos aprovados publicam projetos. Clientes compram terreno, projeto ou pacote completo.
+          Cliente, proprietario, arquiteto e admin usam a mesma base. Cada conta abre o que faz sentido para ela.
         </p>
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {demoLogins.map((item) => (
@@ -101,7 +109,7 @@ export default function LoginPage() {
       <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6 shadow-2xl shadow-black/10" onSubmit={onSubmit}>
         <div className="mb-6">
           <p className="text-sm uppercase text-[var(--muted)]">Login</p>
-          <h2 className="mt-2 text-2xl font-semibold">Acessar painel</h2>
+          <h2 className="mt-2 text-2xl font-semibold">Entrar</h2>
         </div>
         <div className="space-y-4">
           <Input autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@empresa.com" type="email" value={email} />

@@ -1,26 +1,28 @@
 import Link from "next/link";
-import { Heart, Home, MapPin, Ruler } from "lucide-react";
+import { Home, MapPin, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FavoriteButton } from "@/components/marketplace/favorite-button";
 import { TerrainProjectSelector } from "@/components/marketplace/terrain-project-selector";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { area, money } from "@/lib/format";
+import { getTerrainPhoto } from "@/lib/terrain-images";
 import { getTerrain } from "@/services/terrains";
 
 export default async function TerrainDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const terrain = await getTerrain(id);
-  const image = terrain.images?.[0]?.url;
+  const image = getTerrainPhoto(terrain);
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)]">
-          {image ? <PrivacyImage alt={terrain.title} className="h-[520px] w-full object-cover" src={image} /> : null}
+          <PrivacyImage alt={`Terreno ${terrain.title}`} className="h-[520px] w-full object-cover" src={image} />
         </div>
         <aside className="self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6">
           <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
             <MapPin size={17} />
-            {terrain.city}, {terrain.state}
+            {[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}
           </div>
           <h1 className="mt-3 text-4xl font-semibold">{terrain.title}</h1>
           <p className="mt-4 leading-7 text-[var(--muted)]">{terrain.description}</p>
@@ -47,9 +49,7 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
                 Monte sua casa
               </Button>
             </Link>
-            <Button aria-label="Favoritar terreno" variant="ghost">
-              <Heart size={18} />
-            </Button>
+            <FavoriteButton targetId={terrain.id} targetType="terrain" />
           </div>
         </aside>
       </div>

@@ -18,6 +18,11 @@ export class ListTerrainsDto extends PaginationQueryDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  neighborhood?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
   state?: string;
 
   @ApiPropertyOptional()

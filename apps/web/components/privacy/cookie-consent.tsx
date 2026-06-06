@@ -55,6 +55,7 @@ export function CookieConsent() {
   const [draft, setDraft] = useState<ConsentSettings>(settings);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Keeps the modal draft synced when opened from footer/policy pages.
     setDraft(settings);
   }, [settings, isOpen]);
 

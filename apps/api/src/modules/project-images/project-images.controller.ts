@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@/generated/prisma/enums";
+import { CurrentUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { CreateProjectImageDto } from "./dto/create-project-image.dto";
 import { ProjectImagesService } from "./project-images.service";
@@ -13,12 +14,12 @@ export class ProjectImagesController {
   constructor(private readonly projectImagesService: ProjectImagesService) {}
 
   @Post()
-  create(@Body() dto: CreateProjectImageDto) {
-    return this.projectImagesService.create(dto);
+  create(@Body() dto: CreateProjectImageDto, @CurrentUser() user: { sub: string; role: string }) {
+    return this.projectImagesService.create(dto, user);
   }
 
   @Delete(":id")
-  remove(@Param("id") id: string) {
-    return this.projectImagesService.remove(id);
+  remove(@Param("id") id: string, @CurrentUser() user: { sub: string; role: string }) {
+    return this.projectImagesService.remove(id, user);
   }
 }

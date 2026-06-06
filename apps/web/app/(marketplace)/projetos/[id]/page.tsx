@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Bath, BedDouble, Heart, Map, Ruler, Sparkles } from "lucide-react";
+import { Bath, BedDouble, Map, Ruler, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FavoriteButton } from "@/components/marketplace/favorite-button";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { area, money, toNumber } from "@/lib/format";
@@ -49,9 +50,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <Link href="/simulacao">
               <Button variant="secondary">Simular pacote</Button>
             </Link>
-            <Button aria-label="Favoritar projeto" variant="ghost">
-              <Heart size={18} />
-            </Button>
+            <FavoriteButton targetId={project.id} targetType="project" />
           </div>
         </aside>
       </div>

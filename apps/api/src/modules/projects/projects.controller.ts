@@ -36,7 +36,7 @@ export class ProjectsController {
   @ApiBearerAuth()
   @Patch(":id")
   @Roles(UserRole.ADMIN, UserRole.ARCHITECT)
-  update(@Param("id") id: string, @Body() dto: UpdateProjectDto) {
-    return this.projectsService.update(id, dto);
+  update(@Param("id") id: string, @Body() dto: UpdateProjectDto, @CurrentUser() user: { sub: string; role: string }) {
+    return this.projectsService.update(id, dto, user);
   }
 }

@@ -36,7 +36,7 @@ export class TerrainsController {
   @ApiBearerAuth()
   @Patch(":id")
   @Roles(UserRole.ADMIN, UserRole.TERRAIN_OWNER)
-  update(@Param("id") id: string, @Body() dto: UpdateTerrainDto) {
-    return this.terrainsService.update(id, dto);
+  update(@Param("id") id: string, @Body() dto: UpdateTerrainDto, @CurrentUser() user: { sub: string; role: string }) {
+    return this.terrainsService.update(id, dto, user);
   }
 }

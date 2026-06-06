@@ -25,4 +25,19 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  companyName?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  cauNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  bio?: string;
 }

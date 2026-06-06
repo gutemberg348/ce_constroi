@@ -47,9 +47,16 @@ export function SimulationRequestsPanel({ compact = false }: { compact?: boolean
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{request.fitMessage}</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
                   <span>Credito: {money(request.maxCredit)}</span>
-                  <span>Faixa: {money(request.maxPropertyValue)}</span>
-                  <span>Entrada: {money(request.suggestedEntry)}</span>
-                  <span>Score: {request.score}/100</span>
+                  <span>Base: {money(request.maxPropertyValue)}</span>
+                  <span>Entrada/FGTS: {money(request.availableEntry ?? 0)}</span>
+                  <span>
+                    Escolha: {request.requestedOptionLabel ?? "Valor manual"}
+                    {request.requestedOptionValue ? ` (${money(request.requestedOptionValue)})` : ""}
+                  </span>
+                  <span>
+                    Indicacao: {request.selectedOptionLabel ?? "Buscar abaixo da base"}
+                    {request.selectedOptionValue ? ` (${money(request.selectedOptionValue)})` : ""}
+                  </span>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 md:justify-end">
