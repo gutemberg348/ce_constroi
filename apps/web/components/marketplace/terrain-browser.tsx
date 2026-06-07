@@ -2,16 +2,18 @@
 
 import { Map, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTerrains } from "@/hooks/use-terrains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TerrainCard } from "./terrain-card";
 
 export function TerrainBrowser() {
-  const [search, setSearch] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+  const [city, setCity] = useState(() => searchParams.get("city") ?? "");
+  const [state, setState] = useState(() => (searchParams.get("state") ?? "").toUpperCase());
+  const [neighborhood, setNeighborhood] = useState(() => searchParams.get("neighborhood") ?? "");
   const params = useMemo(
     () => ({
       search: search || undefined,

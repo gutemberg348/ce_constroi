@@ -2,13 +2,16 @@
 
 import { Building2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useProjects } from "@/hooks/use-projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProjectCard } from "./project-card";
 
 export function ProjectBrowser() {
-  const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+
   const params = useMemo(() => ({ search: search || undefined }), [search]);
   const { data, isLoading } = useProjects(params);
   const projects = data?.items ?? [];
