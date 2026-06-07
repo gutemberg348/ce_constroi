@@ -45,7 +45,7 @@ function ProjectOption({
 
   return (
     <div
-      className={`grid gap-4 rounded-[8px] border bg-[var(--panel)] p-4 transition md:grid-cols-[220px_1fr] ${
+      className={`grid gap-3 rounded-[8px] border bg-[var(--panel)] p-3 transition sm:gap-4 sm:p-4 md:grid-cols-[180px_1fr] lg:grid-cols-[220px_1fr] ${
         isSelected ? "border-[var(--accent)] shadow-xl" : "border-[var(--line)]"
       }`}
     >
@@ -58,17 +58,17 @@ function ProjectOption({
           />
         ) : null}
       </div>
-      <div className="grid gap-4">
+      <div className="grid gap-3 sm:gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase text-[var(--muted)]">
             <span>{project.style ?? "Projeto residencial"}</span>
             <span>Score {score.toFixed(0)}%</span>
           </div>
-          <h3 className="mt-2 text-xl font-semibold">{project.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{project.description}</p>
+          <h3 className="mt-2 text-lg font-semibold sm:text-xl">{project.title}</h3>
+          <p className="mt-2 line-clamp-3 text-sm leading-5 text-[var(--muted)] sm:leading-6">{project.description}</p>
         </div>
 
-        <div className="grid gap-2 text-sm sm:grid-cols-3">
+        <div className="grid gap-2 text-xs sm:grid-cols-3 sm:text-sm">
           <span className="rounded-[8px] border border-[var(--line)] px-3 py-2">
             Projeto {money(project.price)}
           </span>
@@ -81,12 +81,12 @@ function ProjectOption({
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={onSelect} type="button" variant={isSelected ? "secondary" : "primary"}>
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          <Button className="w-full sm:w-auto" onClick={onSelect} type="button" variant={isSelected ? "secondary" : "primary"}>
             {isSelected ? <CheckCircle2 size={18} /> : <Home size={18} />}
             {isSelected ? "Projeto selecionado" : "Selecionar este projeto"}
           </Button>
-          <span className="text-sm text-[var(--muted)]">{compatibility.notes ?? "Projeto compativel com este lote."}</span>
+          <span className="text-sm leading-5 text-[var(--muted)]">{compatibility.notes ?? "Projeto compativel com este lote."}</span>
         </div>
       </div>
     </div>
@@ -108,19 +108,19 @@ export function TerrainProjectSelector({ terrain }: { terrain: Terrain }) {
     : numeric(terrain.price);
 
   return (
-    <section className="mt-10 scroll-mt-24" id="monte-sua-casa">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Sparkles className="text-[var(--accent)]" size={22} />
+    <section className="mt-6 scroll-mt-24 sm:mt-8 lg:mt-10" id="monte-sua-casa">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Sparkles className="text-[var(--accent)]" size={20} />
           <div>
             <p className="text-sm uppercase text-[var(--muted)]">Monte sua casa</p>
-            <h2 className="text-2xl font-semibold">Projetos que cabem neste terreno</h2>
+            <h2 className="text-xl font-semibold sm:text-2xl">Projetos que cabem neste terreno</h2>
           </div>
         </div>
       </div>
 
       {compatibleProjects.length ? (
-        <div className="grid gap-6">
+        <div className="grid gap-4 sm:gap-6">
           {selectedProject ? (
             <div>
               <HousePreview3D
@@ -133,7 +133,7 @@ export function TerrainProjectSelector({ terrain }: { terrain: Terrain }) {
             </div>
           ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
             <div className="grid gap-4">
               {compatibleProjects.map((compatibility) => (
                 <ProjectOption
@@ -149,7 +149,7 @@ export function TerrainProjectSelector({ terrain }: { terrain: Terrain }) {
               <aside className="lg:sticky lg:top-24">
                 <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4">
                   <p className="text-sm text-[var(--muted)]">Resumo do pacote</p>
-                  <h3 className="mt-2 text-xl font-semibold">
+                  <h3 className="mt-2 text-lg font-semibold sm:text-xl">
                     {selectedProject.title} em {terrain.title}
                   </h3>
                   <div className="mt-4 grid gap-3 text-sm">

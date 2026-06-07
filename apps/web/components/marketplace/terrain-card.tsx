@@ -25,13 +25,13 @@ export function TerrainCard({ terrain }: { terrain: Terrain }) {
         </Link>
         <FavoriteButton className="absolute right-3 top-3" targetId={terrain.id} targetType="terrain" />
       </div>
-      <Link className="block space-y-4 p-4" href={`/terrenos/${terrain.id}` as Route}>
+      <Link className="block space-y-3 p-3 sm:space-y-4 sm:p-4" href={`/terrenos/${terrain.id}` as Route}>
         <div>
           <div className="flex items-center gap-2 text-xs uppercase text-[var(--muted)]">
             <MapPin size={14} />
             {location}
           </div>
-          <h3 className="mt-2 text-lg font-semibold">{terrain.title}</h3>
+          <h3 className="mt-2 text-base font-semibold sm:text-lg">{terrain.title}</h3>
         </div>
         <p className="line-clamp-2 text-sm text-[var(--muted)]">{terrain.description}</p>
         <div className="flex items-center justify-between">

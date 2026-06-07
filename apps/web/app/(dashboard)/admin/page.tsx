@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, Building2, Check, ClipboardList, CreditCard, Image as ImageIcon, Map, RefreshCw, ShieldAlert, Users, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { SimulationRequestsPanel } from "@/components/dashboard/simulation-requests-panel";
@@ -197,6 +198,36 @@ const userRoles: UserRole[] = ["CUSTOMER", "TERRAIN_OWNER", "ARCHITECT", "ADMIN"
 const userStatuses: UserStatus[] = ["ACTIVE", "INACTIVE", "SUSPENDED"];
 const architectStatuses: ArchitectStatus[] = ["PENDING_REVIEW", "APPROVED", "REJECTED", "SUSPENDED"];
 
+type AdminSection = "dashboard" | "marca" | "pessoas" | "arquitetos" | "terrenos" | "projetos" | "simulacoes" | "pedidos" | "anuncios" | "acessos";
+
+const adminSections = [
+  { id: "dashboard", href: "/admin", label: "Dashboard", icon: Activity },
+  { id: "marca", href: "/admin/marca", label: "Marca", icon: ImageIcon },
+  { id: "pessoas", href: "/admin/pessoas", label: "Pessoas", icon: Users },
+  { id: "arquitetos", href: "/admin/arquitetos", label: "Arquitetos", icon: Building2 },
+  { id: "terrenos", href: "/admin/terrenos", label: "Terrenos", icon: Map },
+  { id: "projetos", href: "/admin/projetos", label: "Projetos", icon: ClipboardList },
+  { id: "simulacoes", href: "/admin/simulacoes", label: "Simulacoes", icon: CreditCard },
+  { id: "pedidos", href: "/admin/pedidos", label: "Pedidos", icon: CreditCard },
+  { id: "anuncios", href: "/admin/anuncios", label: "Anuncios", icon: ShieldAlert },
+  { id: "acessos", href: "/admin/acessos", label: "Acessos", icon: Activity }
+] as const;
+
+function getAdminSection(pathname: string): AdminSection {
+  const section = adminSections.find((item) => item.href !== "/admin" && pathname.startsWith(item.href));
+  return section?.id ?? "dashboard";
+}
+
+function barWidth(value: number | undefined, max: number) {
+  const safeValue = Number(value ?? 0);
+
+  if (!safeValue || !max) {
+    return "0%";
+  }
+
+  return `${Math.max(8, Math.round((safeValue / max) * 100))}%`;
+}
+
 function inputClass() {
   return "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 text-sm outline-none";
 }
@@ -226,6 +257,7 @@ function formNumber(formData: FormData, key: string) {
 
 export default function AdminPage() {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const [selectedLightLogoUrl, setSelectedLightLogoUrl] = useState<string | null>(null);
   const [selectedDarkLogoUrl, setSelectedDarkLogoUrl] = useState<string | null>(null);
   const user = useAuthStore((state) => state.user);
@@ -233,6 +265,9 @@ export default function AdminPage() {
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
 
   const isAdmin = user?.role === "ADMIN";
+  const activeSection = getAdminSection(pathname ?? "/admin");
+  const isDashboard = activeSection === "dashboard";
+  const activeSectionConfig = adminSections.find((section) => section.id === activeSection) ?? adminSections[0];
 
   const metricsQuery = useQuery({
     queryKey: ["admin", "metrics"],
@@ -243,55 +278,55 @@ export default function AdminPage() {
   const architectsQuery = useQuery({
     queryKey: ["admin", "architects", "pending"],
     queryFn: () => getArchitectsForReview("PENDING_REVIEW"),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "arquitetos")
   });
 
   const overviewQuery = useQuery({
     queryKey: ["admin", "overview"],
     queryFn: getAdminOverview,
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && (isDashboard || activeSection === "anuncios"))
   });
 
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
     queryFn: getSiteSettings,
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "marca")
   });
 
   const adminUsersQuery = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => getAdminUsers({ limit: 50 }),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "pessoas")
   });
 
   const adminTerrainsQuery = useQuery({
     queryKey: ["admin", "terrains"],
     queryFn: () => getAdminTerrains({ limit: 50 }),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "terrenos")
   });
 
   const adminProjectsQuery = useQuery({
     queryKey: ["admin", "projects"],
     queryFn: () => getAdminProjects({ limit: 50 }),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "projetos")
   });
 
   const adminSimulationsQuery = useQuery({
     queryKey: ["admin", "simulations"],
     queryFn: () => getAdminSimulations({ limit: 50 }),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "simulacoes")
   });
 
   const adminOrdersQuery = useQuery({
     queryKey: ["admin", "orders"],
     queryFn: () => getAdminOrders({ limit: 50 }),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "pedidos")
   });
 
   const adminEventsQuery = useQuery({
     queryKey: ["admin", "events"],
     queryFn: () => getAdminEvents({ limit: 50 }),
-    enabled: Boolean(accessToken && isAdmin)
+    enabled: Boolean(accessToken && isAdmin && activeSection === "acessos")
   });
 
   const approveMutation = useMutation({
@@ -518,15 +553,15 @@ export default function AdminPage() {
 
   const adminQueries = [
     metricsQuery,
-    architectsQuery,
-    overviewQuery,
-    settingsQuery,
-    adminUsersQuery,
-    adminTerrainsQuery,
-    adminProjectsQuery,
-    adminSimulationsQuery,
-    adminOrdersQuery,
-    adminEventsQuery
+    ...(activeSection === "arquitetos" ? [architectsQuery] : []),
+    ...(isDashboard || activeSection === "anuncios" ? [overviewQuery] : []),
+    ...(activeSection === "marca" ? [settingsQuery] : []),
+    ...(activeSection === "pessoas" ? [adminUsersQuery] : []),
+    ...(activeSection === "terrenos" ? [adminTerrainsQuery] : []),
+    ...(activeSection === "projetos" ? [adminProjectsQuery] : []),
+    ...(activeSection === "simulacoes" ? [adminSimulationsQuery] : []),
+    ...(activeSection === "pedidos" ? [adminOrdersQuery] : []),
+    ...(activeSection === "acessos" ? [adminEventsQuery] : [])
   ];
   const failedAdminQuery = adminQueries.find((query) => query.isError);
 
@@ -578,18 +613,44 @@ export default function AdminPage() {
   const adminEvents = adminEventsQuery.data?.items ?? [];
   const logoLightPreview = selectedLightLogoUrl ?? settings?.logoLightUrl ?? settings?.logoUrl ?? null;
   const logoDarkPreview = selectedDarkLogoUrl ?? settings?.logoDarkUrl ?? settings?.logoUrl ?? null;
-  const adminNavItems = [
-    { href: "#visao-geral", label: "Visao geral", icon: Activity },
-    { href: "#marca", label: "Marca", icon: ImageIcon },
-    { href: "#pessoas", label: "Pessoas", icon: Users, count: metrics?.users ?? "..." },
-    { href: "#arquitetos", label: "Arquitetos", icon: Building2, count: metrics?.architects ?? "..." },
-    { href: "#terrenos", label: "Terrenos", icon: Map, count: metrics?.terrains ?? "..." },
-    { href: "#projetos", label: "Projetos", icon: ClipboardList, count: metrics?.projects ?? "..." },
-    { href: "#simulacoes", label: "Simulacoes", icon: CreditCard, count: metrics?.simulations ?? "..." },
-    { href: "#pedidos", label: "Pedidos", icon: CreditCard, count: metrics?.orders ?? "..." },
-    { href: "#anuncios", label: "Anuncios", icon: ShieldAlert, count: overview?.terrainQueue.length ?? "..." },
-    { href: "#acessos", label: "Acessos", icon: Activity, count: metrics?.siteEvents ?? "..." }
+  const adminNavItems = adminSections.map((item) => {
+    const count =
+      item.id === "pessoas"
+        ? metrics?.users
+        : item.id === "arquitetos"
+          ? metrics?.architects
+          : item.id === "terrenos"
+            ? metrics?.terrains
+            : item.id === "projetos"
+              ? metrics?.projects
+              : item.id === "simulacoes"
+                ? metrics?.simulations
+                : item.id === "pedidos"
+                  ? metrics?.orders
+                  : item.id === "anuncios"
+                    ? metrics?.pendingTerrains
+                    : item.id === "acessos"
+                      ? metrics?.siteEvents
+                      : undefined;
+
+    return { ...item, count: item.id === "dashboard" || item.id === "marca" ? undefined : (count ?? "...") };
+  });
+  const volumeBars = [
+    { label: "Usuarios", value: metrics?.users },
+    { label: "Terrenos", value: metrics?.terrains },
+    { label: "Projetos", value: metrics?.projects },
+    { label: "Simulacoes", value: metrics?.simulations },
+    { label: "Pedidos", value: metrics?.orders },
+    { label: "Visitas", value: metrics?.siteEvents }
   ];
+  const queueBars = [
+    { label: "Arquitetos pendentes", value: metrics?.pendingArchitects },
+    { label: "Terrenos pendentes", value: metrics?.pendingTerrains },
+    { label: "Projetos pendentes", value: metrics?.pendingProjects },
+    { label: "Pedidos pagos", value: metrics?.paidOrders }
+  ];
+  const volumeMax = Math.max(1, ...volumeBars.map((item) => Number(item.value ?? 0)));
+  const queueMax = Math.max(1, ...queueBars.map((item) => Number(item.value ?? 0)));
 
   function handleLogoFile(file: File | null | undefined, variant: "light" | "dark") {
     const setLogo = variant === "light" ? setSelectedLightLogoUrl : setSelectedDarkLogoUrl;
@@ -605,11 +666,11 @@ export default function AdminPage() {
   return (
     <section className="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="h-fit rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5 xl:sticky xl:top-24">
+        <aside className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5 xl:sticky xl:top-24">
           <p className="text-sm font-semibold uppercase text-[var(--accent)]">Admin</p>
           <h1 className="mt-2 text-3xl font-semibold">Central operacional</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-            Acompanhe clientes, proprietarios, arquitetos, terrenos, projetos, simulacoes e pedidos no mesmo lugar.
+            Acompanhe cada modulo em sua propria pagina.
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
@@ -634,10 +695,15 @@ export default function AdminPage() {
           <nav className="mt-6 grid gap-2">
             {adminNavItems.map((item) => {
               const Icon = item.icon;
+              const isActive = item.id === activeSection;
 
               return (
-                <a
-                  className="focus-ring flex items-center justify-between gap-3 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-black/5 dark:hover:bg-white/10"
+                <Link
+                  className={`focus-ring flex items-center justify-between gap-3 rounded-[8px] border px-3 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]"
+                      : "border-[var(--line)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10"
+                  }`}
                   href={item.href}
                   key={item.href}
                 >
@@ -645,12 +711,12 @@ export default function AdminPage() {
                     <Icon size={16} />
                     {item.label}
                   </span>
-                  {"count" in item ? (
+                  {item.count !== undefined ? (
                     <span className="rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2 py-1 text-xs text-[var(--accent)]">
-                      {item.count}
+                      {item.count ?? "..."}
                     </span>
                   ) : null}
-                </a>
+                </Link>
               );
             })}
           </nav>
@@ -660,9 +726,13 @@ export default function AdminPage() {
           <div className="scroll-mt-24 flex flex-col justify-between gap-4 md:flex-row md:items-end" id="visao-geral">
             <div>
               <p className="text-sm font-semibold uppercase text-[var(--accent)]">Admin</p>
-              <h1 className="mt-3 text-4xl font-semibold">Controle geral do marketplace</h1>
+              <h1 className="mt-3 text-4xl font-semibold">
+                {isDashboard ? "Controle geral do marketplace" : activeSectionConfig.label}
+              </h1>
               <p className="mt-3 max-w-2xl text-[var(--muted)]">
-                Curadoria de arquitetos, metricas comerciais, operacao e governanca do catalogo.
+                {isDashboard
+                  ? "Metricas comerciais, filas de curadoria e operacao atual."
+                  : "Modulo separado para trabalhar sem atravessar a pagina inteira."}
               </p>
             </div>
             <Button
@@ -684,7 +754,7 @@ export default function AdminPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-9">
+          <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-9" hidden={!isDashboard}>
             <MetricCard icon={Users} label="Usuarios" value={String(metrics?.users ?? "...")} />
             <MetricCard icon={Building2} label="Arquitetos" value={String(metrics?.architects ?? "...")} />
             <MetricCard icon={ShieldAlert} label="Pendentes" value={String(metrics?.pendingArchitects ?? "...")} />
@@ -696,8 +766,67 @@ export default function AdminPage() {
             <MetricCard icon={CreditCard} label="GMV" value={metrics ? money(metrics.grossMerchandiseValue) : "..."} />
           </div>
 
+          <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]" hidden={!isDashboard}>
+            <div className={panelClass()}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase text-[var(--muted)]">Volume</p>
+                  <h2 className="mt-1 text-2xl font-semibold">Como o marketplace esta hoje</h2>
+                </div>
+                <Activity className="text-[var(--accent)]" size={22} />
+              </div>
+              <div className="mt-6 space-y-4">
+                {volumeBars.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold">{item.label}</span>
+                      <span className="text-[var(--muted)]">{item.value ?? "..."}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-[8px] bg-black/5 dark:bg-white/10">
+                      <div
+                        className="h-full rounded-[8px] bg-[var(--accent)]"
+                        style={{ width: barWidth(item.value, volumeMax) }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={panelClass()}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase text-[var(--muted)]">Fila</p>
+                  <h2 className="mt-1 text-2xl font-semibold">Pendencias e conversao</h2>
+                </div>
+                <ShieldAlert className="text-[var(--accent)]" size={22} />
+              </div>
+              <div className="mt-6 space-y-4">
+                {queueBars.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold">{item.label}</span>
+                      <span className="text-[var(--muted)]">{item.value ?? "..."}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-[8px] bg-black/5 dark:bg-white/10">
+                      <div
+                        className="h-full rounded-[8px] bg-[#11150f] dark:bg-white"
+                        style={{ width: barWidth(item.value, queueMax) }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 rounded-[8px] border border-[var(--line)] p-4">
+                <p className="text-sm uppercase text-[var(--muted)]">GMV</p>
+                <strong className="mt-2 block text-2xl">{metrics ? money(metrics.grossMerchandiseValue) : "..."}</strong>
+              </div>
+            </div>
+          </div>
+
           <form
             className="scroll-mt-24 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5"
+            hidden={activeSection !== "marca"}
             id="marca"
             key={`${settings?.brandName ?? "brand"}-${settings?.logoLightUrl ?? settings?.logoUrl ?? "light"}-${settings?.logoDarkUrl ?? "dark"}`}
             onSubmit={(event) => {
@@ -807,8 +936,8 @@ export default function AdminPage() {
         {settingsMutation.isError ? <p className="mt-3 text-sm text-red-600">Nao foi possivel salvar as logos.</p> : null}
       </form>
 
-      <div className="mt-8 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className={panelClass()} id="pessoas">
+      <div className="mt-8 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]" hidden={activeSection !== "pessoas" && activeSection !== "acessos"}>
+        <div className={panelClass()} hidden={activeSection !== "pessoas"} id="pessoas">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Banco de dados</p>
@@ -954,7 +1083,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className={panelClass()} id="acessos">
+        <div className={panelClass()} hidden={activeSection !== "acessos"} id="acessos">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Acessos</p>
@@ -986,8 +1115,8 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <div className={panelClass()} id="terrenos">
+      <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_1fr]" hidden={activeSection !== "terrenos" && activeSection !== "projetos"}>
+        <div className={panelClass()} hidden={activeSection !== "terrenos"} id="terrenos">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Catalogo</p>
@@ -1131,7 +1260,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className={panelClass()} id="projetos">
+        <div className={panelClass()} hidden={activeSection !== "projetos"} id="projetos">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Casas</p>
@@ -1283,8 +1412,8 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <div className={panelClass()} id="simulacoes">
+      <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_1fr]" hidden={activeSection !== "simulacoes" && activeSection !== "pedidos"}>
+        <div className={panelClass()} hidden={activeSection !== "simulacoes"} id="simulacoes">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Propostas</p>
@@ -1349,7 +1478,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className={panelClass()} id="pedidos">
+        <div className={panelClass()} hidden={activeSection !== "pedidos"} id="pedidos">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Pedidos</p>
@@ -1413,7 +1542,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_360px]" hidden={activeSection !== "arquitetos"}>
         <div className="scroll-mt-24 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" id="arquitetos">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -1484,8 +1613,8 @@ export default function AdminPage() {
         </aside>
       </div>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <div className="scroll-mt-24 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" id="anuncios">
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1fr]" hidden={activeSection !== "anuncios" && !isDashboard}>
+        <div className="scroll-mt-24 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" hidden={activeSection !== "anuncios"} id="anuncios">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Anuncios</p>
@@ -1541,7 +1670,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" hidden={!isDashboard}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase text-[var(--muted)]">Operacao</p>
@@ -1578,7 +1707,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1fr]">
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1fr]" hidden={!isDashboard}>
         <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
           <p className="text-sm uppercase text-[var(--muted)]">Usuarios</p>
           <h2 className="mt-1 text-2xl font-semibold">Cadastros recentes</h2>
@@ -1622,7 +1751,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8" hidden={!isDashboard}>
         <SimulationRequestsPanel />
       </div>
         </div>

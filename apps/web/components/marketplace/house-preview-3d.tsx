@@ -572,27 +572,27 @@ export function HousePreview3D({
 
   return (
     <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#eef4ec] dark:bg-[#11160f]">
-      <div className="relative min-h-[420px]">
+      <div className="relative min-h-[260px] sm:min-h-[340px] lg:min-h-[420px]">
         <div className="absolute inset-0" ref={containerRef} />
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4">
-          <div className="rounded-[8px] bg-white/90 px-4 py-3 shadow-xl backdrop-blur dark:bg-black/62">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-2 p-3 sm:gap-3 sm:p-4">
+          <div className="max-w-[min(100%,22rem)] rounded-[8px] bg-white/90 px-3 py-2 shadow-xl backdrop-blur dark:bg-black/62 sm:px-4 sm:py-3">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[var(--muted)]">
               <Rotate3D size={15} />
               Maquete do projeto
             </div>
-            <h3 className="mt-1 text-2xl font-semibold">{project.title}</h3>
-            <p className="mt-1 max-w-md text-sm leading-6 text-[var(--muted)]">{note ?? "Projeto encaixado neste terreno."}</p>
+            <h3 className="mt-1 text-lg font-semibold sm:text-2xl">{project.title}</h3>
+            <p className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-[var(--muted)] sm:text-sm sm:leading-6">{note ?? "Projeto encaixado neste terreno."}</p>
           </div>
           {compatibilityScore !== null ? (
-            <div className="rounded-[8px] bg-[#11150f] px-4 py-3 text-right text-white shadow-xl dark:bg-white dark:text-[#11150f]">
+            <div className="rounded-[8px] bg-[#11150f] px-3 py-2 text-right text-white shadow-xl dark:bg-white dark:text-[#11150f] sm:px-4 sm:py-3">
               <span className="block text-[11px] uppercase opacity-70">Compatibilidade</span>
-              <strong className="text-xl">{compatibilityScore.toFixed(0)}%</strong>
+              <strong className="text-lg sm:text-xl">{compatibilityScore.toFixed(0)}%</strong>
             </div>
           ) : null}
         </div>
       </div>
 
-      <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--panel)] p-4 text-sm md:grid-cols-3">
+      <div className="grid gap-2 border-t border-[var(--line)] bg-[var(--panel)] p-3 text-xs sm:gap-3 sm:p-4 sm:text-sm md:grid-cols-3">
         <div className="flex items-center justify-between gap-4 rounded-[8px] border border-[var(--line)] px-3 py-2">
           <span className="inline-flex items-center gap-2 text-[var(--muted)]">
             <Ruler size={16} />

@@ -748,7 +748,7 @@ export default function HomePage() {
               <Users size={18} />
               Entrar como proprietario
             </Link>
-            <Link
+            <a
               className={`${actionLinkClass} border border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10`}
               href={whatsappHref}
               rel="noreferrer"
@@ -756,7 +756,7 @@ export default function HomePage() {
             >
               <MessageCircleMore size={18} />
               Falar com o time
-            </Link>
+            </a>
           </div>
         </div>
       </section>
