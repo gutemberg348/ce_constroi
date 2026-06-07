@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Banknote, Building2, CheckCircle2, ClipboardCheck, Hammer, Map, Ruler, Search } from "lucide-react";
@@ -64,7 +65,7 @@ export default function HomePage() {
       if (searchText.trim()) {
         params.set("search", searchText.trim());
       }
-      router.push(`/projetos${params.toString() ? `?${params.toString()}` : ""}`);
+      router.push((`/projetos${params.toString() ? `?${params.toString()}` : ""}`) as Route);
       return;
     }
 
@@ -82,7 +83,7 @@ export default function HomePage() {
       params.set("neighborhood", searchNeighborhood.trim());
     }
 
-    router.push(`/terrenos${params.toString() ? `?${params.toString()}` : ""}`);
+    router.push((`/terrenos${params.toString() ? `?${params.toString()}` : ""}`) as Route);
   }
 
   return (
