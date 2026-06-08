@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
   Clock,
   Loader2,
+  Lock,
   MessageCircle,
   SlidersHorizontal,
   UserRound,
@@ -478,7 +481,10 @@ function HelpText({ children }: { children: React.ReactNode }) {
 export function SimpleFinancingSimulator() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const searchKey = searchParams.toString();
+  const loginHref = `/login?next=${encodeURIComponent(`/simulacao${searchKey ? `?${searchKey}` : ""}`)}` as Route;
   const initialForm = useMemo(() => getInitialForm(new URLSearchParams(searchKey)), [searchKey]);
   const terrainPrice = useMemo(() => getSearchNumber(new URLSearchParams(searchKey), "terrainPrice", 0), [searchKey]);
   const projectPrice = useMemo(() => getSearchNumber(new URLSearchParams(searchKey), "projectPrice", 0), [searchKey]);
@@ -651,6 +657,34 @@ export function SimpleFinancingSimulator() {
   }
 
   const message = result ? buildWhatsappMessage(form, result) : "";
+
+  if (!hasHydrated) {
+    return (
+      <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-8 text-center">
+          <Loader2 className="mx-auto animate-spin text-[var(--accent)]" size={30} />
+          <h1 className="mt-4 text-2xl font-semibold">Carregando sessao</h1>
+        </div>
+      </section>
+    );
+  }
+
+  if (!accessToken || !user) {
+    return (
+      <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-8 text-center">
+          <Lock className="mx-auto text-[var(--accent)]" size={34} />
+          <h1 className="mt-4 text-3xl font-semibold">Entre para simular</h1>
+          <p className="mt-3 text-[var(--muted)]">
+            A simulacao fica salva e precisa de uma conta para manter seus dados protegidos.
+          </p>
+          <Link className="mt-6 inline-flex" href={loginHref}>
+            <Button>Ir para login</Button>
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

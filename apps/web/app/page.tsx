@@ -162,7 +162,13 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="border-b border-[var(--line)] bg-[#11150f] text-white">
+      <section
+        className="border-b border-[var(--line)] bg-[#11150f] bg-cover bg-center text-white"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, rgba(8,10,8,0.96), rgba(8,10,8,0.84) 42%, rgba(8,10,8,0.32)), url('/brand/home-hero.png')"
+        }}
+      >
         <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8">
           <div>
             <span className="inline-flex items-center gap-2 rounded-[8px] border border-white/18 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white/85">

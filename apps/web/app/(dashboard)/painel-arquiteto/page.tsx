@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -11,6 +11,8 @@ import {
   Clock,
   ExternalLink,
   FileText,
+  Map,
+  MapPin,
   Upload,
   Wallet
 } from "lucide-react";
@@ -21,8 +23,12 @@ import { Input } from "@/components/ui/input";
 import { area, money } from "@/lib/format";
 import { formDataImageValue } from "@/lib/files";
 import { getArchitectMe, getArchitectStats, updateArchitectProfile } from "@/services/architects";
+import { upsertCompatibility } from "@/services/compatibility";
+import { addProjectImage } from "@/services/project-images";
 import { createProject, type CreateProjectInput } from "@/services/projects";
+import { getTerrains } from "@/services/terrains";
 import { useAuthStore } from "@/stores/auth-store";
+import type { Project, Terrain } from "@/types/domain";
 
 function toNumber(value: FormDataEntryValue | null) {
   const normalized = String(value ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
@@ -47,12 +53,183 @@ function fileInputClass() {
   return "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm outline-none file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#11150f] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white";
 }
 
+type PendingProjectImage = {
+  url: string;
+  altText: string;
+  sortOrder: number;
+  isCover?: boolean;
+};
+
 function errorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
     return error.message;
   }
 
   return "Nao foi possivel carregar o painel agora.";
+}
+
+function numberValue(value: number | string | undefined | null) {
+  const parsed = Number(String(value ?? "0").replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function defaultCompatibilityScore(project: Project, terrain?: Terrain | null) {
+  if (!terrain) {
+    return 80;
+  }
+
+  const projectArea = numberValue(project.areaM2);
+  const terrainArea = numberValue(terrain.areaM2);
+
+  if (!projectArea || !terrainArea) {
+    return 80;
+  }
+
+  if (projectArea > terrainArea) {
+    return 35;
+  }
+
+  const occupation = projectArea / terrainArea;
+
+  if (occupation <= 0.35) {
+    return 92;
+  }
+
+  if (occupation <= 0.55) {
+    return 84;
+  }
+
+  if (occupation <= 0.7) {
+    return 72;
+  }
+
+  return 58;
+}
+
+function terrainSummary(terrain: Terrain) {
+  return [terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ");
+}
+
+function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrains: Terrain[] }) {
+  const queryClient = useQueryClient();
+  const [selectedTerrainId, setSelectedTerrainId] = useState(terrains[0]?.id ?? "");
+  const selectedTerrain = terrains.find((terrain) => terrain.id === selectedTerrainId) ?? terrains[0] ?? null;
+  const selectedTerrainValue = selectedTerrain?.id ?? "";
+  const suggestedScore = defaultCompatibilityScore(project, selectedTerrain);
+
+  const compatibilityMutation = useMutation({
+    mutationFn: upsertCompatibility,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["architect"] });
+      await queryClient.invalidateQueries({ queryKey: ["terrains"] });
+    }
+  });
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const terrainId = String(formData.get("terrainId") ?? "");
+
+    if (!terrainId) {
+      return;
+    }
+
+    compatibilityMutation.mutate({
+      terrainId,
+      projectId: project.id,
+      status: "SUGGESTED",
+      score: Math.max(0, Math.min(100, toNumber(formData.get("score")) || suggestedScore)),
+      notes: toOptionalString(formData.get("notes"))
+    });
+  }
+
+  return (
+    <details className="mt-4 rounded-[8px] border border-[var(--line)] p-4">
+      <summary className="cursor-pointer text-sm font-semibold">Adequar a terreno</summary>
+      {terrains.length ? (
+        <form className="mt-4 grid gap-4" onSubmit={onSubmit}>
+          <div className="grid gap-3 md:grid-cols-[1fr_120px_auto]">
+            <select
+              className={selectClass()}
+              name="terrainId"
+              onChange={(event) => setSelectedTerrainId(event.target.value)}
+              value={selectedTerrainValue}
+            >
+              {terrains.map((terrain) => (
+                <option key={terrain.id} value={terrain.id}>
+                  {terrain.title} - {terrainSummary(terrain)}
+                </option>
+              ))}
+            </select>
+            <Input
+              defaultValue={String(suggestedScore)}
+              inputMode="numeric"
+              key={selectedTerrainValue}
+              max={100}
+              min={0}
+              name="score"
+              placeholder="Score"
+              type="number"
+            />
+            <Button disabled={compatibilityMutation.isPending || !selectedTerrainValue} type="submit" variant="secondary">
+              <Map size={18} />
+              Salvar
+            </Button>
+          </div>
+
+          {selectedTerrain ? (
+            <div className="grid gap-3 rounded-[8px] bg-black/5 p-4 text-sm dark:bg-white/10 md:grid-cols-4">
+              <div className="md:col-span-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <strong>{selectedTerrain.title}</strong>
+                  <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
+                    {selectedTerrain.status}
+                  </span>
+                </div>
+                <p className="mt-1 flex items-center gap-2 text-[var(--muted)]">
+                  <MapPin size={15} />
+                  {terrainSummary(selectedTerrain) || "Localizacao nao informada"}
+                </p>
+              </div>
+              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
+                Area: <strong>{area(selectedTerrain.areaM2)}</strong>
+              </span>
+              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
+                Frente: <strong>{selectedTerrain.frontageM ? `${selectedTerrain.frontageM} m` : "Nao informada"}</strong>
+              </span>
+              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
+                Fundo: <strong>{selectedTerrain.depthM ? `${selectedTerrain.depthM} m` : "Nao informado"}</strong>
+              </span>
+              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
+                Valor: <strong>{money(selectedTerrain.price)}</strong>
+              </span>
+            </div>
+          ) : null}
+
+          <textarea
+            className={textAreaClass()}
+            name="notes"
+            placeholder="Observacao para aparecer na pagina do terreno, por exemplo: projeto compacto com boa folga lateral."
+          />
+
+          {compatibilityMutation.isSuccess ? (
+            <p className="rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
+              Terreno vinculado ao projeto. Ele ja pode aparecer na pagina do lote.
+            </p>
+          ) : null}
+          {compatibilityMutation.isError ? (
+            <p className="rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">
+              Nao foi possivel salvar a adequacao: {errorMessage(compatibilityMutation.error)}
+            </p>
+          ) : null}
+        </form>
+      ) : (
+        <div className="mt-4 rounded-[8px] border border-[var(--line)] p-4 text-sm text-[var(--muted)]">
+          Nenhum terreno disponivel para escolher agora.
+        </div>
+      )}
+    </details>
+  );
 }
 
 export default function ArchitectPanelPage() {
@@ -73,6 +250,17 @@ export default function ArchitectPanelPage() {
     enabled: Boolean(accessToken && isArchitect)
   });
 
+  const profile = profileQuery.data;
+  const stats = statsQuery.data;
+  const isApproved = profile?.status === "APPROVED";
+  const projects = profile?.projects ?? [];
+
+  const terrainsQuery = useQuery({
+    queryKey: ["architect", "available-terrains"],
+    queryFn: () => getTerrains({ limit: 50 }),
+    enabled: Boolean(accessToken && isArchitect && isApproved)
+  });
+
   const updateProfileMutation = useMutation({
     mutationFn: updateArchitectProfile,
     onSuccess: async () => {
@@ -81,7 +269,23 @@ export default function ArchitectPanelPage() {
   });
 
   const createProjectMutation = useMutation({
-    mutationFn: createProject,
+    mutationFn: async ({ input, images }: { input: CreateProjectInput; images: PendingProjectImage[] }) => {
+      const project = await createProject(input);
+
+      await Promise.all(
+        images.map((image) =>
+          addProjectImage({
+            projectId: project.id,
+            url: image.url,
+            altText: image.altText,
+            sortOrder: image.sortOrder,
+            isCover: image.isCover
+          })
+        )
+      );
+
+      return project;
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["architect"] });
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -113,10 +317,7 @@ export default function ArchitectPanelPage() {
     );
   }
 
-  const profile = profileQuery.data;
-  const stats = statsQuery.data;
-  const isApproved = profile?.status === "APPROVED";
-  const projects = profile?.projects ?? [];
+  const terrains = terrainsQuery.data?.items ?? [];
 
   function onProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -134,9 +335,11 @@ export default function ArchitectPanelPage() {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const [renderUrl, floorPlanUrl] = await Promise.all([
-      formDataImageValue(formData, "renderFile"),
-      formDataImageValue(formData, "floorPlanFile")
+    const [frontUrl, modelUrl, floorPlanUrl, measurementsUrl] = await Promise.all([
+      formDataImageValue(formData, "frontFile"),
+      formDataImageValue(formData, "modelFile"),
+      formDataImageValue(formData, "floorPlanFile"),
+      formDataImageValue(formData, "measurementsFile")
     ]);
 
     const input: CreateProjectInput = {
@@ -153,15 +356,47 @@ export default function ArchitectPanelPage() {
       price: toNumber(formData.get("price"))
     };
 
-    if (renderUrl) {
-      input.renderUrl = renderUrl;
+    if (frontUrl) {
+      input.renderUrl = frontUrl;
     }
 
     if (floorPlanUrl) {
       input.floorPlanUrl = floorPlanUrl;
     }
 
-    createProjectMutation.mutate(input, {
+    const images: PendingProjectImage[] = [
+      frontUrl
+        ? {
+            url: frontUrl,
+            altText: "Fachada frontal do projeto",
+            sortOrder: 0,
+            isCover: true
+          }
+        : null,
+      modelUrl
+        ? {
+            url: modelUrl,
+            altText: "Vista do modelo do projeto",
+            sortOrder: 1
+          }
+        : null,
+      floorPlanUrl
+        ? {
+            url: floorPlanUrl,
+            altText: "Planta baixa do projeto",
+            sortOrder: 2
+          }
+        : null,
+      measurementsUrl
+        ? {
+            url: measurementsUrl,
+            altText: "Medidas do projeto",
+            sortOrder: 3
+          }
+        : null
+    ].filter(Boolean) as PendingProjectImage[];
+
+    createProjectMutation.mutate({ input, images }, {
       onSuccess: () => form.reset()
     });
   }
@@ -276,6 +511,7 @@ export default function ArchitectPanelPage() {
               <Input inputMode="numeric" min={0} name="bathrooms" placeholder="Banheiros" required type="number" />
               <Input inputMode="decimal" min={1} name="areaM2" placeholder="Area m2" required type="number" />
               <CurrencyInput name="price" placeholder="Preco do projeto" required />
+              <CurrencyInput name="estimatedBuildCost" placeholder="Custo estimado da obra" required />
               <textarea
                 className={`${textAreaClass()} md:col-span-2`}
                 name="description"
@@ -283,21 +519,33 @@ export default function ArchitectPanelPage() {
                 required
               />
             </div>
+            <div className="rounded-[8px] border border-[var(--line)] p-3">
+              <p className="mb-3 text-sm font-semibold">Imagens obrigatorias do projeto</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-medium">
+                  <span>Fachada / frente</span>
+                  <Input accept="image/*" className={fileInputClass()} name="frontFile" required type="file" />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  <span>Vista do modelo</span>
+                  <Input accept="image/*" className={fileInputClass()} name="modelFile" required type="file" />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  <span>Planta baixa</span>
+                  <Input accept="image/*" className={fileInputClass()} name="floorPlanFile" required type="file" />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  <span>Medidas do projeto</span>
+                  <Input accept="image/*" className={fileInputClass()} name="measurementsFile" required type="file" />
+                </label>
+              </div>
+            </div>
             <details className="rounded-[8px] border border-[var(--line)] p-3">
-              <summary className="cursor-pointer text-sm font-semibold">Mais dados e imagens</summary>
+              <summary className="cursor-pointer text-sm font-semibold">Mais dados</summary>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <Input inputMode="numeric" min={0} name="suites" placeholder="Suites" type="number" />
                 <Input inputMode="numeric" min={0} name="parkingSpaces" placeholder="Vagas" type="number" />
                 <Input inputMode="numeric" min={1} name="floors" placeholder="Pavimentos" type="number" />
-                <CurrencyInput name="estimatedBuildCost" placeholder="Custo estimado da obra" required />
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Imagem principal</span>
-                  <Input accept="image/*" className={fileInputClass()} name="renderFile" type="file" />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Planta baixa</span>
-                  <Input accept="image/*" className={fileInputClass()} name="floorPlanFile" type="file" />
-                </label>
               </div>
             </details>
           </fieldset>
@@ -352,9 +600,15 @@ export default function ArchitectPanelPage() {
                   <span>{project.bedrooms} quartos</span>
                   <span>{money(project.price)}</span>
                 </div>
-                <Link className="mt-4 inline-flex text-sm font-semibold text-[var(--accent)]" href={`/projetos/${project.id}`}>
-                  Abrir projeto
-                </Link>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Link className="inline-flex text-sm font-semibold text-[var(--accent)]" href={`/projetos/${project.id}`}>
+                    Abrir projeto
+                  </Link>
+                  {terrainsQuery.isLoading ? (
+                    <span className="text-sm text-[var(--muted)]">Carregando terrenos...</span>
+                  ) : null}
+                </div>
+                <ProjectTerrainFitForm project={project} terrains={terrains} />
               </div>
             ))}
           </div>

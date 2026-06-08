@@ -20,16 +20,15 @@ export class SimulationsController {
     return this.caixaFinancingService.getRules();
   }
 
-  @Public()
+  @ApiBearerAuth()
   @Post("caixa-preview")
   caixaPreview(@Body() dto: CreateSimulationDto) {
     return this.simulationsService.preview(dto);
   }
 
-  @Public()
   @ApiBearerAuth()
   @Post()
-  create(@Body() dto: CreateSimulationDto, @CurrentUser() user?: { sub: string }) {
-    return this.simulationsService.create(dto, user?.sub);
+  create(@Body() dto: CreateSimulationDto, @CurrentUser() user: { sub: string }) {
+    return this.simulationsService.create(dto, user.sub);
   }
 }

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@/generated/prisma/enums";
+import { CurrentUser } from "@/common/decorators/current-user.decorator";
 import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { CompatibilityService } from "./compatibility.service";
@@ -14,8 +15,8 @@ export class CompatibilityController {
   @ApiBearerAuth()
   @Post()
   @Roles(UserRole.ADMIN, UserRole.ARCHITECT)
-  upsert(@Body() dto: CreateCompatibilityDto) {
-    return this.compatibilityService.upsert(dto);
+  upsert(@Body() dto: CreateCompatibilityDto, @CurrentUser() user: { sub: string; role: string }) {
+    return this.compatibilityService.upsert(dto, user);
   }
 
   @Public()
