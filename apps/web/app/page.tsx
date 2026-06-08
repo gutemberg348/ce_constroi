@@ -8,7 +8,6 @@ import { ArrowRight, BadgeCheck, Building2, Compass, Map, MapPin, MessageCircleM
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
-import { defaultSiteSettings, getSiteSettings } from "@/services/settings";
 import { getTerrains } from "@/services/terrains";
 import type { LucideIcon } from "lucide-react";
 
@@ -28,18 +27,18 @@ type Step = {
 const steps: Step[] = [
   {
     icon: Compass,
-    title: "Busque pela regiao",
-    description: "Comece por cidade, bairro, rua ou condominio e abra apenas os terrenos que fazem sentido."
+    title: "Comece pela localizacao",
+    description: "Digite cidade, bairro ou regiao. A home leva voce para o catalogo de terrenos com a busca aplicada."
   },
   {
     icon: Map,
-    title: "Veja o terreno",
-    description: "A pagina do lote concentra fotos, medidas, valores, localizacao e status de curadoria."
+    title: "Entenda o terreno",
+    description: "Na pagina do lote voce confere fotos, medidas, valor, endereco e informacoes importantes antes de falar com alguem."
   },
   {
     icon: MessageCircleMore,
-    title: "Fale com o time",
-    description: "Quando quiser seguir, o atendimento ajuda com duvidas, visita, proposta ou anuncio."
+    title: "Veja o projeto certo",
+    description: "Quando houver projeto compativel, ele aparece dentro do terreno para abrir detalhes e escolher com calma."
   }
 ];
 
@@ -118,20 +117,12 @@ function HeroAction({
 export default function HomePage() {
   const router = useRouter();
   const [searchText, setSearchText] = useState("");
-  const [searchCity, setSearchCity] = useState("");
-  const [searchState, setSearchState] = useState("");
-  const [searchNeighborhood, setSearchNeighborhood] = useState("");
 
-  const settingsQuery = useQuery({
-    queryKey: ["site-settings"],
-    queryFn: getSiteSettings
-  });
   const terrainQuery = useQuery({
     queryKey: ["home", "terrains"],
     queryFn: () => getTerrains({ limit: 9 })
   });
 
-  const settings = settingsQuery.data ?? defaultSiteSettings;
   const terrains = terrainQuery.data?.items ?? [];
   const displayedTerrains = terrains.slice(0, 6);
   const terrainTotal = terrainQuery.data?.meta.total ?? terrains.length;
@@ -141,23 +132,13 @@ export default function HomePage() {
   )}`;
 
   function applyTerrainFilters(filters: TerrainFilters) {
-    setSearchText(filters.search ?? "");
-    setSearchCity(filters.city ?? "");
-    setSearchState(filters.state ?? "");
-    setSearchNeighborhood(filters.neighborhood ?? "");
+    setSearchText([filters.search, filters.neighborhood, filters.city, filters.state].filter(Boolean).join(" / "));
     router.push(buildTerrainsHref(filters));
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    router.push(
-      buildTerrainsHref({
-        search: searchText,
-        city: searchCity,
-        state: searchState,
-        neighborhood: searchNeighborhood
-      })
-    );
+    router.push(buildTerrainsHref({ search: searchText }));
   }
 
   return (
@@ -173,50 +154,39 @@ export default function HomePage() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-[8px] border border-white/18 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white/85">
               <BadgeCheck size={14} />
-              {settings.brandName}
+              Terreno + projeto em um caminho claro
             </span>
 
             <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.02] sm:text-6xl lg:text-7xl">
-              Encontre terrenos para construir com seguranca.
+              Ache o terreno certo e entenda o que pode ser construido nele.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-white/78">
-              Busque por localizacao, veja terrenos publicados e fale com o time quando quiser visitar, negociar ou anunciar.
+              Comece pela localizacao. Depois abra cada lote para ver fotos, medidas, valor e, quando existir, projetos
+              compativeis para analisar antes de escolher.
             </p>
 
-            <form className="mt-8 rounded-[8px] border border-white/18 bg-white/10 p-4 shadow-2xl backdrop-blur-md" onSubmit={submitSearch}>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.45fr)_minmax(0,0.95fr)_auto]">
-                <label className="relative sm:col-span-2 lg:col-span-1">
+            <form
+              className="mt-8 max-w-2xl rounded-[8px] border border-white/18 bg-white/10 p-4 shadow-2xl backdrop-blur-md"
+              onSubmit={submitSearch}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/66">Buscar sua localizacao</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                   <input
                     className="focus-ring h-11 w-full rounded-[8px] border border-white/18 bg-white px-3 pl-10 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
                     onChange={(event) => setSearchText(event.target.value)}
-                    placeholder="Cidade, bairro, rua ou condominio"
+                    placeholder="Digite cidade, bairro ou regiao"
                     value={searchText}
                   />
                 </label>
-                <input
-                  className="focus-ring h-11 w-full rounded-[8px] border border-white/18 bg-white px-3 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
-                  onChange={(event) => setSearchCity(event.target.value)}
-                  placeholder="Cidade"
-                  value={searchCity}
-                />
-                <input
-                  className="focus-ring h-11 w-full rounded-[8px] border border-white/18 bg-white px-3 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
-                  maxLength={2}
-                  onChange={(event) => setSearchState(event.target.value.toUpperCase())}
-                  placeholder="UF"
-                  value={searchState}
-                />
-                <input
-                  className="focus-ring h-11 w-full rounded-[8px] border border-white/18 bg-white px-3 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
-                  onChange={(event) => setSearchNeighborhood(event.target.value)}
-                  placeholder="Bairro"
-                  value={searchNeighborhood}
-                />
-                <Button className="sm:col-span-2 lg:col-span-1" type="submit" variant="light">
+                <Button type="submit" variant="light">
                   Buscar terrenos
                 </Button>
               </div>
+              <p className="mt-3 text-sm leading-6 text-white/70">
+                Voce vai para a pagina de terrenos, onde pode filtrar melhor e abrir o lote completo.
+              </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <SearchChip icon={MapPin} label="Campinas / SP" onClick={() => applyTerrainFilters({ city: "Campinas", state: "SP" })} />
@@ -252,11 +222,28 @@ export default function HomePage() {
 
           <div className="grid gap-4">
             <div className="rounded-[8px] border border-white/18 bg-white/10 p-6 backdrop-blur">
-              <p className="text-sm uppercase text-white/60">Terrenos publicados</p>
-              <strong className="mt-3 block text-5xl">{terrainQuery.isLoading ? "..." : terrainTotal}</strong>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-white/70">
-                O catalogo completo fica na pagina de terrenos, com filtros e detalhes de cada lote.
-              </p>
+              <p className="text-sm uppercase text-white/60">Exemplo pratico</p>
+              <h2 className="mt-3 text-3xl font-semibold leading-tight">O cliente entende primeiro, escolhe depois.</h2>
+              <div className="mt-6 divide-y divide-white/12 border-y border-white/12">
+                <div className="grid gap-2 py-4 sm:grid-cols-[8rem_1fr]">
+                  <strong className="text-white">Terreno</strong>
+                  <p className="text-sm leading-6 text-white/70">Localizacao, fotos, medidas, valor e dados do lote em uma pagina propria.</p>
+                </div>
+                <div className="grid gap-2 py-4 sm:grid-cols-[8rem_1fr]">
+                  <strong className="text-white">Projeto</strong>
+                  <p className="text-sm leading-6 text-white/70">
+                    Quando o arquiteto vincula um projeto ao lote, o cliente abre os detalhes antes de selecionar.
+                  </p>
+                </div>
+                <div className="grid gap-2 py-4 sm:grid-cols-[8rem_1fr]">
+                  <strong className="text-white">Atendimento</strong>
+                  <p className="text-sm leading-6 text-white/70">Depois de entender o lote, ele pode pedir ajuda, visita ou proposta.</p>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-between gap-4 rounded-[8px] bg-white/10 px-4 py-3 text-sm text-white/74">
+                <span>Catalogo em movimento</span>
+                <strong className="text-xl text-white">{terrainQuery.isLoading ? "..." : terrainTotal}</strong>
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -280,8 +267,12 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="text-sm uppercase text-[var(--muted)]">Terrenos</p>
-            <h2 className="text-3xl font-semibold sm:text-4xl">Lotes recentes no catalogo.</h2>
+            <p className="text-sm uppercase text-[var(--muted)]">Catalogo</p>
+            <h2 className="text-3xl font-semibold sm:text-4xl">Alguns terrenos para comecar.</h2>
+            <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
+              A lista completa fica em terrenos. Aqui entram apenas alguns lotes recentes para o cliente sentir o tipo de
+              informacao que vai encontrar.
+            </p>
           </div>
           <Link className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]" href="/terrenos">
             Abrir catalogo
@@ -307,8 +298,12 @@ export default function HomePage() {
       <section className="border-y border-[var(--line)] bg-[var(--panel)]">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="mb-6">
-            <p className="text-sm uppercase text-[var(--muted)]">Caminho rapido</p>
-            <h2 className="mt-2 text-4xl font-semibold">Do local ao atendimento.</h2>
+            <p className="text-sm uppercase text-[var(--muted)]">Como funciona</p>
+            <h2 className="mt-2 text-4xl font-semibold">Terreno primeiro. Projeto depois.</h2>
+            <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
+              O cliente nao precisa adivinhar. Ele parte da regiao, entende o lote e so entao ve os projetos compativeis
+              dentro da pagina do terreno.
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -334,7 +329,8 @@ export default function HomePage() {
             <p className="text-sm uppercase text-[var(--muted)]">Anunciar terreno</p>
             <h2 className="mt-2 text-3xl font-semibold">Tem terreno para anunciar?</h2>
             <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              Entre como proprietario, preencha os dados, envie as fotos e acompanhe a avaliacao no painel.
+              Envie as informacoes do lote, fotos e medidas. O time avalia os dados e coloca o terreno no fluxo certo do
+              catalogo.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
