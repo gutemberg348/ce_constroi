@@ -214,7 +214,7 @@ const adminSections = [
 ] as const;
 
 function getAdminSection(pathname: string): AdminSection {
-  const section = adminSections.find((item) => item.href !== "/admin" && pathname.startsWith(item.href));
+  const section = adminSections.find((item) => item.href !== "/admin" && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
   return section?.id ?? "dashboard";
 }
 
