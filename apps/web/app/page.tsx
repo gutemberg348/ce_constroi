@@ -4,7 +4,21 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, BadgeCheck, Building2, Compass, Map, MapPin, MessageCircleMore, Search, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  Calculator,
+  Compass,
+  Map,
+  MapPin,
+  MessageCircleMore,
+  Ruler,
+  Search,
+  ShieldCheck,
+  Users,
+  Wallet
+} from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
@@ -86,34 +100,6 @@ function SearchChip({
   );
 }
 
-function HeroAction({
-  icon: Icon,
-  title,
-  description,
-  href
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  href: Route;
-}) {
-  return (
-    <Link
-      className="focus-ring group rounded-[8px] border border-white/18 bg-white/10 p-5 text-white/90 backdrop-blur transition hover:bg-white/16"
-      href={href}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-white text-[#11150f]">
-          <Icon size={20} />
-        </div>
-        <ArrowRight className="text-white/60 transition group-hover:translate-x-1 group-hover:text-white" size={18} />
-      </div>
-      <strong className="mt-5 block text-xl">{title}</strong>
-      <p className="mt-2 text-sm leading-6 text-white/70">{description}</p>
-    </Link>
-  );
-}
-
 export default function HomePage() {
   const router = useRouter();
   const [searchText, setSearchText] = useState("");
@@ -125,7 +111,6 @@ export default function HomePage() {
 
   const terrains = terrainQuery.data?.items ?? [];
   const displayedTerrains = terrains.slice(0, 6);
-  const terrainTotal = terrainQuery.data?.meta.total ?? terrains.length;
   const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "5511999999999").replace(/\D/g, "");
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     "Ola, quero ajuda para encontrar um terreno."
@@ -150,8 +135,8 @@ export default function HomePage() {
             "linear-gradient(90deg, rgba(8,10,8,0.96), rgba(8,10,8,0.84) 42%, rgba(8,10,8,0.32)), url('/brand/home-hero.png')"
         }}
       >
-        <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8">
-          <div>
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-[8px] border border-white/18 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white/85">
               <BadgeCheck size={14} />
               Terreno + projeto em um caminho claro
@@ -219,46 +204,111 @@ export default function HomePage() {
               </a>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="grid gap-4">
-            <div className="rounded-[8px] border border-white/18 bg-white/10 p-6 backdrop-blur">
-              <p className="text-sm uppercase text-white/60">Exemplo pratico</p>
-              <h2 className="mt-3 text-3xl font-semibold leading-tight">O cliente entende primeiro, escolhe depois.</h2>
-              <div className="mt-6 divide-y divide-white/12 border-y border-white/12">
-                <div className="grid gap-2 py-4 sm:grid-cols-[8rem_1fr]">
-                  <strong className="text-white">Terreno</strong>
-                  <p className="text-sm leading-6 text-white/70">Localizacao, fotos, medidas, valor e dados do lote em uma pagina propria.</p>
-                </div>
-                <div className="grid gap-2 py-4 sm:grid-cols-[8rem_1fr]">
-                  <strong className="text-white">Projeto</strong>
-                  <p className="text-sm leading-6 text-white/70">
-                    Quando o arquiteto vincula um projeto ao lote, o cliente abre os detalhes antes de selecionar.
-                  </p>
-                </div>
-                <div className="grid gap-2 py-4 sm:grid-cols-[8rem_1fr]">
-                  <strong className="text-white">Atendimento</strong>
-                  <p className="text-sm leading-6 text-white/70">Depois de entender o lote, ele pode pedir ajuda, visita ou proposta.</p>
-                </div>
-              </div>
-              <div className="mt-5 flex items-center justify-between gap-4 rounded-[8px] bg-white/10 px-4 py-3 text-sm text-white/74">
-                <span>Catalogo em movimento</span>
-                <strong className="text-xl text-white">{terrainQuery.isLoading ? "..." : terrainTotal}</strong>
+      <section className="border-b border-[var(--line)] bg-[var(--panel)]">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase text-[var(--accent)]">Exemplo pratico</p>
+              <h2 className="mt-3 text-4xl font-semibold leading-tight">Um terreno, um projeto e uma conta simples.</h2>
+              <p className="mt-4 max-w-xl leading-7 text-[var(--muted)]">
+                O cliente abre o lote, entende qual casa combina com aquela metragem e entra logado para simular se o
+                pacote cabe na renda antes de conversar com o time.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  className={`${actionLinkClass} bg-[#0f766e] text-white hover:bg-[#0d655f] dark:bg-[#2dd4bf] dark:text-[#062522] dark:hover:bg-[#5eead4]`}
+                  href="/terrenos"
+                >
+                  <Map size={18} />
+                  Ver terrenos
+                </Link>
+                <Link
+                  className={`${actionLinkClass} border border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10`}
+                  href="/login?next=/terrenos"
+                >
+                  <Calculator size={18} />
+                  Simular com login
+                </Link>
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <HeroAction
-                description="Abra a lista completa e filtre por localizacao."
-                href="/terrenos"
-                icon={Map}
-                title="Comprar terreno"
-              />
-              <HeroAction
-                description="Envie os dados do lote para avaliacao."
-                href="/anunciar-terreno"
-                icon={Building2}
-                title="Anunciar terreno"
-              />
+            <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
+                <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5 shadow-sm">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
+                    <MapPin size={20} />
+                  </div>
+                  <p className="mt-5 text-sm uppercase text-[var(--muted)]">Terreno</p>
+                  <h3 className="mt-2 text-2xl font-semibold">Lote 9m x 20m</h3>
+                  <dl className="mt-4 grid gap-3 text-sm">
+                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                      <dt className="flex items-center gap-2 text-[var(--muted)]">
+                        <Ruler size={16} />
+                        Area
+                      </dt>
+                      <dd className="font-semibold">180 m2</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                      <dt className="flex items-center gap-2 text-[var(--muted)]">
+                        <Wallet size={16} />
+                        Valor
+                      </dt>
+                      <dd className="font-semibold">R$ 95.000</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="hidden items-center justify-center text-[var(--accent)] md:flex">
+                  <ArrowRight size={24} />
+                </div>
+
+                <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5 shadow-sm">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
+                    <Building2 size={20} />
+                  </div>
+                  <p className="mt-5 text-sm uppercase text-[var(--muted)]">Projeto compativel</p>
+                  <h3 className="mt-2 text-2xl font-semibold">Casa Essencial 92</h3>
+                  <dl className="mt-4 grid gap-3 text-sm">
+                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                      <dt className="text-[var(--muted)]">Area construida</dt>
+                      <dd className="font-semibold">92 m2</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                      <dt className="text-[var(--muted)]">Ambientes</dt>
+                      <dd className="font-semibold">2 quartos</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+
+              <div className="rounded-[8px] border border-[#0f766e]/30 bg-[#0f766e] p-5 text-white shadow-xl shadow-[#0f766e]/12 dark:bg-[#115e59]">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase text-white/76">
+                  <Calculator size={17} />
+                  Simulacao de renda
+                </div>
+                <h3 className="mt-3 text-3xl font-semibold leading-tight">Veja se o pacote cabe no bolso antes de selecionar.</h3>
+                <p className="mt-3 max-w-2xl leading-7 text-white/76">
+                  A simulacao real pede login. Assim o cliente salva o terreno, revisa o projeto e recebe um caminho mais
+                  organizado para conversar sobre financiamento.
+                </p>
+                <dl className="mt-5 grid gap-4 border-t border-white/20 pt-4 sm:grid-cols-3">
+                  <div>
+                    <dt className="text-sm text-white/64">Terreno</dt>
+                    <dd className="mt-1 text-xl font-semibold">R$ 95 mil</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-white/64">Projeto + obra</dt>
+                    <dd className="mt-1 text-xl font-semibold">R$ 338 mil</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-white/64">Proximo passo</dt>
+                    <dd className="mt-1 text-xl font-semibold">Login</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
           </div>
         </div>
