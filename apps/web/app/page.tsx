@@ -96,7 +96,7 @@ function HeroAction({
   icon: LucideIcon;
   title: string;
   description: string;
-  href: Route | string;
+  href: Route;
 }) {
   return (
     <Link
