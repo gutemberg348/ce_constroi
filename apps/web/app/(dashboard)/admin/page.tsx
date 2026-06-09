@@ -20,6 +20,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Children, FormEvent, useMemo, useState } from "react";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -90,7 +91,7 @@ type AdminSection =
 
 type AdminNavItem = {
   id: AdminSection;
-  href: string;
+  href: Route;
   label: string;
   description: string;
   icon: LucideIcon;
