@@ -4,15 +4,23 @@ import Link from "next/link";
 import type { Route } from "next";
 import {
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock,
+  FileCheck2,
+  Home,
+  KeyRound,
+  Landmark,
   Loader2,
   Lock,
   MessageCircle,
+  Rocket,
   SlidersHorizontal,
+  TrendingUp,
   UserRound,
-  WalletCards
+  WalletCards,
+  type LucideIcon
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -470,6 +478,37 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
   );
 }
 
+function isApprovedResult(result: Result) {
+  return result.desiredPackageValue > 0 && result.maxPropertyValue > 0 && result.desiredPackageValue <= result.maxPropertyValue;
+}
+
+function getEntryNeeded(result: Result) {
+  const minimumEntryForCredit = Math.max(result.desiredPackageValue - result.maxCredit, 0);
+  return Math.max(minimumEntryForCredit, result.availableEntry);
+}
+
+function getCapacityUsage(result: Result) {
+  if (result.maxPropertyValue <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round((result.desiredPackageValue / result.maxPropertyValue) * 100)));
+}
+
+function getCapacityMessage(result: Result) {
+  const margin = result.maxPropertyValue - result.desiredPackageValue;
+
+  if (margin > 5000) {
+    return `Voce ainda possui aproximadamente ${money(margin)} de margem para escolher um projeto maior.`;
+  }
+
+  if (margin >= 0) {
+    return "Seu projeto esta perfeitamente enquadrado para seguir para aprovacao.";
+  }
+
+  return `Este projeto ficou aproximadamente ${money(Math.abs(margin))} acima da sua capacidade atual.`;
+}
+
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <span className="mb-1 block text-sm font-semibold text-[var(--foreground)]">{children}</span>;
 }
@@ -533,6 +572,7 @@ export function SimpleFinancingSimulator() {
   const [cepMessage, setCepMessage] = useState("");
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showResultDetails, setShowResultDetails] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -691,9 +731,7 @@ export function SimpleFinancingSimulator() {
       <div className="mb-8 grid gap-5 lg:grid-cols-[1fr_0.72fr] lg:items-end">
         <div>
           <p className="text-sm uppercase text-[var(--muted)]">Simulacao rapida</p>
-          <h1 className="mt-3 max-w-4xl text-4xl font-semibold">
-            Calcule a base da casa sem travar o cliente no cadastro.
-          </h1>
+          <h1 className="mt-3 max-w-4xl text-4xl font-semibold">Veja se o projeto cabe na sua renda.</h1>
           {hasPackage ? (
             <PackageSummary
               buildCost={buildCost}
@@ -705,8 +743,7 @@ export function SimpleFinancingSimulator() {
           ) : null}
         </div>
         <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 text-sm leading-6 text-[var(--muted)]">
-          A tela agora abre direto na estimativa. Dados extras continuam disponiveis, mas a primeira simulacao pede so o
-          essencial para atendimento.
+          A simulacao mostra aprovacao estimada, entrada, parcela e o proximo passo para atendimento.
         </div>
       </div>
 
@@ -853,33 +890,13 @@ export function SimpleFinancingSimulator() {
                     </select>
                   </label>
                   {form.composeIncome === "yes" ? (
-                    <>
-                      <label>
-                        <FieldLabel>Renda do segundo participante</FieldLabel>
-                        <CurrencyInput onValueChange={(value) => update("coBuyerIncome", value)} value={form.coBuyerIncome} />
-                      </label>
-                      <label>
-                        <FieldLabel>Score aproximado dele(a)</FieldLabel>
-                        <select className={selectClass} onChange={(event) => update("coBuyerScore", event.target.value as CreditScore)} value={form.coBuyerScore}>
-                          <option value="EXCELLENT">Excelente</option>
-                          <option value="GOOD">Bom</option>
-                          <option value="MEDIUM">Medio</option>
-                          <option value="LOW">Baixo</option>
-                        </select>
-                      </label>
-                    </>
+                    <label>
+                      <FieldLabel>Renda do segundo participante</FieldLabel>
+                      <CurrencyInput onValueChange={(value) => update("coBuyerIncome", value)} value={form.coBuyerIncome} />
+                    </label>
                   ) : null}
                 </>
               ) : null}
-              <label>
-                <FieldLabel>Score aproximado</FieldLabel>
-                <select className={selectClass} onChange={(event) => update("creditScore", event.target.value as CreditScore)} value={form.creditScore}>
-                  <option value="EXCELLENT">Excelente</option>
-                  <option value="GOOD">Bom</option>
-                  <option value="MEDIUM">Medio</option>
-                  <option value="LOW">Baixo</option>
-                </select>
-              </label>
               <label>
                 <FieldLabel>Nome negativado/restricao?</FieldLabel>
                 <select className={selectClass} onChange={(event) => update("hasRestriction", event.target.value as YesNo)} value={form.hasRestriction}>
@@ -992,86 +1009,171 @@ export function SimpleFinancingSimulator() {
           >
             <span className="inline-flex items-center gap-2">
               <SlidersHorizontal className="text-[var(--accent)]" size={18} />
-              {showAdvanced ? "Ocultar dados extras" : "Detalhes da analise"}
+              {showAdvanced ? "Ocultar dados extras" : "Mostrar dados extras do cadastro"}
             </span>
             <ChevronDown className={`transition ${showAdvanced ? "rotate-180" : ""}`} size={18} />
           </button>
         </div>
 
         <aside className="sticky top-24 grid gap-5">
-          <div className="rounded-[8px] border border-[var(--line)] bg-[#11150f] p-6 text-white shadow-2xl dark:bg-white dark:text-[#11150f]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm opacity-75">Resultado da base</p>
-                <h2 className="mt-1 text-2xl font-semibold">
-                  {isCalculating ? "Calculando media..." : result?.status ?? "Preencha e simule"}
-                </h2>
-              </div>
-              {isCalculating ? <Loader2 className="animate-spin" size={28} /> : result?.score && result.score >= 70 ? <CheckCircle2 size={28} /> : <CalculatorIcon />}
-            </div>
-
+          <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 shadow-2xl sm:p-6">
             {isCalculating ? (
-              <div className="mt-6 rounded-[8px] bg-white/10 p-4 text-sm leading-6 opacity-85 dark:bg-black/10">
-                Conferindo renda, entrada e pacote escolhido...
+              <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-6 text-center">
+                <Loader2 className="mx-auto animate-spin text-[var(--accent)]" size={34} />
+                <h2 className="mt-4 text-2xl font-semibold">Calculando seu resultado...</h2>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  Estamos organizando aprovacao estimada, entrada, parcela e limite do projeto.
+                </p>
               </div>
             ) : result ? (
               <>
-                <div className="mt-6 grid gap-3 text-sm">
-                  <Metric label="Base do cliente" value={`ate ${money(result.maxPropertyValue)}`} />
-                  <Metric label="Renda considerada" value={money(result.totalIncome)} />
-                  <Metric label="Parcela maxima" value={money(result.maxInstallment)} />
-                  <Metric label="Base de credito" value={money(result.maxCredit)} />
-                  <Metric label="Entrada/FGTS" value={money(result.availableEntry)} />
-                  <Metric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
-                  <Metric label="Valor escolhido" value={money(result.desiredPackageValue)} />
-                  <Metric label="Resultado" value={result.requestedOption?.isAvailable ? "Dentro da base" : "Acima da base"} />
-                  <Metric label="Cabe agora" value={result.selectedOption?.label ?? "Buscar abaixo da base"} />
-                  <Metric label="Parcela estimada" value={money(result.selectedOption?.installment ?? result.estimatedInstallment)} />
+                <div
+                  className={`rounded-[8px] border p-6 ${
+                    isApprovedResult(result)
+                      ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white text-[#082f24] dark:border-emerald-700/50 dark:from-emerald-950/45 dark:to-[var(--panel)] dark:text-white"
+                      : "border-amber-200 bg-gradient-to-br from-amber-50 to-white text-[#3f2d05] dark:border-amber-700/50 dark:from-amber-950/35 dark:to-[var(--panel)] dark:text-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-[8px] px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
+                        isApprovedResult(result)
+                          ? "bg-emerald-600 text-white dark:bg-emerald-400 dark:text-[#052e20]"
+                          : "bg-amber-500 text-[#2d2103]"
+                      }`}
+                    >
+                      {isApprovedResult(result) ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                      {isApprovedResult(result) ? "Aprovado" : "Precisa ajustar"}
+                    </span>
+                    {isApprovedResult(result) ? <CheckCircle2 className="text-emerald-600 dark:text-emerald-300" size={30} /> : <AlertTriangle className="text-amber-600" size={30} />}
+                  </div>
+                  <h2 className="mt-5 text-3xl font-semibold leading-tight">
+                    {isApprovedResult(result)
+                      ? "Boa noticia! Sua renda comporta este projeto."
+                      : "Este projeto ainda precisa de ajuste para seguir."}
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 opacity-78">
+                    {isApprovedResult(result)
+                      ? "Seu projeto esta dentro da capacidade de financiamento estimada."
+                      : "Veja a capacidade calculada e fale com um especialista para ajustar entrada, projeto ou valor."}
+                  </p>
                 </div>
 
-                <div className="mt-5 rounded-[8px] bg-white/10 p-4 text-sm leading-6 opacity-90 dark:bg-black/10">
-                  <strong className="block">{result.fitMessage}</strong>
-                  <span className="mt-2 block">{result.fgtsMessage}</span>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
+                  <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
+                  <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
+                  <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxPropertyValue)} />
                 </div>
 
-                {result.options.length > 0 ? (
-                  <div className="mt-4 grid gap-2">
-                    {result.options.map((option) => (
-                      <BaseOptionRow isRequested={result.requestedOption?.key === option.key} key={option.key} option={option} />
-                    ))}
+                <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+                    <TrendingUp size={18} />
+                    Capacidade de compra
                   </div>
-                ) : null}
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <span className="text-[var(--muted)]">Sua capacidade</span>
+                      <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[var(--muted)]">Projeto escolhido</span>
+                      <strong className="mt-1 block text-2xl">{money(result.desiredPackageValue)}</strong>
+                    </div>
+                  </div>
+                  <div className="mt-5 h-3 overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
+                    <div
+                      className={`h-full rounded-full ${isApprovedResult(result) ? "bg-emerald-500" : "bg-amber-500"}`}
+                      style={{ width: `${Math.max(getCapacityUsage(result), 4)}%` }}
+                    />
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-[var(--muted)]">{getCapacityMessage(result)}</p>
+                </div>
 
-                {result.notes.length > 0 ? (
-                  <div className="mt-4 grid gap-2 text-xs leading-5 opacity-85">
-                    {result.notes.map((note) => (
-                      <p className="rounded-[8px] border border-white/15 p-3 dark:border-black/15" key={note}>
-                        {note}
-                      </p>
-                    ))}
+                <div className="mt-5 rounded-[8px] border border-emerald-200 bg-emerald-50 p-5 text-[#082f24] dark:border-emerald-700/50 dark:bg-emerald-950/35 dark:text-white">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
+                    <FileCheck2 size={18} />
+                    Resultado final
                   </div>
-                ) : null}
+                  <h3 className="mt-3 text-2xl font-semibold">
+                    {isApprovedResult(result)
+                      ? "Seu projeto esta apto para seguir para analise documental."
+                      : "Seu projeto pode seguir para atendimento com ajuste de valores."}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 opacity-78">
+                    Os valores apresentados sao estimativas baseadas nas regras atuais de financiamento e podem sofrer pequenas
+                    alteracoes apos analise dos documentos.
+                  </p>
+                </div>
 
                 <a
-                  className="focus-ring mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-[#25d366] px-4 text-sm font-semibold text-[#062014] hover:bg-[#20bd5a]"
+                  className="focus-ring mt-5 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-[8px] bg-[#25d366] px-5 py-4 text-base font-semibold text-[#062014] shadow-xl shadow-[#25d366]/20 transition hover:bg-[#20bd5a]"
                   href={`https://wa.me/${whatsappNumber}?text=${message}`}
                   onClick={registerRequest}
                   rel="noreferrer"
                   target="_blank"
                 >
-                  <MessageCircle size={18} />
-                  Falar no WhatsApp
+                  <Rocket size={21} />
+                  Receber Atendimento Agora
                 </a>
 
-                {requestMessage ? <p className="mt-3 text-xs leading-5 opacity-80">{requestMessage}</p> : null}
+                {requestMessage ? <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{requestMessage}</p> : null}
+
+                <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)]">
+                  <button
+                    aria-expanded={showResultDetails}
+                    className="focus-ring flex w-full items-center justify-between gap-4 p-4 text-left text-sm font-semibold"
+                    onClick={() => setShowResultDetails((current) => !current)}
+                    type="button"
+                  >
+                    <span>Ver detalhes da analise</span>
+                    <ChevronDown className={`transition ${showResultDetails ? "rotate-180" : ""}`} size={18} />
+                  </button>
+
+                  {showResultDetails ? (
+                    <div className="grid gap-3 border-t border-[var(--line)] p-4">
+                      <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
+                      <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
+                      <TechnicalMetric label="Base de credito" value={money(result.maxCredit)} />
+                      <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
+                      <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
+                      <TechnicalMetric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
+                      <TechnicalMetric label="Enquadramento" value={result.status} />
+
+                      {result.options.length > 0 ? (
+                        <div className="mt-2 grid gap-2">
+                          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Opcoes calculadas</p>
+                          {result.options.map((option) => (
+                            <BaseOptionRow isRequested={result.requestedOption?.key === option.key} key={option.key} option={option} />
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {result.notes.length > 0 ? (
+                        <div className="mt-2 grid gap-2">
+                          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Observacoes tecnicas</p>
+                          {result.notes.map((note) => (
+                            <p className="rounded-[8px] border border-[var(--line)] p-3 text-xs leading-5 text-[var(--muted)]" key={note}>
+                              {note}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </>
             ) : (
-              <div className="mt-6 rounded-[8px] bg-white/10 p-4 text-sm leading-6 opacity-85 dark:bg-black/10">
-                A conta cruza renda, entrada e pacote sem inventar valor. A faixa final segue a regra da parcela maxima de 30%.
+              <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-6">
+                <CalculatorIcon />
+                <h2 className="mt-4 text-3xl font-semibold leading-tight">Seu resultado aparece aqui.</h2>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  Preencha os dados principais para ver se foi aprovado, quanto pode financiar, entrada, parcela e proximo passo.
+                </p>
               </div>
             )}
 
-            <Button className="mt-5 w-full" disabled={isCalculating} type="submit" variant="secondary">
+            <Button className="mt-5 min-h-12 w-full text-base" disabled={isCalculating} type="submit" variant={result ? "ghost" : "secondary"}>
               {isCalculating ? (
                 <>
                   <Loader2 className="animate-spin" size={18} />
@@ -1080,7 +1182,7 @@ export function SimpleFinancingSimulator() {
               ) : (
                 <>
                   <Clock size={18} />
-                  Simular base
+                  {result ? "Atualizar simulacao" : "Ver resultado da simulacao"}
                 </>
               )}
             </Button>
@@ -1142,7 +1244,7 @@ function CalculatorIcon() {
 
 function BaseOptionRow({ option, isRequested }: { option: BaseOption; isRequested: boolean }) {
   return (
-    <div className={`rounded-[8px] border p-3 text-sm ${isRequested ? "border-[var(--accent)] bg-white/10 dark:bg-black/10" : "border-white/15 dark:border-black/15"}`}>
+    <div className={`rounded-[8px] border p-3 text-sm ${isRequested ? "border-[var(--accent)] bg-[var(--panel)]" : "border-[var(--line)]"}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <strong className="block">
@@ -1153,10 +1255,10 @@ function BaseOptionRow({ option, isRequested }: { option: BaseOption; isRequeste
         </div>
         <span
           className={`shrink-0 rounded-[8px] px-2 py-1 text-xs font-semibold ${
-            option.isAvailable ? "bg-emerald-500/20 text-emerald-200 dark:text-emerald-700" : "bg-white/10 text-white/70 dark:bg-black/10 dark:text-black/60"
+            option.isAvailable ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-black/5 text-[var(--muted)] dark:bg-white/10"
           }`}
         >
-          {option.isAvailable ? "Dentro da base" : "Acima da base"}
+          {option.isAvailable ? "Cabe" : "Acima"}
         </span>
       </div>
       <div className="mt-3 grid gap-2 text-xs opacity-85 sm:grid-cols-2">
@@ -1167,11 +1269,23 @@ function BaseOptionRow({ option, isRequested }: { option: BaseOption; isRequeste
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function ResultMetricCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/20 pb-2 dark:border-black/20">
-      <span className="opacity-75">{label}</span>
-      <strong className="text-right">{value}</strong>
+    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
+        <Icon size={19} />
+      </div>
+      <span className="mt-4 block text-xs font-semibold uppercase leading-5 text-[var(--muted)]">{label}</span>
+      <strong className="mt-1 block text-2xl leading-tight">{value}</strong>
+    </div>
+  );
+}
+
+function TechnicalMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded-[8px] border border-[var(--line)] p-3 text-sm sm:grid-cols-[10rem_1fr] sm:items-center">
+      <span className="text-[var(--muted)]">{label}</span>
+      <strong className="sm:text-right">{value}</strong>
     </div>
   );
 }

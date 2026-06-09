@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -59,7 +60,23 @@ const steps: Step[] = [
 const actionLinkClass =
   "focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-semibold transition";
 const searchChipClass =
-  "focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] border border-white/18 bg-white/10 px-4 text-sm font-semibold text-white/88 transition hover:bg-white/18";
+  "focus-ring inline-flex h-9 items-center gap-2 rounded-[8px] border border-white/18 bg-white/10 px-3 text-xs font-semibold text-white/88 transition hover:bg-white/18";
+
+const citySuggestions = [
+  "Campinas, SP",
+  "Nova Lima, MG",
+  "Fortaleza, CE",
+  "Eusebio, CE",
+  "Sao Paulo, SP",
+  "Ribeirao Preto, SP",
+  "Belo Horizonte, MG",
+  "Curitiba, PR"
+];
+
+const exampleImages = {
+  terrain: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=85",
+  project: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=85"
+};
 
 function buildTerrainsHref(filters: TerrainFilters) {
   const params = new URLSearchParams();
@@ -151,29 +168,33 @@ export default function HomePage() {
             </p>
 
             <form
-              className="mt-8 max-w-2xl rounded-[8px] border border-white/18 bg-white/10 p-4 shadow-2xl backdrop-blur-md"
+              className="mt-7 max-w-xl rounded-[8px] border border-white/18 bg-white/10 p-3 shadow-2xl backdrop-blur-md"
               onSubmit={submitSearch}
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-white/66">Buscar sua localizacao</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <label className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                   <input
-                    className="focus-ring h-11 w-full rounded-[8px] border border-white/18 bg-white px-3 pl-10 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
+                    autoComplete="address-level2"
+                    className="focus-ring h-10 w-full rounded-[8px] border border-white/18 bg-white px-3 pl-10 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
+                    list="home-city-suggestions"
                     onChange={(event) => setSearchText(event.target.value)}
-                    placeholder="Digite cidade, bairro ou regiao"
+                    placeholder="Cidade, bairro ou regiao"
                     value={searchText}
                   />
+                  <datalist id="home-city-suggestions">
+                    {citySuggestions.map((city) => (
+                      <option key={city} value={city} />
+                    ))}
+                  </datalist>
                 </label>
-                <Button type="submit" variant="light">
+                <Button className="h-10 px-3" type="submit" variant="light">
                   Buscar terrenos
                 </Button>
               </div>
-              <p className="mt-3 text-sm leading-6 text-white/70">
-                Voce vai para a pagina de terrenos, onde pode filtrar melhor e abrir o lote completo.
-              </p>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <SearchChip icon={MapPin} label="Campinas / SP" onClick={() => applyTerrainFilters({ city: "Campinas", state: "SP" })} />
                 <SearchChip icon={MapPin} label="Nova Lima / MG" onClick={() => applyTerrainFilters({ city: "Nova Lima", state: "MG" })} />
                 <SearchChip icon={Compass} label="Condominio fechado" onClick={() => applyTerrainFilters({ search: "condominio" })} />
@@ -237,54 +258,98 @@ export default function HomePage() {
 
             <div className="grid gap-4">
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
-                <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5 shadow-sm">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
-                    <MapPin size={20} />
+                <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--background)] shadow-sm">
+                  <Image
+                    alt="Exemplo de terreno disponivel para compra"
+                    className="h-36 w-full object-cover"
+                    height={360}
+                    src={exampleImages.terrain}
+                    width={640}
+                  />
+                  <div className="p-5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
+                      <MapPin size={20} />
+                    </div>
+                    <p className="mt-5 text-sm uppercase text-[var(--muted)]">Terreno</p>
+                    <h3 className="mt-2 text-2xl font-semibold">Lote 9m x 20m</h3>
+                    <dl className="mt-4 grid gap-3 text-sm">
+                      <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                        <dt className="flex items-center gap-2 text-[var(--muted)]">
+                          <Ruler size={16} />
+                          Area
+                        </dt>
+                        <dd className="font-semibold">180 m2</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                        <dt className="flex items-center gap-2 text-[var(--muted)]">
+                          <Wallet size={16} />
+                          Valor
+                        </dt>
+                        <dd className="font-semibold">R$ 95.000</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <p className="mt-5 text-sm uppercase text-[var(--muted)]">Terreno</p>
-                  <h3 className="mt-2 text-2xl font-semibold">Lote 9m x 20m</h3>
-                  <dl className="mt-4 grid gap-3 text-sm">
-                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
-                      <dt className="flex items-center gap-2 text-[var(--muted)]">
-                        <Ruler size={16} />
-                        Area
-                      </dt>
-                      <dd className="font-semibold">180 m2</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
-                      <dt className="flex items-center gap-2 text-[var(--muted)]">
-                        <Wallet size={16} />
-                        Valor
-                      </dt>
-                      <dd className="font-semibold">R$ 95.000</dd>
-                    </div>
-                  </dl>
                 </div>
 
                 <div className="hidden items-center justify-center text-[var(--accent)] md:flex">
                   <ArrowRight size={24} />
                 </div>
 
-                <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5 shadow-sm">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
-                    <Building2 size={20} />
+                <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--background)] shadow-sm">
+                  <Image
+                    alt="Exemplo de projeto de casa compativel"
+                    className="h-36 w-full object-cover"
+                    height={360}
+                    src={exampleImages.project}
+                    width={640}
+                  />
+                  <div className="p-5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
+                      <Building2 size={20} />
+                    </div>
+                    <p className="mt-5 text-sm uppercase text-[var(--muted)]">Projeto compativel</p>
+                    <h3 className="mt-2 text-2xl font-semibold">Casa Essencial 92</h3>
+                    <dl className="mt-4 grid gap-3 text-sm">
+                      <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                        <dt className="text-[var(--muted)]">Area construida</dt>
+                        <dd className="font-semibold">92 m2</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                        <dt className="text-[var(--muted)]">Ambientes</dt>
+                        <dd className="font-semibold">2 quartos</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <p className="mt-5 text-sm uppercase text-[var(--muted)]">Projeto compativel</p>
-                  <h3 className="mt-2 text-2xl font-semibold">Casa Essencial 92</h3>
-                  <dl className="mt-4 grid gap-3 text-sm">
-                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
-                      <dt className="text-[var(--muted)]">Area construida</dt>
-                      <dd className="font-semibold">92 m2</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
-                      <dt className="text-[var(--muted)]">Ambientes</dt>
-                      <dd className="font-semibold">2 quartos</dd>
-                    </div>
-                  </dl>
                 </div>
               </div>
 
               <div className="rounded-[8px] border border-[#0f766e]/30 bg-[#0f766e] p-5 text-white shadow-xl shadow-[#0f766e]/12 dark:bg-[#115e59]">
+                <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                  <div className="relative h-24 overflow-hidden rounded-[8px] border border-white/20">
+                    <Image
+                      alt="Miniatura do terreno selecionado na simulacao"
+                      className="object-cover"
+                      fill
+                      sizes="(max-width: 768px) 50vw, 240px"
+                      src={exampleImages.terrain}
+                    />
+                    <span className="absolute bottom-2 left-2 rounded-[8px] bg-black/55 px-2 py-1 text-xs font-semibold">
+                      Terreno selecionado
+                    </span>
+                  </div>
+                  <div className="relative h-24 overflow-hidden rounded-[8px] border border-white/20">
+                    <Image
+                      alt="Miniatura do projeto selecionado na simulacao"
+                      className="object-cover"
+                      fill
+                      sizes="(max-width: 768px) 50vw, 240px"
+                      src={exampleImages.project}
+                    />
+                    <span className="absolute bottom-2 left-2 rounded-[8px] bg-black/55 px-2 py-1 text-xs font-semibold">
+                      Projeto escolhido
+                    </span>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase text-white/76">
                   <Calculator size={17} />
                   Simulacao de renda
