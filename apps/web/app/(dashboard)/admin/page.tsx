@@ -20,9 +20,9 @@ import {
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
-import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Children, FormEvent, useMemo, useState } from "react";
+import type { UrlObject } from "url";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { SimulationRequestsPanel } from "@/components/dashboard/simulation-requests-panel";
 import { Button } from "@/components/ui/button";
@@ -91,24 +91,25 @@ type AdminSection =
 
 type AdminNavItem = {
   id: AdminSection;
-  href: Route;
+  href: UrlObject;
+  path: string;
   label: string;
   description: string;
   icon: LucideIcon;
 };
 
 const adminSections: AdminNavItem[] = [
-  { id: "dashboard", href: "/admin", label: "Painel", description: "Numeros e filas principais", icon: Activity },
-  { id: "clientes", href: "/admin/clientes", label: "Clientes", description: "Compradores e simulacoes", icon: Users },
-  { id: "proprietarios", href: "/admin/proprietarios", label: "Proprietarios", description: "Donos de terrenos", icon: ShieldAlert },
-  { id: "arquitetos", href: "/admin/arquitetos", label: "Arquitetos", description: "Aprovacao e curadoria", icon: Building2 },
-  { id: "terrenos", href: "/admin/terrenos", label: "Terrenos", description: "Catalogo de lotes", icon: Map },
-  { id: "projetos", href: "/admin/projetos", label: "Projetos", description: "Casas e modelos", icon: ClipboardList },
-  { id: "simulacoes", href: "/admin/simulacoes", label: "Simulacoes", description: "Resultados financeiros", icon: CreditCard },
-  { id: "pedidos", href: "/admin/pedidos", label: "Pedidos", description: "Vendas e contratos", icon: FileText },
-  { id: "anuncios", href: "/admin/anuncios", label: "Anuncios", description: "Fila de terrenos", icon: ShieldAlert },
-  { id: "acessos", href: "/admin/acessos", label: "Acessos", description: "Eventos do site", icon: Activity },
-  { id: "marca", href: "/admin/marca", label: "Marca", description: "Logo e identidade", icon: ImageIcon }
+  { id: "dashboard", href: { pathname: "/admin" }, path: "/admin", label: "Painel", description: "Numeros e filas principais", icon: Activity },
+  { id: "clientes", href: { pathname: "/admin/clientes" }, path: "/admin/clientes", label: "Clientes", description: "Compradores e simulacoes", icon: Users },
+  { id: "proprietarios", href: { pathname: "/admin/proprietarios" }, path: "/admin/proprietarios", label: "Proprietarios", description: "Donos de terrenos", icon: ShieldAlert },
+  { id: "arquitetos", href: { pathname: "/admin/arquitetos" }, path: "/admin/arquitetos", label: "Arquitetos", description: "Aprovacao e curadoria", icon: Building2 },
+  { id: "terrenos", href: { pathname: "/admin/terrenos" }, path: "/admin/terrenos", label: "Terrenos", description: "Catalogo de lotes", icon: Map },
+  { id: "projetos", href: { pathname: "/admin/projetos" }, path: "/admin/projetos", label: "Projetos", description: "Casas e modelos", icon: ClipboardList },
+  { id: "simulacoes", href: { pathname: "/admin/simulacoes" }, path: "/admin/simulacoes", label: "Simulacoes", description: "Resultados financeiros", icon: CreditCard },
+  { id: "pedidos", href: { pathname: "/admin/pedidos" }, path: "/admin/pedidos", label: "Pedidos", description: "Vendas e contratos", icon: FileText },
+  { id: "anuncios", href: { pathname: "/admin/anuncios" }, path: "/admin/anuncios", label: "Anuncios", description: "Fila de terrenos", icon: ShieldAlert },
+  { id: "acessos", href: { pathname: "/admin/acessos" }, path: "/admin/acessos", label: "Acessos", description: "Eventos do site", icon: Activity },
+  { id: "marca", href: { pathname: "/admin/marca" }, path: "/admin/marca", label: "Marca", description: "Logo e identidade", icon: ImageIcon }
 ];
 
 const userStatuses: UserStatus[] = ["ACTIVE", "INACTIVE", "SUSPENDED"];
@@ -148,7 +149,7 @@ const statusLabels: Record<string, string> = {
 };
 
 function getAdminSection(pathname: string): AdminSection {
-  const section = adminSections.find((item) => item.href !== "/admin" && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
+  const section = adminSections.find((item) => item.path !== "/admin" && (pathname === item.path || pathname.startsWith(`${item.path}/`)));
   return section?.id ?? "dashboard";
 }
 
@@ -617,7 +618,7 @@ export default function AdminPage() {
                       : "border-[var(--line)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10"
                   }`}
                   href={item.href}
-                  key={item.href}
+                  key={item.path}
                 >
                   <span className="inline-flex min-w-0 items-center gap-2">
                     <Icon className="shrink-0" size={17} />
