@@ -29,6 +29,7 @@ export class AdminService {
   async metrics() {
     const [
       users,
+      customers,
       architects,
       pendingArchitects,
       terrainOwners,
@@ -44,6 +45,7 @@ export class AdminService {
     ] =
       await this.prisma.$transaction([
         this.prisma.user.count({ where: { deletedAt: null } }),
+        this.prisma.user.count({ where: { role: UserRole.CUSTOMER, deletedAt: null } }),
         this.prisma.architect.count({ where: { deletedAt: null } }),
         this.prisma.architect.count({
           where: { status: ArchitectStatus.PENDING_REVIEW, deletedAt: null }
@@ -65,6 +67,7 @@ export class AdminService {
 
     return {
       users,
+      customers,
       architects,
       pendingArchitects,
       terrainOwners,
@@ -301,6 +304,53 @@ export class AdminService {
     });
   }
 
+  async removeUser(userId: string, adminId: string) {
+    await this.findUserOrFail(userId);
+
+    if (userId === adminId) {
+      throw new BadRequestException("Admin cannot remove itself");
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: new Date(),
+        status: UserStatus.INACTIVE
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        document: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        architectProfile: {
+          select: {
+            id: true,
+            companyName: true,
+            bio: true,
+            status: true,
+            cauNumber: true,
+            website: true,
+            rejectionReason: true
+          }
+        },
+        _count: {
+          select: {
+            ownedTerrains: true,
+            simulations: true,
+            orders: true,
+            favorites: true,
+            siteEvents: true
+          }
+        }
+      }
+    });
+  }
+
   async listTerrains(query: ListAdminResourcesDto) {
     const pagination = getPagination(query);
     const status = query.status ? this.enumValue(TerrainStatus, query.status, "status") : undefined;
@@ -389,6 +439,35 @@ export class AdminService {
       data: {
         ...data,
         ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {})
+      },
+      include: {
+        owner: { select: { id: true, name: true, email: true, phone: true } },
+        images: {
+          where: { deletedAt: null },
+          orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+          take: 6
+        },
+        _count: {
+          select: {
+            compatibilities: true,
+            simulations: true,
+            orders: true,
+            favorites: true
+          }
+        }
+      }
+    });
+  }
+
+  async removeTerrain(terrainId: string, adminId: string) {
+    const terrain = await this.findTerrainOrFail(terrainId);
+
+    return this.prisma.terrain.update({
+      where: { id: terrain.id },
+      data: {
+        deletedAt: new Date(),
+        status: TerrainStatus.ARCHIVED,
+        metadata: this.withReviewMetadata(terrain.metadata, adminId, "DELETED")
       },
       include: {
         owner: { select: { id: true, name: true, email: true, phone: true } },
@@ -550,6 +629,38 @@ export class AdminService {
     });
   }
 
+  async removeProject(projectId: string) {
+    await this.findProjectOrFail(projectId);
+
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: {
+        deletedAt: new Date(),
+        status: ProjectStatus.ARCHIVED
+      },
+      include: {
+        architect: {
+          include: {
+            user: { select: { id: true, name: true, email: true, phone: true } }
+          }
+        },
+        images: {
+          where: { deletedAt: null },
+          orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+          take: 6
+        },
+        _count: {
+          select: {
+            compatibilities: true,
+            simulations: true,
+            orders: true,
+            favorites: true
+          }
+        }
+      }
+    });
+  }
+
   async addProjectImage(projectId: string, dto: CreateProjectImageDto) {
     await this.findProjectOrFail(projectId);
 
@@ -633,6 +744,20 @@ export class AdminService {
     return this.prisma.simulation.update({
       where: { id: simulationId },
       data: { status },
+      include: {
+        customer: { select: { id: true, name: true, email: true, phone: true } },
+        terrain: { select: { id: true, title: true, city: true, state: true } },
+        project: { select: { id: true, title: true } }
+      }
+    });
+  }
+
+  async removeSimulation(simulationId: string) {
+    await this.findSimulationOrFail(simulationId);
+
+    return this.prisma.simulation.update({
+      where: { id: simulationId },
+      data: { deletedAt: new Date() },
       include: {
         customer: { select: { id: true, name: true, email: true, phone: true } },
         terrain: { select: { id: true, title: true, city: true, state: true } },
@@ -731,7 +856,7 @@ export class AdminService {
     return this.prisma.architect.findMany({
       where: {
         deletedAt: null,
-        status: query.status ?? ArchitectStatus.PENDING_REVIEW
+        ...(query.status ? { status: query.status } : {})
       },
       orderBy: { createdAt: "desc" },
       include: {
@@ -775,6 +900,33 @@ export class AdminService {
     return this.prisma.architect.update({
       where: { id: architectId },
       data,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            status: true,
+            createdAt: true
+          }
+        },
+        _count: {
+          select: { projects: true }
+        }
+      }
+    });
+  }
+
+  async removeArchitect(architectId: string) {
+    const architect = await this.findArchitectOrFail(architectId);
+
+    return this.prisma.architect.update({
+      where: { id: architect.id },
+      data: {
+        deletedAt: new Date(),
+        status: ArchitectStatus.SUSPENDED
+      },
       include: {
         user: {
           select: {

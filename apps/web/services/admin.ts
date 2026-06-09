@@ -38,9 +38,9 @@ export async function getAdminOverview() {
   return unwrap<AdminOverview>(response);
 }
 
-export async function getArchitectsForReview(status: ArchitectStatus = "PENDING_REVIEW") {
+export async function getArchitectsForReview(status?: ArchitectStatus) {
   const response = await api.get<ArchitectProfile[]>("/admin/architects", {
-    params: { status }
+    params: status ? { status } : undefined
   });
   return unwrap<ArchitectProfile[]>(response);
 }
@@ -59,6 +59,11 @@ export type UpdateAdminUserInput = Partial<Pick<AdminUser, "name" | "email" | "p
 
 export async function updateAdminUser(id: string, input: UpdateAdminUserInput) {
   const response = await api.patch<AdminUser>(`/admin/users/${id}`, input);
+  return unwrap<AdminUser>(response);
+}
+
+export async function deleteAdminUser(id: string) {
+  const response = await api.delete<AdminUser>(`/admin/users/${id}`);
   return unwrap<AdminUser>(response);
 }
 
@@ -92,6 +97,11 @@ export type AdminImageInput = {
 
 export async function updateAdminTerrain(id: string, input: UpdateAdminTerrainInput) {
   const response = await api.patch<Terrain>(`/admin/terrains/${id}`, input);
+  return unwrap<Terrain>(response);
+}
+
+export async function deleteAdminTerrain(id: string) {
+  const response = await api.delete<Terrain>(`/admin/terrains/${id}`);
   return unwrap<Terrain>(response);
 }
 
@@ -145,6 +155,11 @@ export async function updateAdminProject(id: string, input: UpdateAdminProjectIn
   return unwrap<Project>(response);
 }
 
+export async function deleteAdminProject(id: string) {
+  const response = await api.delete<Project>(`/admin/projects/${id}`);
+  return unwrap<Project>(response);
+}
+
 export async function addAdminProjectImage(projectId: string, input: AdminImageInput) {
   const response = await api.post<AssetImage>(`/admin/projects/${projectId}/images`, {
     ...input,
@@ -166,6 +181,11 @@ export async function getAdminSimulations(params?: AdminListParams) {
 
 export async function updateAdminSimulationStatus(id: string, status: SimulationStatus) {
   const response = await api.patch<AdminSimulation>(`/admin/simulations/${id}/status`, { status });
+  return unwrap<AdminSimulation>(response);
+}
+
+export async function deleteAdminSimulation(id: string) {
+  const response = await api.delete<AdminSimulation>(`/admin/simulations/${id}`);
   return unwrap<AdminSimulation>(response);
 }
 
@@ -195,6 +215,11 @@ export type UpdateAdminArchitectInput = Partial<
 
 export async function updateAdminArchitect(id: string, input: UpdateAdminArchitectInput) {
   const response = await api.patch<ArchitectProfile>(`/admin/architects/${id}`, input);
+  return unwrap<ArchitectProfile>(response);
+}
+
+export async function deleteAdminArchitect(id: string) {
+  const response = await api.delete<ArchitectProfile>(`/admin/architects/${id}`);
   return unwrap<ArchitectProfile>(response);
 }
 

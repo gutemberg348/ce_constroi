@@ -3,8 +3,8 @@ import type { Route } from "next";
 import { Bath, BedDouble, CheckCircle2, Map, MapPin, Ruler, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/components/marketplace/favorite-button";
+import { MediaGallery } from "@/components/marketplace/media-gallery";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
-import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { area, money, toNumber } from "@/lib/format";
 import { getProject } from "@/services/projects";
 import type { Project, Terrain } from "@/types/domain";
@@ -25,15 +25,16 @@ function buildSimulationHref(project: Project, terrain: Terrain) {
 
 function projectGallery(project: Project) {
   const items = [
-    ...(project.images ?? []).map((image) => ({
+    ...(project.images ?? []).map((image, index) => ({
       src: image.url,
-      alt: image.altText ?? project.title
+      alt: image.altText ?? `${project.title} - imagem ${index + 1}`,
+      label: image.isCover ? "Capa" : `Imagem ${index + 1}`
     })),
-    project.renderUrl ? { src: project.renderUrl, alt: `Fachada ${project.title}` } : null,
-    project.floorPlanUrl ? { src: project.floorPlanUrl, alt: `Planta baixa ${project.title}` } : null
-  ].filter(Boolean) as Array<{ src: string; alt: string }>;
+    project.renderUrl ? { src: project.renderUrl, alt: `Fachada ${project.title}`, label: "Fachada" } : null,
+    project.floorPlanUrl ? { src: project.floorPlanUrl, alt: `Planta baixa ${project.title}`, label: "Planta baixa" } : null
+  ].filter(Boolean) as Array<{ src: string; alt: string; label?: string }>;
 
-  return items.filter((item, index, all) => all.findIndex((candidate) => candidate.src === item.src) === index).slice(0, 4);
+  return items.filter((item, index, all) => all.findIndex((candidate) => candidate.src === item.src) === index);
 }
 
 export default async function ProjectDetailPage({
@@ -47,7 +48,6 @@ export default async function ProjectDetailPage({
   const query = searchParams ? await searchParams : {};
   const project = await getProject(id);
   const gallery = projectGallery(project);
-  const image = gallery[0]?.src ?? project.images?.[0]?.url ?? project.renderUrl;
   const selectedCompatibility = project.compatibilities?.find((compatibility) => compatibility.terrain.id === query.terrainId) ?? null;
   const selectedTerrain = selectedCompatibility?.terrain ?? null;
   const packageTotal = selectedTerrain
@@ -57,20 +57,7 @@ export default async function ProjectDetailPage({
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-3">
-          <div className="overflow-hidden rounded-[8px] bg-[#dfe4dc]">
-            {image ? <PrivacyImage alt={project.title} className="h-[420px] w-full object-cover lg:h-[520px]" src={image} /> : null}
-          </div>
-          {gallery.length ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {gallery.map((item, index) => (
-                <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#dfe4dc]" key={`${item.src}-${index}`}>
-                  <PrivacyImage alt={item.alt} className="h-20 w-full object-cover sm:h-24" src={item.src} />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <MediaGallery items={gallery} title={project.title} />
         <aside className="self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6">
           <p className="text-sm uppercase text-[var(--muted)]">
             {project.style ?? "Projeto"} · {project.architect?.user?.name ?? "Studio parceiro"}

@@ -52,6 +52,11 @@ export class AdminController {
     return this.adminService.updateUser(id, dto);
   }
 
+  @Delete("users/:id")
+  removeUser(@Param("id") id: string, @CurrentUser() user: { sub: string }) {
+    return this.adminService.removeUser(id, user.sub);
+  }
+
   @Get("terrains")
   terrains(@Query() query: ListAdminResourcesDto) {
     return this.adminService.listTerrains(query);
@@ -69,6 +74,11 @@ export class AdminController {
   @Patch("terrains/:id")
   updateTerrain(@Param("id") id: string, @Body() dto: UpdateTerrainDto) {
     return this.adminService.updateTerrain(id, dto);
+  }
+
+  @Delete("terrains/:id")
+  removeTerrain(@Param("id") id: string, @CurrentUser() user: { sub: string }) {
+    return this.adminService.removeTerrain(id, user.sub);
   }
 
   @Post("terrains/:id/images")
@@ -96,6 +106,11 @@ export class AdminController {
     return this.adminService.updateProject(id, dto);
   }
 
+  @Delete("projects/:id")
+  removeProject(@Param("id") id: string) {
+    return this.adminService.removeProject(id);
+  }
+
   @Post("projects/:id/images")
   addProjectImage(@Param("id") id: string, @Body() dto: CreateProjectImageDto) {
     return this.adminService.addProjectImage(id, dto);
@@ -114,6 +129,11 @@ export class AdminController {
   @Patch("simulations/:id/status")
   updateSimulationStatus(@Param("id") id: string, @Body() dto: UpdateAdminStatusDto) {
     return this.adminService.updateSimulationStatus(id, dto.status);
+  }
+
+  @Delete("simulations/:id")
+  removeSimulation(@Param("id") id: string) {
+    return this.adminService.removeSimulation(id);
   }
 
   @Get("orders")
@@ -143,6 +163,11 @@ export class AdminController {
     @Body() dto: UpdateAdminArchitectDto
   ) {
     return this.adminService.updateArchitect(id, user.sub, dto);
+  }
+
+  @Delete("architects/:id")
+  removeArchitect(@Param("id") id: string) {
+    return this.adminService.removeArchitect(id);
   }
 
   @Patch("architects/:id/reject")

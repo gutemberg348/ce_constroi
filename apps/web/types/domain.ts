@@ -151,6 +151,7 @@ export type AuthTokens = {
 
 export type AdminMetrics = {
   users: number;
+  customers: number;
   architects: number;
   pendingArchitects: number;
   terrainOwners: number;

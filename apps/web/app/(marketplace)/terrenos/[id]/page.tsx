@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Home, MapPin, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/components/marketplace/favorite-button";
+import { MediaGallery } from "@/components/marketplace/media-gallery";
 import { TerrainProjectSelector } from "@/components/marketplace/terrain-project-selector";
-import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { area, money } from "@/lib/format";
 import { getTerrainPhoto } from "@/lib/terrain-images";
 import { getTerrain } from "@/services/terrains";
@@ -11,14 +11,20 @@ import { getTerrain } from "@/services/terrains";
 export default async function TerrainDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const terrain = await getTerrain(id);
-  const image = getTerrainPhoto(terrain);
+  const fallbackImage = getTerrainPhoto(terrain);
+  const gallery = [
+    ...(terrain.images ?? []).map((image, index) => ({
+      src: image.url,
+      alt: image.altText ?? `${terrain.title} - foto ${index + 1}`,
+      label: image.isCover ? "Capa" : `Foto ${index + 1}`
+    })),
+    terrain.images?.length ? null : { src: fallbackImage, alt: `Terreno ${terrain.title}`, label: "Foto principal" }
+  ].filter(Boolean) as Array<{ src: string; alt: string; label: string }>;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
-        <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)]">
-          <PrivacyImage alt={`Terreno ${terrain.title}`} className="h-56 w-full object-cover sm:h-80 lg:h-[520px]" src={image} />
-        </div>
+        <MediaGallery items={gallery} title={terrain.title} />
         <aside className="self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 sm:p-5 lg:p-6">
           <div className="flex items-center gap-2 text-xs uppercase text-[var(--muted)] sm:text-sm sm:normal-case">
             <MapPin size={16} />
