@@ -1,3 +1,4 @@
+import * as bcrypt from "bcrypt";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   ArchitectStatus,
@@ -16,6 +17,7 @@ import { CreateProjectImageDto } from "@/modules/project-images/dto/create-proje
 import { CreateTerrainImageDto } from "@/modules/terrain-images/dto/create-terrain-image.dto";
 import { UpdateProjectDto } from "@/modules/projects/dto/update-project.dto";
 import { UpdateTerrainDto } from "@/modules/terrains/dto/update-terrain.dto";
+import { CreateAdminArchitectDto } from "./dto/create-admin-architect.dto";
 import { ListArchitectsDto } from "./dto/list-architects.dto";
 import { ListAdminResourcesDto } from "./dto/list-admin-resources.dto";
 import { RejectArchitectDto } from "./dto/reject-architect.dto";
@@ -874,6 +876,93 @@ export class AdminService {
           select: { projects: true }
         }
       }
+    });
+  }
+
+  async createArchitect(dto: CreateAdminArchitectDto, adminId: string) {
+    const email = dto.email.trim().toLowerCase();
+    const name = dto.name.trim();
+    const companyName = this.emptyToNull(dto.companyName ?? "") ?? name;
+    const cauNumber = this.emptyToNull(dto.cauNumber ?? "");
+    const status = dto.status ?? ArchitectStatus.APPROVED;
+    const reviewed = status !== ArchitectStatus.PENDING_REVIEW;
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true }
+    });
+
+    if (existingUser) {
+      throw new BadRequestException("E-mail ja cadastrado.");
+    }
+
+    if (cauNumber) {
+      const existingCau = await this.prisma.architect.findFirst({
+        where: { cauNumber },
+        select: { id: true }
+      });
+
+      if (existingCau) {
+        throw new BadRequestException("CAU ja cadastrado.");
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          role: UserRole.ARCHITECT,
+          status: UserStatus.ACTIVE,
+          phone: this.emptyToNull(dto.phone ?? "")
+        }
+      });
+
+      const architect = await tx.architect.create({
+        data: {
+          userId: user.id,
+          companyName,
+          cauNumber,
+          website: this.emptyToNull(dto.website ?? ""),
+          bio: this.emptyToNull(dto.bio ?? ""),
+          status,
+          reviewedAt: reviewed ? new Date() : undefined,
+          reviewedById: reviewed ? adminId : undefined,
+          rejectionReason: status === ArchitectStatus.REJECTED ? "Cadastro criado como recusado pela administracao." : null
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              status: true,
+              createdAt: true
+            }
+          },
+          _count: {
+            select: { projects: true }
+          }
+        }
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: user.id,
+          type: NotificationType.SYSTEM,
+          title: "Acesso de arquiteto criado",
+          body:
+            status === ArchitectStatus.APPROVED
+              ? "Seu acesso de arquiteto ja esta aprovado para publicar projetos."
+              : "Seu acesso de arquiteto foi criado pela administracao."
+        }
+      });
+
+      return architect;
     });
   }
 

@@ -23,10 +23,36 @@ function dateTime(value?: string) {
   }).format(new Date(value));
 }
 
+const statusLabels: Record<string, string> = {
+  ACTIVE: "Ativo",
+  INACTIVE: "Inativo",
+  SUSPENDED: "Banido",
+  PENDING_REVIEW: "Em analise",
+  APPROVED: "Aprovado",
+  REJECTED: "Recusado",
+  DRAFT: "Rascunho",
+  AVAILABLE: "Publicado",
+  RESERVED: "Reservado",
+  SOLD: "Vendido",
+  ARCHIVED: "Arquivado",
+  PUBLISHED: "Publicado",
+  SENT: "Enviado",
+  CONVERTED: "Convertido",
+  EXPIRED: "Expirado",
+  PENDING_PAYMENT: "Aguardando pagamento",
+  PAID: "Pago",
+  CANCELED: "Cancelado",
+  REFUNDED: "Reembolsado"
+};
+
+function statusLabel(status?: string) {
+  return status ? (statusLabels[status] ?? status) : "-";
+}
+
 function statusPill(status?: string) {
   return (
     <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs font-semibold text-[var(--muted)]">
-      {status ?? "-"}
+      {statusLabel(status)}
     </span>
   );
 }

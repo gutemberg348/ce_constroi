@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -73,6 +73,28 @@ function numberValue(value: number | string | undefined | null) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const statusLabels: Record<string, string> = {
+  ACTIVE: "Ativo",
+  INACTIVE: "Inativo",
+  SUSPENDED: "Banido",
+  PENDING_REVIEW: "Em analise",
+  APPROVED: "Aprovado",
+  REJECTED: "Recusado",
+  DRAFT: "Rascunho",
+  AVAILABLE: "Publicado",
+  RESERVED: "Reservado",
+  SOLD: "Vendido",
+  ARCHIVED: "Arquivado",
+  PUBLISHED: "Publicado",
+  SUGGESTED: "Sugerido",
+  APPROVED_COMPATIBILITY: "Aprovado",
+  REJECTED_COMPATIBILITY: "Recusado"
+};
+
+function statusLabel(status?: string) {
+  return status ? (statusLabels[status] ?? status) : "-";
+}
+
 function defaultCompatibilityScore(project: Project, terrain?: Terrain | null) {
   if (!terrain) {
     return 80;
@@ -113,8 +135,43 @@ function terrainSummary(terrain: Terrain) {
 function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrains: Terrain[] }) {
   const queryClient = useQueryClient();
   const [selectedTerrainId, setSelectedTerrainId] = useState(terrains[0]?.id ?? "");
-  const selectedTerrain = terrains.find((terrain) => terrain.id === selectedTerrainId) ?? terrains[0] ?? null;
-  const selectedTerrainValue = selectedTerrain?.id ?? "";
+  const [terrainSearch, setTerrainSearch] = useState("");
+  const [minArea, setMinArea] = useState("");
+  const [minFrontage, setMinFrontage] = useState("");
+  const [minDepth, setMinDepth] = useState("");
+  const filteredTerrains = useMemo(() => {
+    const search = terrainSearch.trim().toLowerCase();
+    const minAreaValue = numberValue(minArea);
+    const minFrontageValue = numberValue(minFrontage);
+    const minDepthValue = numberValue(minDepth);
+
+    return terrains.filter((terrain) => {
+      const searchable = [
+        terrain.title,
+        terrain.address,
+        terrain.neighborhood,
+        terrain.city,
+        terrain.state,
+        String(terrain.areaM2 ?? ""),
+        String(terrain.frontageM ?? ""),
+        String(terrain.depthM ?? "")
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        (!search || searchable.includes(search)) &&
+        (!minAreaValue || numberValue(terrain.areaM2) >= minAreaValue) &&
+        (!minFrontageValue || numberValue(terrain.frontageM) >= minFrontageValue) &&
+        (!minDepthValue || numberValue(terrain.depthM) >= minDepthValue)
+      );
+    });
+  }, [terrains, terrainSearch, minArea, minFrontage, minDepth]);
+  const selectedTerrainValue = filteredTerrains.some((terrain) => terrain.id === selectedTerrainId)
+    ? selectedTerrainId
+    : (filteredTerrains[0]?.id ?? "");
+  const selectedTerrain = terrains.find((terrain) => terrain.id === selectedTerrainValue) ?? null;
   const suggestedScore = defaultCompatibilityScore(project, selectedTerrain);
 
   const compatibilityMutation = useMutation({
@@ -148,6 +205,40 @@ function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrai
       <summary className="cursor-pointer text-sm font-semibold">Adequar a terreno</summary>
       {terrains.length ? (
         <form className="mt-4 grid gap-4" onSubmit={onSubmit}>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_120px_120px_120px]">
+            <Input
+              onChange={(event) => setTerrainSearch(event.target.value)}
+              placeholder="Buscar por cidade, bairro, rua ou metragem"
+              value={terrainSearch}
+            />
+            <Input
+              inputMode="numeric"
+              min={0}
+              onChange={(event) => setMinArea(event.target.value)}
+              placeholder="Area min."
+              type="number"
+              value={minArea}
+            />
+            <Input
+              inputMode="numeric"
+              min={0}
+              onChange={(event) => setMinFrontage(event.target.value)}
+              placeholder="Frente min."
+              type="number"
+              value={minFrontage}
+            />
+            <Input
+              inputMode="numeric"
+              min={0}
+              onChange={(event) => setMinDepth(event.target.value)}
+              placeholder="Fundo min."
+              type="number"
+              value={minDepth}
+            />
+          </div>
+          <p className="text-xs text-[var(--muted)]">
+            {filteredTerrains.length} {filteredTerrains.length === 1 ? "terreno encontrado" : "terrenos encontrados"} para este filtro.
+          </p>
           <div className="grid gap-3 md:grid-cols-[1fr_120px_auto]">
             <select
               className={selectClass()}
@@ -155,11 +246,15 @@ function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrai
               onChange={(event) => setSelectedTerrainId(event.target.value)}
               value={selectedTerrainValue}
             >
-              {terrains.map((terrain) => (
-                <option key={terrain.id} value={terrain.id}>
-                  {terrain.title} - {terrainSummary(terrain)}
-                </option>
-              ))}
+              {filteredTerrains.length ? (
+                filteredTerrains.map((terrain) => (
+                  <option key={terrain.id} value={terrain.id}>
+                    {terrain.title} - {terrainSummary(terrain)} - {area(terrain.areaM2)}
+                  </option>
+                ))
+              ) : (
+                <option value="">Nenhum terreno encontrado</option>
+              )}
             </select>
             <Input
               defaultValue={String(suggestedScore)}
@@ -168,12 +263,12 @@ function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrai
               max={100}
               min={0}
               name="score"
-              placeholder="Score"
+              placeholder="Nota"
               type="number"
             />
             <Button disabled={compatibilityMutation.isPending || !selectedTerrainValue} type="submit" variant="secondary">
               <Map size={18} />
-              Salvar
+              Salvar adequacao
             </Button>
           </div>
 
@@ -183,7 +278,7 @@ function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrai
                 <div className="flex flex-wrap items-center gap-2">
                   <strong>{selectedTerrain.title}</strong>
                   <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                    {selectedTerrain.status}
+                    {statusLabel(selectedTerrain.status)}
                   </span>
                 </div>
                 <p className="mt-1 flex items-center gap-2 text-[var(--muted)]">
@@ -257,7 +352,7 @@ export default function ArchitectPanelPage() {
 
   const terrainsQuery = useQuery({
     queryKey: ["architect", "available-terrains"],
-    queryFn: () => getTerrains({ limit: 50 }),
+    queryFn: () => getTerrains({ limit: 300 }),
     enabled: Boolean(accessToken && isArchitect && isApproved)
   });
 
@@ -591,7 +686,7 @@ export default function ArchitectPanelPage() {
                     <h3 className="mt-1 text-xl font-semibold">{project.title}</h3>
                   </div>
                   <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                    {project.status ?? "PUBLISHED"}
+                    {statusLabel(project.status ?? "PUBLISHED")}
                   </span>
                 </div>
                 <p className="mt-3 line-clamp-2 text-sm text-[var(--muted)]">{project.description}</p>

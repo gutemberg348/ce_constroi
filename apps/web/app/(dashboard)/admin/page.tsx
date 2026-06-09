@@ -15,6 +15,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Trash2,
+  UserPlus,
   Users,
   X,
   type LucideIcon
@@ -33,6 +34,7 @@ import {
   approveArchitect,
   approveTerrain,
   archiveTerrain,
+  createAdminArchitect,
   deleteAdminArchitect,
   deleteAdminProject,
   deleteAdminSimulation,
@@ -412,6 +414,21 @@ export default function AdminPage() {
     mutationFn: (id: string) => rejectArchitect(id, "Perfil recusado pela administracao."),
     onSuccess: invalidateAdmin
   });
+  const architectCreateMutation = useMutation({
+    mutationFn: (formData: FormData) =>
+      createAdminArchitect({
+        name: formText(formData, "name"),
+        email: formText(formData, "email"),
+        password: formText(formData, "password"),
+        phone: optionalText(formData, "phone"),
+        companyName: optionalText(formData, "companyName"),
+        cauNumber: optionalText(formData, "cauNumber"),
+        website: optionalText(formData, "website"),
+        bio: optionalText(formData, "bio"),
+        status: formText(formData, "status") as ArchitectStatus
+      }),
+    onSuccess: invalidateAdmin
+  });
   const architectUpdateMutation = useMutation({
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
       updateAdminArchitect(id, {
@@ -687,13 +704,18 @@ export default function AdminPage() {
           {activeSection === "arquitetos" ? (
             <ArchitectsSection
               architects={architects}
+              createError={architectCreateMutation.error}
+              createPending={architectCreateMutation.isPending}
+              createSuccess={architectCreateMutation.isSuccess}
               isLoading={architectsQuery.isLoading}
               onApprove={(id) => approveArchitectMutation.mutate(id)}
               onBan={(architectId, userId) => architectBanMutation.mutate({ architectId, userId })}
+              onCreate={(formData) => architectCreateMutation.mutate(formData)}
               onDelete={(id) => architectDeleteMutation.mutate(id)}
               onReject={(id) => rejectArchitectMutation.mutate(id)}
               onUpdate={(id, formData) => architectUpdateMutation.mutate({ id, formData })}
               pending={
+                architectCreateMutation.isPending ||
                 approveArchitectMutation.isPending ||
                 rejectArchitectMutation.isPending ||
                 architectUpdateMutation.isPending ||
@@ -1003,26 +1025,41 @@ function UserEditForm({
 
 function ArchitectsSection({
   architects,
+  createError,
+  createPending,
+  createSuccess,
   isLoading,
   pending,
   onApprove,
   onReject,
   onBan,
+  onCreate,
   onDelete,
   onUpdate
 }: {
   architects: ArchitectProfile[];
+  createError: unknown;
+  createPending: boolean;
+  createSuccess: boolean;
   isLoading: boolean;
   pending: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onBan: (architectId: string, userId: string) => void;
+  onCreate: (formData: FormData) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, formData: FormData) => void;
 }) {
   return (
     <section className={panelClass()}>
       <SectionHeader eyebrow="Curadoria" title="Arquitetos" total={architects.length} />
+      <ArchitectCreateForm disabled={createPending} onSubmit={onCreate} />
+      {createSuccess ? (
+        <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">Arquiteto cadastrado com sucesso.</p>
+      ) : null}
+      {createError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel cadastrar: {errorMessage(createError)}</p>
+      ) : null}
       <AdminTable columns={["Arquiteto", "Contato", "Status", "Projetos", "Acoes"]} empty="Nenhum arquiteto cadastrado." isLoading={isLoading}>
         {architects.map((architect) => (
           <tr className="align-top" key={architect.id}>
@@ -1063,7 +1100,10 @@ function ArchitectsSection({
                   Excluir
                 </ActionButton>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 grid gap-2">
+                <EditPanel label="Ver informacoes">
+                  <ArchitectDetails architect={architect} />
+                </EditPanel>
                 <EditPanel label="Editar arquiteto">
                   <ArchitectEditForm architect={architect} disabled={pending} onSubmit={onUpdate} />
                 </EditPanel>
@@ -1073,6 +1113,85 @@ function ArchitectsSection({
         ))}
       </AdminTable>
     </section>
+  );
+}
+
+function ArchitectCreateForm({
+  disabled,
+  onSubmit
+}: {
+  disabled: boolean;
+  onSubmit: (formData: FormData) => void;
+}) {
+  return (
+    <form
+      className="mb-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(new FormData(event.currentTarget));
+      }}
+    >
+      <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Novo acesso</p>
+          <h4 className="mt-1 text-lg font-semibold">Cadastrar arquiteto</h4>
+        </div>
+        <span className="text-xs text-[var(--muted)]">Senha minima de 8 caracteres.</span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <input className={inputClass()} name="name" placeholder="Nome do responsavel" required />
+        <input className={inputClass()} name="email" placeholder="E-mail de acesso" required type="email" />
+        <input className={inputClass()} minLength={8} name="password" placeholder="Senha inicial" required type="password" />
+        <input className={inputClass()} name="phone" placeholder="Telefone" />
+        <input className={inputClass()} name="companyName" placeholder="Nome do escritorio" />
+        <input className={inputClass()} name="cauNumber" placeholder="CAU" />
+        <input className={inputClass()} name="website" placeholder="Site ou portfolio" />
+        <select className={inputClass()} defaultValue="APPROVED" name="status">
+          {architectStatuses.map((status) => (
+            <option key={status} value={status}>
+              {statusLabel(status)}
+            </option>
+          ))}
+        </select>
+        <textarea className={`${textareaClass()} xl:col-span-4`} name="bio" placeholder="Resumo do arquiteto ou observacao interna" />
+      </div>
+      <Button className="mt-4 w-full md:w-auto" disabled={disabled} type="submit" variant="secondary">
+        <UserPlus size={16} />
+        {disabled ? "Cadastrando..." : "Cadastrar arquiteto"}
+      </Button>
+    </form>
+  );
+}
+
+function ArchitectDetails({ architect }: { architect: ArchitectProfile }) {
+  return (
+    <div className="grid gap-3 text-sm md:grid-cols-2">
+      <DetailItem label="Responsavel" value={architect.user.name} />
+      <DetailItem label="E-mail" value={architect.user.email} />
+      <DetailItem label="Telefone" value={architect.user.phone ?? "Nao informado"} />
+      <DetailItem label="Status do acesso" value={statusLabel(architect.user.status)} />
+      <DetailItem label="Escritorio" value={architect.companyName ?? "Nao informado"} />
+      <DetailItem label="CAU" value={architect.cauNumber ?? "Nao informado"} />
+      <DetailItem label="Site ou portfolio" value={architect.website ?? "Nao informado"} />
+      <DetailItem label="Projetos cadastrados" value={String(architect._count?.projects ?? 0)} />
+      <DetailItem label="Data do cadastro" value={dateTime(architect.createdAt ?? architect.user.createdAt)} />
+      <DetailItem label="Status do perfil" value={statusLabel(architect.status)} />
+      <div className="md:col-span-2">
+        <DetailItem label="Biografia" value={architect.bio ?? "Nao informada"} />
+      </div>
+      <div className="md:col-span-2">
+        <DetailItem label="Motivo da recusa" value={architect.rejectionReason ?? "Sem motivo registrado"} />
+      </div>
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-3">
+      <p className="text-xs font-semibold uppercase text-[var(--muted)]">{label}</p>
+      <p className="mt-1 break-words font-medium">{value || "-"}</p>
+    </div>
   );
 }
 

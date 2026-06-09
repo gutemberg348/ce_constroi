@@ -45,6 +45,23 @@ export async function getArchitectsForReview(status?: ArchitectStatus) {
   return unwrap<ArchitectProfile[]>(response);
 }
 
+export type CreateAdminArchitectInput = {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  companyName?: string;
+  cauNumber?: string;
+  website?: string;
+  bio?: string;
+  status?: ArchitectStatus;
+};
+
+export async function createAdminArchitect(input: CreateAdminArchitectInput) {
+  const response = await api.post<ArchitectProfile>("/admin/architects", input);
+  return unwrap<ArchitectProfile>(response);
+}
+
 export async function getAdminUsers(params?: AdminListParams) {
   const response = await api.get<Paginated<AdminUser>>("/admin/users", { params });
   return unwrap<Paginated<AdminUser>>(response);

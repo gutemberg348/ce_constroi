@@ -39,7 +39,7 @@ function ProjectOption({ compatibility, terrainId }: { compatibility: Compatibil
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase text-[var(--muted)]">
             <span>{project.style ?? "Projeto residencial"}</span>
-            <span>Score {score.toFixed(0)}%</span>
+            <span>Compatibilidade {score.toFixed(0)}%</span>
           </div>
           <h3 className="mt-2 text-lg font-semibold">{project.title}</h3>
           <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{project.description}</p>

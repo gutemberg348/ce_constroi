@@ -149,7 +149,7 @@ export default async function ProjectDetailPage({
               <div key={compatibility.id}>
                 <TerrainCard terrain={compatibility.terrain} />
                 <div className="mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-3 text-sm text-[var(--muted)]">
-                  Score {toNumber(compatibility.score).toFixed(0)}% - {compatibility.notes ?? "Terreno compativel."}
+                  Compatibilidade {toNumber(compatibility.score).toFixed(0)}% - {compatibility.notes ?? "Terreno compativel."}
                   <Link
                     className="mt-2 inline-flex font-semibold text-[var(--accent)]"
                     href={`/projetos/${project.id}?terrainId=${compatibility.terrain.id}` as Route}

@@ -8,6 +8,7 @@ import { CreateTerrainImageDto } from "@/modules/terrain-images/dto/create-terra
 import { UpdateProjectDto } from "@/modules/projects/dto/update-project.dto";
 import { UpdateTerrainDto } from "@/modules/terrains/dto/update-terrain.dto";
 import { AdminService } from "./admin.service";
+import { CreateAdminArchitectDto } from "./dto/create-admin-architect.dto";
 import { ListAdminResourcesDto } from "./dto/list-admin-resources.dto";
 import { ListArchitectsDto } from "./dto/list-architects.dto";
 import { RejectArchitectDto } from "./dto/reject-architect.dto";
@@ -35,6 +36,11 @@ export class AdminController {
   @Get("architects")
   architects(@Query() query: ListArchitectsDto) {
     return this.adminService.listArchitects(query);
+  }
+
+  @Post("architects")
+  createArchitect(@Body() dto: CreateAdminArchitectDto, @CurrentUser() user: { sub: string }) {
+    return this.adminService.createArchitect(dto, user.sub);
   }
 
   @Get("users")
