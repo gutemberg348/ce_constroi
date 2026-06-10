@@ -13,6 +13,7 @@ import { createTerrainImage } from "@/services/terrain-images";
 import { useAuthStore } from "@/stores/auth-store";
 
 type AnnouncementForm = {
+  announcerType: "Proprietario" | "Corretor";
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
@@ -32,12 +33,10 @@ type AnnouncementForm = {
   totalArea: string;
   usefulArea: string;
   features: string;
-  catcherName: string;
-  catcherEmail: string;
-  catcherPhone: string;
 };
 
 const initialForm: AnnouncementForm = {
+  announcerType: "Proprietario",
   ownerName: "",
   ownerPhone: "",
   ownerEmail: "",
@@ -56,10 +55,7 @@ const initialForm: AnnouncementForm = {
   propertyType: "Terreno",
   totalArea: "",
   usefulArea: "",
-  features: "",
-  catcherName: "",
-  catcherEmail: "",
-  catcherPhone: ""
+  features: ""
 };
 
 function onlyDigits(value: string) {
@@ -197,6 +193,7 @@ export default function AnnounceTerrainPage() {
         metadata: {
           source: "owner_announcement",
           owner: {
+            type: form.announcerType,
             name: ownerName,
             phone: form.ownerPhone,
             email: ownerEmail
@@ -214,12 +211,7 @@ export default function AnnounceTerrainPage() {
             usefulArea: toNumber(form.usefulArea),
             features: form.features
           },
-          photos: photos.flatMap((photo) => (photo ? [{ name: photo.name, type: photo.type, size: photo.size }] : [])),
-          catcher: {
-            name: form.catcherName,
-            email: form.catcherEmail,
-            phone: form.catcherPhone
-          }
+          photos: photos.flatMap((photo) => (photo ? [{ name: photo.name, type: photo.type, size: photo.size }] : []))
         }
       });
 
@@ -314,8 +306,12 @@ export default function AnnounceTerrainPage() {
       <form className="grid gap-6 lg:grid-cols-[1fr_340px]" onSubmit={onSubmit}>
         <div className="space-y-6">
           <fieldset className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
-            <legend className="px-1 text-lg font-semibold">1. Proprietario</legend>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <legend className="px-1 text-lg font-semibold">1. Responsavel pelo anuncio</legend>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <select className={inputClass()} onChange={(event) => update("announcerType", event.target.value as AnnouncementForm["announcerType"])} value={form.announcerType}>
+                <option>Proprietario</option>
+                <option>Corretor</option>
+              </select>
               <Input onChange={(event) => update("ownerName", event.target.value)} placeholder={user?.name ?? "Nome completo"} required value={form.ownerName} />
               <Input onChange={(event) => update("ownerPhone", event.target.value)} placeholder="Telefone / WhatsApp" required value={form.ownerPhone} />
               <Input onChange={(event) => update("ownerEmail", event.target.value)} placeholder={user?.email ?? "E-mail"} required type="email" value={form.ownerEmail} />
@@ -405,14 +401,6 @@ export default function AnnounceTerrainPage() {
             </div>
           </fieldset>
 
-          <fieldset className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
-            <legend className="px-1 text-lg font-semibold">4. Captador</legend>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <Input onChange={(event) => update("catcherName", event.target.value)} placeholder="Nome" value={form.catcherName} />
-              <Input onChange={(event) => update("catcherEmail", event.target.value)} placeholder="E-mail" type="email" value={form.catcherEmail} />
-              <Input onChange={(event) => update("catcherPhone", event.target.value)} placeholder="Telefone" value={form.catcherPhone} />
-            </div>
-          </fieldset>
         </div>
 
         <aside className="h-fit rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5 lg:sticky lg:top-24">
@@ -427,6 +415,7 @@ export default function AnnounceTerrainPage() {
             </p>
             <p>{form.totalArea || "0"} m2 de area total</p>
             <p>{selectedPhotoCount} foto(s) anexada(s)</p>
+            <p>Responsavel: {form.announcerType}</p>
           </div>
 
           {error ? <p className="mt-5 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">{error}</p> : null}

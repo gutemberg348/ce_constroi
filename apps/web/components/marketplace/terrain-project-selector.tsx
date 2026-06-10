@@ -92,7 +92,7 @@ export function TerrainProjectSelector({ terrain }: { terrain: Terrain }) {
           <Sparkles className="text-[var(--accent)]" size={20} />
           <div>
             <p className="text-sm uppercase text-[var(--muted)]">Projetos</p>
-            <h2 className="text-xl font-semibold sm:text-2xl">Projetos que cabem neste terreno</h2>
+            <h2 className="text-xl font-semibold sm:text-2xl">Projetos compativeis com este terreno</h2>
           </div>
         </div>
       </div>

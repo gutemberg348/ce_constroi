@@ -31,7 +31,7 @@ export function TerrainBrowser() {
       <div className="mb-5 flex flex-col justify-between gap-4 md:mb-6 md:flex-row md:items-end">
         <div>
           <p className="text-sm uppercase text-[var(--muted)]">Terrenos</p>
-          <h1 className="text-2xl font-semibold sm:text-4xl">Lotes prontos para receber projeto</h1>
+          <h1 className="text-2xl font-semibold sm:text-4xl">Terrenos selecionados para transformar seu projeto em realidade.</h1>
         </div>
         <div className="grid w-full gap-2 md:max-w-2xl md:grid-cols-[1.4fr_1fr_80px_1fr]">
           <label className="relative">

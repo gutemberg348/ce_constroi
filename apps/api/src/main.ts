@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import cookieParser from "cookie-parser";
+import { json, urlencoded } from "express";
 import helmet from "helmet";
 import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -12,12 +13,14 @@ import { ResponseTransformInterceptor } from "./common/interceptors/response-tra
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    bufferLogs: true
+    bufferLogs: true,
+    bodyParser: false
   });
 
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
   const port = config.get<number>("API_PORT", 3333);
+  const bodyLimit = config.get<string>("API_BODY_LIMIT", "25mb");
 
   app.setGlobalPrefix("api/v1");
   app.enableVersioning({ type: VersioningType.URI });
@@ -26,6 +29,8 @@ async function bootstrap() {
     credentials: true
   });
   app.use(helmet());
+  app.use(json({ limit: bodyLimit }));
+  app.use(urlencoded({ extended: true, limit: bodyLimit }));
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({

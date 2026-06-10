@@ -858,13 +858,6 @@ export function SimpleFinancingSimulator() {
                   <option value="INFORMAL">Informal</option>
                 </select>
               </label>
-              <label>
-                <FieldLabel>Tem comprovacao de renda?</FieldLabel>
-                <select className={selectClass} onChange={(event) => update("hasIncomeProof", event.target.value as YesNo)} value={form.hasIncomeProof}>
-                  <option value="yes">Sim</option>
-                  <option value="no">Nao</option>
-                </select>
-              </label>
               {showAdvanced ? (
                 <>
                   <label>

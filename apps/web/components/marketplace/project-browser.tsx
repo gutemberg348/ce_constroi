@@ -21,7 +21,7 @@ export function ProjectBrowser() {
       <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
           <p className="text-sm uppercase text-[var(--muted)]">Projetos</p>
-          <h1 className="text-3xl font-semibold sm:text-4xl">Casas arquitetadas para compra imediata</h1>
+          <h1 className="text-3xl font-semibold sm:text-4xl">Escolha o projeto. Nos conectamos terreno, construcao e financiamento.</h1>
         </div>
         <label className="relative w-full md:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />

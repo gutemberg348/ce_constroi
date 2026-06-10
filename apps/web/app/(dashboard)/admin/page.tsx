@@ -26,11 +26,14 @@ import { Children, FormEvent, useMemo, useState } from "react";
 import type { UrlObject } from "url";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { SimulationRequestsPanel } from "@/components/dashboard/simulation-requests-panel";
+import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formDataImageValue } from "@/lib/files";
 import { area, money } from "@/lib/format";
 import {
+  addAdminProjectImage,
+  addAdminTerrainImage,
   approveArchitect,
   approveTerrain,
   archiveTerrain,
@@ -50,6 +53,8 @@ import {
   getAdminUsers,
   getArchitectsForReview,
   rejectArchitect,
+  removeAdminProjectImage,
+  removeAdminTerrainImage,
   updateAdminArchitect,
   updateAdminOrderStatus,
   updateAdminProject,
@@ -66,6 +71,7 @@ import {
   AdminOrder,
   AdminSimulation,
   AdminUser,
+  AssetImage,
   ArchitectProfile,
   ArchitectStatus,
   OrderStatus,
@@ -77,6 +83,7 @@ import {
   UserRole,
   UserStatus
 } from "@/types/domain";
+import { createTerrain, type CreateTerrainInput } from "@/services/terrains";
 
 type AdminSection =
   | "dashboard"
@@ -202,6 +209,37 @@ function formNumber(formData: FormData, key: string) {
   const raw = formText(formData, key);
   const value = Number(raw.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
   return raw.length && Number.isFinite(value) ? value : undefined;
+}
+
+function requiredFormNumber(formData: FormData, key: string, label: string) {
+  const value = formNumber(formData, key);
+
+  if (value === undefined) {
+    throw new Error(`${label} e obrigatorio.`);
+  }
+
+  return value;
+}
+
+function hasFormImageInput(formData: FormData) {
+  const imageFile = formData.get("imageFile");
+  return Boolean(formText(formData, "imageUrl")) || Boolean(imageFile && typeof imageFile !== "string" && imageFile.size > 0);
+}
+
+async function formImageInput(formData: FormData) {
+  const url = await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl"));
+
+  if (!url) {
+    throw new Error("Envie um arquivo ou informe uma URL da imagem.");
+  }
+
+  return {
+    url,
+    storageKey: url,
+    altText: optionalText(formData, "altText"),
+    sortOrder: formNumber(formData, "sortOrder") ?? 0,
+    isCover: formData.get("isCover") === "on"
+  };
 }
 
 function dateTime(value?: string) {
@@ -454,6 +492,32 @@ export default function AdminPage() {
     mutationFn: ({ id, status }: { id: string; status: TerrainStatus }) => updateAdminTerrainStatus(id, status),
     onSuccess: invalidateAdmin
   });
+  const terrainCreateMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const input: CreateTerrainInput = {
+        title: formText(formData, "title"),
+        description: formText(formData, "description"),
+        address: formText(formData, "address"),
+        neighborhood: optionalText(formData, "neighborhood"),
+        city: formText(formData, "city"),
+        state: formText(formData, "state"),
+        zipCode: optionalText(formData, "zipCode"),
+        zoning: optionalText(formData, "zoning"),
+        areaM2: requiredFormNumber(formData, "areaM2", "Area total"),
+        frontageM: formNumber(formData, "frontageM"),
+        depthM: formNumber(formData, "depthM"),
+        price: requiredFormNumber(formData, "price", "Valor")
+      };
+      const terrain = await createTerrain(input);
+
+      if (hasFormImageInput(formData)) {
+        await addAdminTerrainImage(terrain.id, await formImageInput(formData));
+      }
+
+      return terrain;
+    },
+    onSuccess: invalidateAdmin
+  });
   const terrainUpdateMutation = useMutation({
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
       updateAdminTerrain(id, {
@@ -475,6 +539,14 @@ export default function AdminPage() {
   const terrainDeleteMutation = useMutation({ mutationFn: deleteAdminTerrain, onSuccess: invalidateAdmin });
   const approveTerrainMutation = useMutation({ mutationFn: approveTerrain, onSuccess: invalidateAdmin });
   const archiveTerrainMutation = useMutation({ mutationFn: archiveTerrain, onSuccess: invalidateAdmin });
+  const terrainImageAddMutation = useMutation({
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => addAdminTerrainImage(id, await formImageInput(formData)),
+    onSuccess: invalidateAdmin
+  });
+  const terrainImageRemoveMutation = useMutation({
+    mutationFn: removeAdminTerrainImage,
+    onSuccess: invalidateAdmin
+  });
 
   const projectStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: ProjectStatus }) => updateAdminProjectStatus(id, status),
@@ -499,6 +571,14 @@ export default function AdminPage() {
     onSuccess: invalidateAdmin
   });
   const projectDeleteMutation = useMutation({ mutationFn: deleteAdminProject, onSuccess: invalidateAdmin });
+  const projectImageAddMutation = useMutation({
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => addAdminProjectImage(id, await formImageInput(formData)),
+    onSuccess: invalidateAdmin
+  });
+  const projectImageRemoveMutation = useMutation({
+    mutationFn: removeAdminProjectImage,
+    onSuccess: invalidateAdmin
+  });
 
   const simulationStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: SimulationStatus }) => updateAdminSimulationStatus(id, status),
@@ -727,13 +807,28 @@ export default function AdminPage() {
 
           {activeSection === "terrenos" ? (
             <TerrainsSection
+              createError={terrainCreateMutation.error}
+              createPending={terrainCreateMutation.isPending}
+              createSuccess={terrainCreateMutation.isSuccess}
               isLoading={terrainsQuery.isLoading}
+              imageError={terrainImageAddMutation.error ?? terrainImageRemoveMutation.error}
+              imagePending={terrainImageAddMutation.isPending || terrainImageRemoveMutation.isPending}
+              onAddImage={(id, formData) => terrainImageAddMutation.mutate({ id, formData })}
               onApprove={(id) => approveTerrainMutation.mutate(id)}
               onArchive={(id) => archiveTerrainMutation.mutate(id)}
+              onCreate={(formData) => terrainCreateMutation.mutate(formData)}
               onDelete={(id) => terrainDeleteMutation.mutate(id)}
+              onRemoveImage={(id) => terrainImageRemoveMutation.mutate(id)}
               onStatus={(id, status) => terrainStatusMutation.mutate({ id, status })}
               onUpdate={(id, formData) => terrainUpdateMutation.mutate({ id, formData })}
-              pending={terrainStatusMutation.isPending || terrainUpdateMutation.isPending || terrainDeleteMutation.isPending}
+              pending={
+                terrainStatusMutation.isPending ||
+                terrainCreateMutation.isPending ||
+                terrainUpdateMutation.isPending ||
+                terrainDeleteMutation.isPending ||
+                terrainImageAddMutation.isPending ||
+                terrainImageRemoveMutation.isPending
+              }
               terrains={terrains}
             />
           ) : null}
@@ -741,10 +836,20 @@ export default function AdminPage() {
           {activeSection === "projetos" ? (
             <ProjectsSection
               isLoading={projectsQuery.isLoading}
+              imageError={projectImageAddMutation.error ?? projectImageRemoveMutation.error}
+              imagePending={projectImageAddMutation.isPending || projectImageRemoveMutation.isPending}
+              onAddImage={(id, formData) => projectImageAddMutation.mutate({ id, formData })}
               onDelete={(id) => projectDeleteMutation.mutate(id)}
+              onRemoveImage={(id) => projectImageRemoveMutation.mutate(id)}
               onStatus={(id, status) => projectStatusMutation.mutate({ id, status })}
               onUpdate={(id, formData) => projectUpdateMutation.mutate({ id, formData })}
-              pending={projectStatusMutation.isPending || projectUpdateMutation.isPending || projectDeleteMutation.isPending}
+              pending={
+                projectStatusMutation.isPending ||
+                projectUpdateMutation.isPending ||
+                projectDeleteMutation.isPending ||
+                projectImageAddMutation.isPending ||
+                projectImageRemoveMutation.isPending
+              }
               projects={projects}
             />
           ) : null}
@@ -1236,24 +1341,50 @@ function TerrainsSection({
   terrains,
   isLoading,
   pending,
+  createPending,
+  createSuccess,
+  createError,
+  imagePending,
+  imageError,
   onApprove,
   onArchive,
   onStatus,
   onUpdate,
-  onDelete
+  onDelete,
+  onCreate,
+  onAddImage,
+  onRemoveImage
 }: {
   terrains: Terrain[];
   isLoading: boolean;
   pending: boolean;
+  createPending: boolean;
+  createSuccess: boolean;
+  createError: unknown;
+  imagePending: boolean;
+  imageError: unknown;
   onApprove: (id: string) => void;
   onArchive: (id: string) => void;
   onStatus: (id: string, status: TerrainStatus) => void;
   onUpdate: (id: string, formData: FormData) => void;
   onDelete: (id: string) => void;
+  onCreate: (formData: FormData) => void;
+  onAddImage: (id: string, formData: FormData) => void;
+  onRemoveImage: (id: string) => void;
 }) {
   return (
     <section className={panelClass()}>
       <SectionHeader eyebrow="Catalogo" title="Terrenos" total={terrains.length} />
+      <TerrainCreateForm disabled={createPending} onSubmit={onCreate} />
+      {createSuccess ? (
+        <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">Terreno cadastrado e publicado com sucesso.</p>
+      ) : null}
+      {createError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel cadastrar o terreno: {errorMessage(createError)}</p>
+      ) : null}
+      {imageError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel alterar a imagem: {errorMessage(imageError)}</p>
+      ) : null}
       <AdminTable columns={["Terreno", "Local", "Valores", "Status", "Acoes"]} empty="Nenhum terreno cadastrado." isLoading={isLoading}>
         {terrains.map((terrain) => (
           <tr className="align-top" key={terrain.id}>
@@ -1297,6 +1428,14 @@ function TerrainsSection({
               <div className="mt-3">
                 <EditPanel label="Editar terreno">
                   <TerrainEditForm disabled={pending} onSubmit={onUpdate} terrain={terrain} />
+                  <AdminImageManager
+                    disabled={imagePending}
+                    emptyText="Nenhuma imagem cadastrada para este terreno."
+                    images={terrain.images}
+                    onAdd={(formData) => onAddImage(terrain.id, formData)}
+                    onRemove={onRemoveImage}
+                    title="Imagens do terreno"
+                  />
                 </EditPanel>
               </div>
             </td>
@@ -1304,6 +1443,65 @@ function TerrainsSection({
         ))}
       </AdminTable>
     </section>
+  );
+}
+
+function TerrainCreateForm({
+  disabled,
+  onSubmit
+}: {
+  disabled: boolean;
+  onSubmit: (formData: FormData) => void;
+}) {
+  return (
+    <form
+      className="mb-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(new FormData(event.currentTarget));
+      }}
+    >
+      <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Novo terreno</p>
+          <h4 className="mt-1 text-lg font-semibold">Cadastrar terreno pelo admin</h4>
+        </div>
+        <span className="text-xs text-[var(--muted)]">Terrenos criados pelo admin entram publicados.</span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <input className={inputClass()} name="title" placeholder="Titulo do terreno" required />
+        <CurrencyInput name="price" placeholder="Valor do terreno" required />
+        <input className={inputClass()} min={1} name="areaM2" placeholder="Area total em m2" required type="number" />
+        <input className={inputClass()} name="city" placeholder="Cidade" required />
+        <input className={inputClass()} name="state" placeholder="Estado" required />
+        <input className={inputClass()} name="neighborhood" placeholder="Bairro" />
+        <input className={`${inputClass()} xl:col-span-2`} name="address" placeholder="Rua / avenida / numero" required />
+        <input className={inputClass()} name="zipCode" placeholder="CEP" />
+        <input className={inputClass()} min={0} name="frontageM" placeholder="Frente em metros" type="number" />
+        <input className={inputClass()} min={0} name="depthM" placeholder="Fundo em metros" type="number" />
+        <input className={inputClass()} name="zoning" placeholder="Zoneamento" />
+        <textarea className={`${textareaClass()} xl:col-span-4`} name="description" placeholder="Descricao do terreno" required />
+      </div>
+
+      <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] p-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="xl:col-span-4">
+          <p className="text-sm font-semibold">Imagem inicial</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">Opcional. Se marcar como capa, ela sera a foto principal do terreno.</p>
+        </div>
+        <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+        <input className={inputClass()} name="imageUrl" placeholder="Ou URL da imagem" type="url" />
+        <input className={inputClass()} name="altText" placeholder="Descricao da imagem" />
+        <label className="flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold">
+          <input className="h-4 w-4 accent-[var(--accent)]" defaultChecked name="isCover" type="checkbox" />
+          Usar como capa
+        </label>
+      </div>
+
+      <Button className="mt-4 w-full md:w-auto" disabled={disabled} type="submit" variant="secondary">
+        <Map size={16} />
+        {disabled ? "Cadastrando..." : "Cadastrar terreno"}
+      </Button>
+    </form>
   );
 }
 
@@ -1348,20 +1546,31 @@ function ProjectsSection({
   projects,
   isLoading,
   pending,
+  imagePending,
+  imageError,
   onStatus,
   onUpdate,
-  onDelete
+  onDelete,
+  onAddImage,
+  onRemoveImage
 }: {
   projects: Project[];
   isLoading: boolean;
   pending: boolean;
+  imagePending: boolean;
+  imageError: unknown;
   onStatus: (id: string, status: ProjectStatus) => void;
   onUpdate: (id: string, formData: FormData) => void;
   onDelete: (id: string) => void;
+  onAddImage: (id: string, formData: FormData) => void;
+  onRemoveImage: (id: string) => void;
 }) {
   return (
     <section className={panelClass()}>
       <SectionHeader eyebrow="Projetos" title="Projetos arquitetonicos" total={projects.length} />
+      {imageError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel alterar a imagem: {errorMessage(imageError)}</p>
+      ) : null}
       <AdminTable columns={["Projeto", "Arquiteto", "Detalhes", "Status", "Acoes"]} empty="Nenhum projeto cadastrado." isLoading={isLoading}>
         {projects.map((project) => (
           <tr className="align-top" key={project.id}>
@@ -1405,6 +1614,14 @@ function ProjectsSection({
               <div className="mt-3">
                 <EditPanel label="Editar projeto">
                   <ProjectEditForm disabled={pending} onSubmit={onUpdate} project={project} />
+                  <AdminImageManager
+                    disabled={imagePending}
+                    emptyText="Nenhuma imagem cadastrada para este projeto."
+                    images={project.images}
+                    onAdd={(formData) => onAddImage(project.id, formData)}
+                    onRemove={onRemoveImage}
+                    title="Imagens do projeto"
+                  />
                 </EditPanel>
               </div>
             </td>
@@ -1449,6 +1666,104 @@ function ProjectEditForm({
         Salvar projeto
       </Button>
     </form>
+  );
+}
+
+function AdminImageManager({
+  title,
+  emptyText,
+  images,
+  disabled,
+  onAdd,
+  onRemove
+}: {
+  title: string;
+  emptyText: string;
+  images?: AssetImage[];
+  disabled: boolean;
+  onAdd: (formData: FormData) => void;
+  onRemove: (id: string) => void;
+}) {
+  const sortedImages = [...(images ?? [])].sort((left, right) => {
+    if (left.isCover !== right.isCover) {
+      return left.isCover ? -1 : 1;
+    }
+
+    return (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
+  });
+
+  return (
+    <div className="mt-5 border-t border-[var(--line)] pt-5">
+      <div className="mb-3 flex flex-col justify-between gap-2 md:flex-row md:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Midia</p>
+          <h4 className="text-lg font-semibold">{title}</h4>
+        </div>
+        <span className="text-xs text-[var(--muted)]">Para trocar a capa, envie uma nova imagem marcada como capa.</span>
+      </div>
+
+      {sortedImages.length ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {sortedImages.map((image, index) => (
+            <article className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)]" key={image.id ?? `${image.url}-${index}`}>
+              <div className="aspect-[16/10] bg-black/5">
+                <PrivacyImage alt={image.altText ?? `Imagem ${index + 1}`} className="h-full w-full object-cover" src={image.url} />
+              </div>
+              <div className="grid gap-3 p-3 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <strong>{image.isCover ? "Capa principal" : `Imagem ${index + 1}`}</strong>
+                  <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-[var(--muted)]">Ordem {image.sortOrder ?? 0}</span>
+                </div>
+                <p className="line-clamp-2 text-[var(--muted)]">{image.altText ?? "Sem descricao"}</p>
+                <ActionButton
+                  disabled={disabled || !image.id}
+                  onClick={() => {
+                    if (image.id && confirmAction("Remover esta imagem?")) {
+                      onRemove(image.id);
+                    }
+                  }}
+                  tone="danger"
+                >
+                  <Trash2 size={14} />
+                  Remover imagem
+                </ActionButton>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[8px] border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">{emptyText}</div>
+      )}
+
+      <form
+        className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4 md:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          onAdd(new FormData(form));
+          form.reset();
+        }}
+      >
+        <label className="grid gap-2 text-sm font-medium">
+          <span>Arquivo da imagem</span>
+          <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+        </label>
+        <label className="grid gap-2 text-sm font-medium">
+          <span>Ou URL da imagem</span>
+          <input className={inputClass()} name="imageUrl" placeholder="https://..." type="url" />
+        </label>
+        <input className={inputClass()} name="altText" placeholder="Descricao da imagem" />
+        <input className={inputClass()} defaultValue={String(sortedImages.length + 1)} min={0} name="sortOrder" placeholder="Ordem" type="number" />
+        <label className="flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold">
+          <input className="h-4 w-4 accent-[var(--accent)]" name="isCover" type="checkbox" />
+          Usar como capa principal
+        </label>
+        <Button className="md:justify-self-start" disabled={disabled} type="submit" variant="secondary">
+          <ImageIcon size={16} />
+          Adicionar / trocar imagem
+        </Button>
+      </form>
+    </div>
   );
 }
 

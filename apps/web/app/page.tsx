@@ -42,18 +42,23 @@ type Step = {
 const steps: Step[] = [
   {
     icon: Compass,
-    title: "Comece pela localizacao",
-    description: "Digite cidade, bairro ou regiao. A home leva voce para o catalogo de terrenos com a busca aplicada."
+    title: "Escolha do terreno",
+    description: "Encontre o lote pela regiao, veja fotos, medidas e valor antes de seguir."
   },
   {
     icon: Map,
-    title: "Entenda o terreno",
-    description: "Na pagina do lote voce confere fotos, medidas, valor, endereco e informacoes importantes antes de falar com alguem."
+    title: "Projeto da casa",
+    description: "Abra os projetos compativeis com aquele terreno e escolha o modelo ideal."
   },
   {
-    icon: MessageCircleMore,
-    title: "Veja o projeto certo",
-    description: "Quando houver projeto compativel, ele aparece dentro do terreno para abrir detalhes e escolher com calma."
+    icon: Building2,
+    title: "Construcao da casa",
+    description: "Veja o pacote de projeto e obra para entender o caminho completo."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Aprovacao do financiamento",
+    description: "Simule com login e avance para atendimento quando fizer sentido para sua renda."
   }
 ];
 
@@ -160,11 +165,10 @@ export default function HomePage() {
             </span>
 
             <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.02] sm:text-6xl lg:text-7xl">
-              Ache o terreno certo e entenda o que pode ser construido nele.
+              Da escolha do terreno a aprovacao do financiamento.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-white/78">
-              Comece pela localizacao. Depois abra cada lote para ver fotos, medidas, valor e, quando existir, projetos
-              compativeis para analisar antes de escolher.
+              Uma unica plataforma para transformar seu projeto em realidade.
             </p>
 
             <form
@@ -195,15 +199,14 @@ export default function HomePage() {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <SearchChip icon={MapPin} label="Campinas / SP" onClick={() => applyTerrainFilters({ city: "Campinas", state: "SP" })} />
-                <SearchChip icon={MapPin} label="Nova Lima / MG" onClick={() => applyTerrainFilters({ city: "Nova Lima", state: "MG" })} />
-                <SearchChip icon={Compass} label="Condominio fechado" onClick={() => applyTerrainFilters({ search: "condominio" })} />
-                <SearchChip icon={ShieldCheck} label="Terrenos verificados" onClick={() => applyTerrainFilters({ search: "verificado" })} />
+                <SearchChip icon={MapPin} label="Buscar por cidade" onClick={() => applyTerrainFilters({ search: searchText })} />
+                <SearchChip icon={Compass} label="Ver terrenos publicados" onClick={() => router.push("/terrenos")} />
+                <SearchChip icon={ShieldCheck} label="Projetos compativeis" onClick={() => applyTerrainFilters({ search: "projeto" })} />
               </div>
             </form>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link className={`${actionLinkClass} bg-white text-[#11150f] hover:bg-white/90`} href="/terrenos">
+              <Link className={`${actionLinkClass} bg-[#0f766e] text-white hover:bg-[#0d655f]`} href="/terrenos">
                 <Map size={18} />
                 Ver terrenos
               </Link>
@@ -221,7 +224,7 @@ export default function HomePage() {
                 target="_blank"
               >
                 <MessageCircleMore size={18} />
-                Falar com o time
+                Falar com especialista
               </a>
             </div>
           </div>
@@ -233,10 +236,10 @@ export default function HomePage() {
           <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
             <div>
               <p className="text-sm font-semibold uppercase text-[var(--accent)]">Exemplo pratico</p>
-              <h2 className="mt-3 text-4xl font-semibold leading-tight">Um terreno, um projeto e uma conta simples.</h2>
+              <h2 className="mt-3 text-4xl font-semibold leading-tight">Um terreno, um projeto e um sonho realizado.</h2>
               <p className="mt-4 max-w-xl leading-7 text-[var(--muted)]">
-                O cliente abre o lote, entende qual casa combina com aquela metragem e entra logado para simular se o
-                pacote cabe na renda antes de conversar com o time.
+                O cliente encontra o lote, escolhe qual casa combina com seus sonhos e se cadastra para simular se tudo
+                cabe na renda. A qualquer momento, pode solicitar ajuda de um especialista.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -354,10 +357,10 @@ export default function HomePage() {
                   <Calculator size={17} />
                   Simulacao de renda
                 </div>
-                <h3 className="mt-3 text-3xl font-semibold leading-tight">Veja se o pacote cabe no bolso antes de selecionar.</h3>
+                <h3 className="mt-3 text-3xl font-semibold leading-tight">Descubra se o plano cabe na sua renda antes de avancar.</h3>
                 <p className="mt-3 max-w-2xl leading-7 text-white/76">
-                  A simulacao real pede login. Assim o cliente salva o terreno, revisa o projeto e recebe um caminho mais
-                  organizado para conversar sobre financiamento.
+                  A simulacao pede login para salvar terreno e projeto. Depois, o atendimento ajuda a conferir renda,
+                  documentos e proximos passos.
                 </p>
                 <dl className="mt-5 grid gap-4 border-t border-white/20 pt-4 sm:grid-cols-3">
                   <div>
@@ -383,10 +386,10 @@ export default function HomePage() {
         <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <p className="text-sm uppercase text-[var(--muted)]">Catalogo</p>
-            <h2 className="text-3xl font-semibold sm:text-4xl">Alguns terrenos para comecar.</h2>
+            <h2 className="text-3xl font-semibold sm:text-4xl">Terrenos em destaque.</h2>
             <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              A lista completa fica em terrenos. Aqui entram apenas alguns lotes recentes para o cliente sentir o tipo de
-              informacao que vai encontrar.
+              Veja alguns lotes publicados e abra a pagina do terreno para analisar fotos, medidas, valor e projetos
+              compativeis.
             </p>
           </div>
           <Link className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]" href="/terrenos">
@@ -421,7 +424,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             {steps.map((step, index) => (
               <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5" key={step.title}>
                 <div className="flex items-center justify-between gap-3">
@@ -470,7 +473,7 @@ export default function HomePage() {
               target="_blank"
             >
               <MessageCircleMore size={18} />
-              Falar com o time
+              Falar com especialista
             </a>
           </div>
         </div>

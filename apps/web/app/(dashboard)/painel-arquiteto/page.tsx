@@ -60,7 +60,29 @@ type PendingProjectImage = {
   isCover?: boolean;
 };
 
+const maxProjectImageSizeMb = 8;
+const maxProjectImageSize = maxProjectImageSizeMb * 1024 * 1024;
+
 function errorMessage(error: unknown) {
+  if (error && typeof error === "object" && "response" in error) {
+    const response = (error as { response?: { data?: { error?: unknown; message?: unknown } } }).response;
+    const bodyError = response?.data?.error;
+    const bodyMessage = response?.data?.message;
+
+    if (typeof bodyError === "string") {
+      return bodyError;
+    }
+
+    if (bodyError && typeof bodyError === "object" && "message" in bodyError) {
+      const message = (bodyError as { message?: unknown }).message;
+      return Array.isArray(message) ? message.join(" ") : String(message ?? "Nao foi possivel concluir a acao.");
+    }
+
+    if (typeof bodyMessage === "string") {
+      return bodyMessage;
+    }
+  }
+
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
     return error.message;
   }
@@ -71,6 +93,20 @@ function errorMessage(error: unknown) {
 function numberValue(value: number | string | undefined | null) {
   const parsed = Number(String(value ?? "0").replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function requireProjectImage(formData: FormData, key: string, label: string) {
+  const value = formData.get(key);
+
+  if (!value || typeof value === "string" || value.size === 0) {
+    throw new Error(`Envie a imagem: ${label}.`);
+  }
+
+  if (value.size > maxProjectImageSize) {
+    throw new Error(`${label} precisa ter ate ${maxProjectImageSizeMb}MB.`);
+  }
+
+  return value;
 }
 
 const statusLabels: Record<string, string> = {
@@ -332,6 +368,8 @@ export default function ArchitectPanelPage() {
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const isArchitect = user?.role === "ARCHITECT";
+  const [activeWorkspace, setActiveWorkspace] = useState<"projects" | "new-project" | "profile">("projects");
+  const [projectFormError, setProjectFormError] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: ["architect", "me"],
@@ -367,17 +405,15 @@ export default function ArchitectPanelPage() {
     mutationFn: async ({ input, images }: { input: CreateProjectInput; images: PendingProjectImage[] }) => {
       const project = await createProject(input);
 
-      await Promise.all(
-        images.map((image) =>
-          addProjectImage({
-            projectId: project.id,
-            url: image.url,
-            altText: image.altText,
-            sortOrder: image.sortOrder,
-            isCover: image.isCover
-          })
-        )
-      );
+      for (const image of images) {
+        await addProjectImage({
+          projectId: project.id,
+          url: image.url,
+          altText: image.altText,
+          sortOrder: image.sortOrder,
+          isCover: image.isCover
+        });
+      }
 
       return project;
     },
@@ -430,12 +466,34 @@ export default function ArchitectPanelPage() {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const [frontUrl, modelUrl, floorPlanUrl, measurementsUrl] = await Promise.all([
-      formDataImageValue(formData, "frontFile"),
-      formDataImageValue(formData, "modelFile"),
-      formDataImageValue(formData, "floorPlanFile"),
-      formDataImageValue(formData, "measurementsFile")
-    ]);
+    setProjectFormError(null);
+
+    try {
+      requireProjectImage(formData, "frontFile", "Fachada / frente");
+      requireProjectImage(formData, "modelFile", "Vista do modelo");
+      requireProjectImage(formData, "floorPlanFile", "Planta baixa");
+      requireProjectImage(formData, "measurementsFile", "Medidas do projeto");
+    } catch (error) {
+      setProjectFormError(errorMessage(error));
+      return;
+    }
+
+    let frontUrl = "";
+    let modelUrl = "";
+    let floorPlanUrl = "";
+    let measurementsUrl = "";
+
+    try {
+      [frontUrl, modelUrl, floorPlanUrl, measurementsUrl] = await Promise.all([
+        formDataImageValue(formData, "frontFile"),
+        formDataImageValue(formData, "modelFile"),
+        formDataImageValue(formData, "floorPlanFile"),
+        formDataImageValue(formData, "measurementsFile")
+      ]);
+    } catch (error) {
+      setProjectFormError(errorMessage(error));
+      return;
+    }
 
     const input: CreateProjectInput = {
       title: String(formData.get("title") ?? ""),
@@ -450,14 +508,6 @@ export default function ArchitectPanelPage() {
       estimatedBuildCost: toNumber(formData.get("estimatedBuildCost")),
       price: toNumber(formData.get("price"))
     };
-
-    if (frontUrl) {
-      input.renderUrl = frontUrl;
-    }
-
-    if (floorPlanUrl) {
-      input.floorPlanUrl = floorPlanUrl;
-    }
 
     const images: PendingProjectImage[] = [
       frontUrl
@@ -492,7 +542,12 @@ export default function ArchitectPanelPage() {
     ].filter(Boolean) as PendingProjectImage[];
 
     createProjectMutation.mutate({ input, images }, {
-      onSuccess: () => form.reset()
+      onError: (error) => setProjectFormError(errorMessage(error)),
+      onSuccess: () => {
+        form.reset();
+        setProjectFormError(null);
+        setActiveWorkspace("projects");
+      }
     });
   }
 
@@ -553,169 +608,238 @@ export default function ArchitectPanelPage() {
         <MetricCard icon={BarChart3} label="Conversao" value={`${Math.round((stats?.conversionRate ?? 0) * 100)}%`} />
       </div>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <form
-          className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5"
-          key={profile?.id ?? "profile"}
-          onSubmit={onProfileSubmit}
-        >
-          <div className="mb-5 flex items-center gap-2">
-            <FileText className="text-[var(--accent)]" size={21} />
-            <div>
-              <p className="text-sm uppercase text-[var(--muted)]">Perfil</p>
-              <h2 className="text-2xl font-semibold">Dados profissionais</h2>
-            </div>
-          </div>
-          <div className="grid gap-4">
-            <Input defaultValue={profile?.companyName ?? ""} name="companyName" placeholder="Nome do estudio ou escritorio" required />
-            <Input defaultValue={profile?.cauNumber ?? ""} name="cauNumber" placeholder="CAU ou registro profissional" />
-            <Input defaultValue={profile?.website ?? ""} name="website" placeholder="Site ou portfolio" />
-            <textarea className={textAreaClass()} defaultValue={profile?.bio ?? ""} name="bio" placeholder="Resumo do perfil profissional" />
-            {updateProfileMutation.isSuccess ? <p className="text-sm text-emerald-600">Perfil atualizado.</p> : null}
-            {updateProfileMutation.isError ? <p className="text-sm text-red-600">Nao foi possivel atualizar o perfil.</p> : null}
-            <Button disabled={updateProfileMutation.isPending} type="submit" variant="secondary">
-              <CheckCircle2 size={18} />
-              {updateProfileMutation.isPending ? "Salvando..." : "Salvar perfil"}
-            </Button>
-          </div>
-        </form>
+      <div className="mt-8 grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 lg:sticky lg:top-24">
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Trabalho</p>
+          <div className="mt-3 grid gap-2">
+            {[
+              { id: "projects" as const, icon: Building2, label: "Meus projetos", helper: `${projects.length} publicados` },
+              { id: "new-project" as const, icon: Upload, label: "Novo projeto", helper: isApproved ? "Enviar modelo" : "Aguardando aprovacao" },
+              { id: "profile" as const, icon: FileText, label: "Perfil", helper: profile?.cauNumber ? "Dados completos" : "Completar dados" }
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activeWorkspace === item.id;
 
-        <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" onSubmit={onProjectSubmit}>
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Upload className="text-[var(--accent)]" size={21} />
-              <div>
-                <p className="text-sm uppercase text-[var(--muted)]">Projeto</p>
-                <h2 className="text-2xl font-semibold">Publicar novo projeto</h2>
-              </div>
-            </div>
-            {!isApproved ? <span className="rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700">Bloqueado</span> : null}
-          </div>
-
-          <fieldset className="grid gap-4 disabled:opacity-60" disabled={!isApproved || createProjectMutation.isPending}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input name="title" placeholder="Nome do projeto" required />
-              <select className={selectClass()} defaultValue="Contemporaneo" name="style">
-                <option>Contemporaneo</option>
-                <option>Minimalista</option>
-                <option>Classico</option>
-                <option>Rustico</option>
-                <option>Industrial</option>
-              </select>
-              <Input inputMode="numeric" min={0} name="bedrooms" placeholder="Quartos" required type="number" />
-              <Input inputMode="numeric" min={0} name="bathrooms" placeholder="Banheiros" required type="number" />
-              <Input inputMode="decimal" min={1} name="areaM2" placeholder="Area m2" required type="number" />
-              <CurrencyInput name="price" placeholder="Preco do projeto" required />
-              <CurrencyInput name="estimatedBuildCost" placeholder="Custo estimado da obra" required />
-              <textarea
-                className={`${textAreaClass()} md:col-span-2`}
-                name="description"
-                placeholder="Descricao do projeto"
-                required
-              />
-            </div>
-            <div className="rounded-[8px] border border-[var(--line)] p-3">
-              <p className="mb-3 text-sm font-semibold">Imagens obrigatorias do projeto</p>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Fachada / frente</span>
-                  <Input accept="image/*" className={fileInputClass()} name="frontFile" required type="file" />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Vista do modelo</span>
-                  <Input accept="image/*" className={fileInputClass()} name="modelFile" required type="file" />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Planta baixa</span>
-                  <Input accept="image/*" className={fileInputClass()} name="floorPlanFile" required type="file" />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Medidas do projeto</span>
-                  <Input accept="image/*" className={fileInputClass()} name="measurementsFile" required type="file" />
-                </label>
-              </div>
-            </div>
-            <details className="rounded-[8px] border border-[var(--line)] p-3">
-              <summary className="cursor-pointer text-sm font-semibold">Mais dados</summary>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Input inputMode="numeric" min={0} name="suites" placeholder="Suites" type="number" />
-                <Input inputMode="numeric" min={0} name="parkingSpaces" placeholder="Vagas" type="number" />
-                <Input inputMode="numeric" min={1} name="floors" placeholder="Pavimentos" type="number" />
-              </div>
-            </details>
-          </fieldset>
-
-          {createProjectMutation.isSuccess ? (
-            <p className="mt-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
-              Projeto publicado e disponivel no marketplace.
-            </p>
-          ) : null}
-          {createProjectMutation.isError ? (
-            <p className="mt-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">
-              Nao foi possivel publicar. Confira se o perfil esta aprovado e os campos estao completos.
-            </p>
-          ) : null}
-
-          <Button className="mt-5 w-full" disabled={!isApproved || createProjectMutation.isPending} type="submit" variant="secondary">
-            <Upload size={18} />
-            {createProjectMutation.isPending ? "Publicando..." : "Publicar projeto"}
-          </Button>
-        </form>
-      </div>
-
-      <div className="mt-8 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase text-[var(--muted)]">Catalogo</p>
-            <h2 className="text-2xl font-semibold">Meus projetos</h2>
-          </div>
-          <span className="rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-3 py-2 text-sm font-semibold text-[var(--accent)]">
-            {projects.length}
-          </span>
-        </div>
-
-        {profileQuery.isLoading ? (
-          <div className="py-8 text-sm text-[var(--muted)]">Carregando projetos...</div>
-        ) : projects.length ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {projects.map((project) => (
-              <div className="rounded-[8px] border border-[var(--line)] p-4" key={project.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase text-[var(--muted)]">{project.style ?? "Projeto"}</p>
-                    <h3 className="mt-1 text-xl font-semibold">{project.title}</h3>
-                  </div>
-                  <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                    {statusLabel(project.status ?? "PUBLISHED")}
+              return (
+                <button
+                  className={`focus-ring rounded-[8px] border px-3 py-3 text-left transition ${
+                    isActive
+                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+                      : "border-[var(--line)] hover:bg-black/5 dark:hover:bg-white/10"
+                  }`}
+                  key={item.id}
+                  onClick={() => setActiveWorkspace(item.id)}
+                  type="button"
+                >
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <Icon className="text-[var(--accent)]" size={17} />
+                    {item.label}
                   </span>
+                  <span className="mt-1 block text-xs text-[var(--muted)]">{item.helper}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-3 text-sm">
+            <p className="font-semibold">Checklist rapido</p>
+            <div className="mt-3 grid gap-2 text-xs text-[var(--muted)]">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className={profile?.companyName ? "text-emerald-600" : "text-[var(--muted)]"} size={15} />
+                Perfil profissional
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className={isApproved ? "text-emerald-600" : "text-[var(--muted)]"} size={15} />
+                Aprovacao do admin
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className={projects.length ? "text-emerald-600" : "text-[var(--muted)]"} size={15} />
+                Primeiro projeto
+              </span>
+            </div>
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+          {activeWorkspace === "profile" ? (
+            <form
+              className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5"
+              key={profile?.id ?? "profile"}
+              onSubmit={onProfileSubmit}
+            >
+              <div className="mb-5 flex items-center gap-2">
+                <FileText className="text-[var(--accent)]" size={21} />
+                <div>
+                  <p className="text-sm uppercase text-[var(--muted)]">Perfil</p>
+                  <h2 className="text-2xl font-semibold">Dados profissionais</h2>
                 </div>
-                <p className="mt-3 line-clamp-2 text-sm text-[var(--muted)]">{project.description}</p>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                  <span>{area(project.areaM2)}</span>
-                  <span>{project.bedrooms} quartos</span>
-                  <span>{money(project.price)}</span>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Link className="inline-flex text-sm font-semibold text-[var(--accent)]" href={`/projetos/${project.id}`}>
-                    Abrir projeto
-                  </Link>
-                  {terrainsQuery.isLoading ? (
-                    <span className="text-sm text-[var(--muted)]">Carregando terrenos...</span>
-                  ) : null}
-                </div>
-                <ProjectTerrainFitForm project={project} terrains={terrains} />
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-[8px] border border-[var(--line)] p-5">
-            <AlertTriangle className="text-[var(--accent-3)]" size={24} />
-            <h3 className="mt-4 text-xl font-semibold">Nenhum projeto carregado ainda</h3>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Quando seu perfil estiver aprovado, use o formulario acima para publicar o primeiro projeto.
-            </p>
-          </div>
-        )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <Input defaultValue={profile?.companyName ?? ""} name="companyName" placeholder="Nome do estudio ou escritorio" required />
+                <Input defaultValue={profile?.cauNumber ?? ""} name="cauNumber" placeholder="CAU ou registro profissional" />
+                <Input className="md:col-span-2" defaultValue={profile?.website ?? ""} name="website" placeholder="Site ou portfolio" />
+                <textarea className={`${textAreaClass()} md:col-span-2`} defaultValue={profile?.bio ?? ""} name="bio" placeholder="Resumo do perfil profissional" />
+                {updateProfileMutation.isSuccess ? <p className="text-sm text-emerald-600 md:col-span-2">Perfil atualizado.</p> : null}
+                {updateProfileMutation.isError ? (
+                  <p className="text-sm text-red-600 md:col-span-2">Nao foi possivel atualizar o perfil: {errorMessage(updateProfileMutation.error)}</p>
+                ) : null}
+                <Button className="md:justify-self-start" disabled={updateProfileMutation.isPending} type="submit" variant="secondary">
+                  <CheckCircle2 size={18} />
+                  {updateProfileMutation.isPending ? "Salvando..." : "Salvar perfil"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
+
+          {activeWorkspace === "new-project" ? (
+            <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" onSubmit={onProjectSubmit}>
+              <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div className="flex items-center gap-2">
+                  <Upload className="text-[var(--accent)]" size={21} />
+                  <div>
+                    <p className="text-sm uppercase text-[var(--muted)]">Projeto</p>
+                    <h2 className="text-2xl font-semibold">Publicar novo projeto</h2>
+                  </div>
+                </div>
+                {!isApproved ? <span className="w-fit rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700">Bloqueado</span> : null}
+              </div>
+
+              <fieldset className="grid gap-5 disabled:opacity-60" disabled={!isApproved || createProjectMutation.isPending}>
+                <div className="rounded-[8px] border border-[var(--line)] p-4">
+                  <p className="mb-3 text-sm font-semibold">1. Dados principais</p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input name="title" placeholder="Nome do projeto" required />
+                    <select className={selectClass()} defaultValue="Contemporaneo" name="style">
+                      <option>Contemporaneo</option>
+                      <option>Minimalista</option>
+                      <option>Classico</option>
+                      <option>Rustico</option>
+                      <option>Industrial</option>
+                    </select>
+                    <Input inputMode="numeric" min={0} name="bedrooms" placeholder="Quartos" required type="number" />
+                    <Input inputMode="numeric" min={0} name="bathrooms" placeholder="Banheiros" required type="number" />
+                    <Input inputMode="decimal" min={1} name="areaM2" placeholder="Area m2" required type="number" />
+                    <CurrencyInput name="price" placeholder="Preco do projeto" required />
+                    <CurrencyInput name="estimatedBuildCost" placeholder="Custo estimado da obra" required />
+                    <textarea className={`${textAreaClass()} md:col-span-2`} name="description" placeholder="Descricao do projeto" required />
+                  </div>
+                </div>
+
+                <div className="rounded-[8px] border border-[var(--line)] p-4">
+                  <div className="mb-3 flex flex-col justify-between gap-1 md:flex-row md:items-end">
+                    <div>
+                      <p className="text-sm font-semibold">2. Imagens obrigatorias</p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">Use imagens de ate {maxProjectImageSizeMb}MB cada. Elas aparecem na pagina do projeto.</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Fachada / frente</span>
+                      <Input accept="image/*" className={fileInputClass()} name="frontFile" required type="file" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Vista do modelo</span>
+                      <Input accept="image/*" className={fileInputClass()} name="modelFile" required type="file" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Planta baixa</span>
+                      <Input accept="image/*" className={fileInputClass()} name="floorPlanFile" required type="file" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Medidas do projeto</span>
+                      <Input accept="image/*" className={fileInputClass()} name="measurementsFile" required type="file" />
+                    </label>
+                  </div>
+                </div>
+
+                <details className="rounded-[8px] border border-[var(--line)] p-4">
+                  <summary className="cursor-pointer text-sm font-semibold">3. Mais dados</summary>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <Input inputMode="numeric" min={0} name="suites" placeholder="Suites" type="number" />
+                    <Input inputMode="numeric" min={0} name="parkingSpaces" placeholder="Vagas" type="number" />
+                    <Input inputMode="numeric" min={1} name="floors" placeholder="Pavimentos" type="number" />
+                  </div>
+                </details>
+              </fieldset>
+
+              {createProjectMutation.isSuccess ? (
+                <p className="mt-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
+                  Projeto publicado e disponivel no marketplace.
+                </p>
+              ) : null}
+              {projectFormError ? (
+                <p className="mt-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">
+                  Nao foi possivel publicar: {projectFormError}
+                </p>
+              ) : null}
+
+              <Button className="mt-5 w-full" disabled={!isApproved || createProjectMutation.isPending} type="submit" variant="secondary">
+                <Upload size={18} />
+                {createProjectMutation.isPending ? "Publicando..." : "Publicar projeto"}
+              </Button>
+            </form>
+          ) : null}
+
+          {activeWorkspace === "projects" ? (
+            <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+              <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                  <p className="text-sm uppercase text-[var(--muted)]">Catalogo</p>
+                  <h2 className="text-2xl font-semibold">Meus projetos</h2>
+                </div>
+                <Button onClick={() => setActiveWorkspace("new-project")} type="button" variant="secondary">
+                  <Upload size={18} />
+                  Novo projeto
+                </Button>
+              </div>
+
+              {profileQuery.isLoading ? (
+                <div className="py-8 text-sm text-[var(--muted)]">Carregando projetos...</div>
+              ) : projects.length ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {projects.map((project) => (
+                    <div className="rounded-[8px] border border-[var(--line)] p-4" key={project.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase text-[var(--muted)]">{project.style ?? "Projeto"}</p>
+                          <h3 className="mt-1 text-xl font-semibold">{project.title}</h3>
+                        </div>
+                        <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
+                          {statusLabel(project.status ?? "PUBLISHED")}
+                        </span>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-sm text-[var(--muted)]">{project.description}</p>
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-[var(--muted)]">
+                        <span className="rounded-[8px] border border-[var(--line)] px-2 py-2">{area(project.areaM2)}</span>
+                        <span className="rounded-[8px] border border-[var(--line)] px-2 py-2">{project.bedrooms} quartos</span>
+                        <span className="rounded-[8px] border border-[var(--line)] px-2 py-2">{money(project.price)}</span>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <Link className="inline-flex text-sm font-semibold text-[var(--accent)]" href={`/projetos/${project.id}`}>
+                          Abrir projeto
+                        </Link>
+                        {terrainsQuery.isLoading ? <span className="text-sm text-[var(--muted)]">Carregando terrenos...</span> : null}
+                      </div>
+                      <ProjectTerrainFitForm project={project} terrains={terrains} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[8px] border border-[var(--line)] p-5">
+                  <AlertTriangle className="text-[var(--accent-3)]" size={24} />
+                  <h3 className="mt-4 text-xl font-semibold">Nenhum projeto carregado ainda</h3>
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    Quando seu perfil estiver aprovado, publique o primeiro projeto por aqui.
+                  </p>
+                  <Button className="mt-4" disabled={!isApproved} onClick={() => setActiveWorkspace("new-project")} type="button" variant="secondary">
+                    <Upload size={18} />
+                    Cadastrar primeiro projeto
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   );

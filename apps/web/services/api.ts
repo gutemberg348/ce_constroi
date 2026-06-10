@@ -15,7 +15,7 @@ export const api = axios.create({
     typeof window === "undefined"
       ? process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api/v1"
       : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api/v1",
-  timeout: 5000,
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json"
   }
