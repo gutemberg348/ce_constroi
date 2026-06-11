@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#061733]/95 text-white backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link className="flex items-center gap-2 font-semibold" href="/">
             {hasLogo ? (
@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             ) : (
               <>
-                <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#11150f] text-white dark:bg-white dark:text-[#11150f]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#0d6efd] text-white">
                   C
                 </span>
                 <span>{settings.brandName}</span>
@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="hidden items-center gap-1 md:flex">
             {links.map((item) => (
               <Link
-                className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] px-3 text-sm text-[var(--muted)] transition hover:bg-black/5 hover:text-[var(--foreground)] dark:hover:bg-white/10"
+                className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] px-3 text-sm text-white/74 transition hover:bg-white/10 hover:text-white"
                 href={item.href}
                 key={item.href}
               >
@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             <Link
-              className="focus-ring ml-2 inline-flex h-10 items-center gap-2 rounded-[8px] bg-[#0f766e] px-3 text-sm font-semibold text-white transition hover:bg-[#0d655f] dark:bg-[#2dd4bf] dark:text-[#062522] dark:hover:bg-[#5eead4]"
+              className="focus-ring ml-2 inline-flex h-10 items-center gap-2 rounded-[8px] bg-[#0d6efd] px-3 text-sm font-semibold text-white transition hover:bg-[#0b5ed7]"
               href={announceLink.href}
             >
               <announceLink.icon size={16} />
@@ -110,14 +110,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isLoggedIn ? (
               <>
                 <Link
-                  className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-[var(--muted)] hover:text-[var(--foreground)] sm:inline-flex"
+                  className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white sm:inline-flex"
                   href={dashboardHref}
                 >
                   <UserRound size={16} />
                   Meu painel
                 </Link>
                 <button
-                  className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 text-sm font-semibold text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10"
+                  className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] border border-white/18 px-3 text-sm font-semibold text-white hover:bg-white/10"
                   onClick={logout}
                   type="button"
                 >
@@ -128,13 +128,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : (
               <>
                 <Link
-                  className="focus-ring hidden h-10 items-center rounded-[8px] px-3 text-sm font-semibold text-[var(--muted)] hover:text-[var(--foreground)] sm:inline-flex"
+                  className="focus-ring hidden h-10 items-center rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white sm:inline-flex"
                   href="/login"
                 >
                   Entrar
                 </Link>
                 <Link
-                  className="focus-ring inline-flex h-10 items-center rounded-[8px] bg-[#0f766e] px-4 text-sm font-semibold text-white hover:bg-[#0d655f] dark:bg-[#2dd4bf] dark:text-[#062522] dark:hover:bg-[#5eead4]"
+                  className="focus-ring inline-flex h-10 items-center rounded-[8px] bg-[#0d6efd] px-4 text-sm font-semibold text-white hover:bg-[#0b5ed7]"
                   href="/register"
                 >
                   Criar conta
@@ -143,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <button
               aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-[var(--line)] text-[var(--foreground)] md:hidden"
+              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white md:hidden"
               onClick={() => setIsMobileMenuOpen((current) => !current)}
               type="button"
             >
@@ -152,14 +152,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {isMobileMenuOpen ? (
-          <div className="border-t border-[var(--line)] bg-[var(--background)] px-4 py-3 md:hidden">
+          <div className="border-t border-white/10 bg-[#061733] px-4 py-3 md:hidden">
             <nav className="mx-auto grid max-w-7xl gap-2">
               {[announceLink, ...links].map((item) => (
                 <Link
                   className={`focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold ${
                     item.href === announceLink.href
-                      ? "bg-[#0f766e] text-white dark:bg-[#2dd4bf] dark:text-[#062522]"
-                      : "text-[var(--muted)] hover:bg-black/5 hover:text-[var(--foreground)] dark:hover:bg-white/10"
+                      ? "bg-[#0d6efd] text-white"
+                      : "text-white/74 hover:bg-white/10 hover:text-white"
                   }`}
                   href={item.href}
                   key={item.href}
@@ -171,7 +171,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
               {isLoggedIn ? (
                 <Link
-                  className="focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold text-[var(--muted)] hover:bg-black/5 hover:text-[var(--foreground)] dark:hover:bg-white/10"
+                  className="focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white"
                   href={dashboardHref}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -181,14 +181,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : (
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <Link
-                    className="focus-ring inline-flex h-11 items-center justify-center rounded-[8px] border border-[var(--line)] text-sm font-semibold"
+                    className="focus-ring inline-flex h-11 items-center justify-center rounded-[8px] border border-white/18 text-sm font-semibold text-white"
                     href="/login"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Entrar
                   </Link>
                   <Link
-                    className="focus-ring inline-flex h-11 items-center justify-center rounded-[8px] bg-[#11150f] text-sm font-semibold text-white dark:bg-white dark:text-[#11150f]"
+                    className="focus-ring inline-flex h-11 items-center justify-center rounded-[8px] bg-[#0d6efd] text-sm font-semibold text-white"
                     href="/register"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

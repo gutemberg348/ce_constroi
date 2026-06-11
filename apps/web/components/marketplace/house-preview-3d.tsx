@@ -571,7 +571,7 @@ export function HousePreview3D({
   }, [project, terrain]);
 
   return (
-    <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#eef4ec] dark:bg-[#11160f]">
+    <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#eff5ff] dark:bg-[#071b35]">
       <div className="relative min-h-[260px] sm:min-h-[340px] lg:min-h-[420px]">
         <div className="absolute inset-0" ref={containerRef} />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-2 p-3 sm:gap-3 sm:p-4">
@@ -584,7 +584,7 @@ export function HousePreview3D({
             <p className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-[var(--muted)] sm:text-sm sm:leading-6">{note ?? "Projeto encaixado neste terreno."}</p>
           </div>
           {compatibilityScore !== null ? (
-            <div className="rounded-[8px] bg-[#11150f] px-3 py-2 text-right text-white shadow-xl dark:bg-white dark:text-[#11150f] sm:px-4 sm:py-3">
+            <div className="rounded-[8px] bg-[#061733] px-3 py-2 text-right text-white shadow-xl dark:bg-white dark:text-[#061733] sm:px-4 sm:py-3">
               <span className="block text-[11px] uppercase opacity-70">Compatibilidade</span>
               <strong className="text-lg sm:text-xl">{compatibilityScore.toFixed(0)}%</strong>
             </div>

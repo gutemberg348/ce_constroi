@@ -50,7 +50,7 @@ function selectClass() {
 }
 
 function fileInputClass() {
-  return "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm outline-none file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#11150f] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white";
+  return "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm outline-none file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#061733] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white";
 }
 
 type PendingProjectImage = {

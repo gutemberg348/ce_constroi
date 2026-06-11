@@ -19,7 +19,7 @@ export default function CheckoutPage() {
             </div>
           ))}
         </div>
-        <aside className="rounded-[8px] border border-[var(--line)] bg-[#11150f] p-6 text-white dark:bg-white dark:text-[#11150f]">
+        <aside className="rounded-[8px] border border-[var(--line)] bg-[#061733] p-6 text-white dark:bg-white dark:text-[#061733]">
           <CreditCard size={28} />
           <p className="mt-8 text-sm opacity-75">Total</p>
           <strong className="text-4xl">R$ 685.170</strong>

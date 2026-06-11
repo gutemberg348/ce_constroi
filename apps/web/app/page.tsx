@@ -10,7 +10,9 @@ import {
   BadgeCheck,
   Building2,
   Calculator,
+  ClipboardCheck,
   Compass,
+  Hammer,
   Map,
   MapPin,
   MessageCircleMore,
@@ -41,22 +43,22 @@ type Step = {
 
 const steps: Step[] = [
   {
-    icon: Compass,
+    icon: MapPin,
     title: "Escolha do terreno",
     description: "Encontre o lote pela regiao, veja fotos, medidas e valor antes de seguir."
   },
   {
-    icon: Map,
+    icon: ClipboardCheck,
     title: "Projeto da casa",
     description: "Abra os projetos compativeis com aquele terreno e escolha o modelo ideal."
   },
   {
-    icon: Building2,
+    icon: Hammer,
     title: "Construcao da casa",
     description: "Veja o pacote de projeto e obra para entender o caminho completo."
   },
   {
-    icon: ShieldCheck,
+    icon: BadgeCheck,
     title: "Aprovacao do financiamento",
     description: "Simule com login e avance para atendimento quando fizer sentido para sua renda."
   }
@@ -151,10 +153,10 @@ export default function HomePage() {
   return (
     <>
       <section
-        className="border-b border-[var(--line)] bg-[#11150f] bg-cover bg-center text-white"
+        className="border-b border-white/10 bg-[#061733] bg-cover bg-center text-white"
         style={{
           backgroundImage:
-            "linear-gradient(90deg, rgba(8,10,8,0.96), rgba(8,10,8,0.84) 42%, rgba(8,10,8,0.32)), url('/brand/home-hero.png')"
+            "linear-gradient(90deg, rgba(3,13,34,0.96), rgba(5,24,58,0.86) 42%, rgba(8,46,112,0.38)), url('/brand/home-hero.png')"
         }}
       >
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
@@ -181,7 +183,7 @@ export default function HomePage() {
                   <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                   <input
                     autoComplete="address-level2"
-                    className="focus-ring h-10 w-full rounded-[8px] border border-white/18 bg-white px-3 pl-10 text-sm text-[#11150f] outline-none placeholder:text-[#616861]"
+                    className="focus-ring h-10 w-full rounded-[8px] border border-white/18 bg-white px-3 pl-10 text-sm text-[#061733] outline-none placeholder:text-[#64748b]"
                     list="home-city-suggestions"
                     onChange={(event) => setSearchText(event.target.value)}
                     placeholder="Cidade, bairro ou regiao"
@@ -206,7 +208,7 @@ export default function HomePage() {
             </form>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link className={`${actionLinkClass} bg-[#0f766e] text-white hover:bg-[#0d655f]`} href="/terrenos">
+              <Link className={`${actionLinkClass} bg-[#0d6efd] text-white hover:bg-[#0b5ed7]`} href="/terrenos">
                 <Map size={18} />
                 Ver terrenos
               </Link>
@@ -243,7 +245,7 @@ export default function HomePage() {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  className={`${actionLinkClass} bg-[#0f766e] text-white hover:bg-[#0d655f] dark:bg-[#2dd4bf] dark:text-[#062522] dark:hover:bg-[#5eead4]`}
+                  className={`${actionLinkClass} bg-[#0d6efd] text-white hover:bg-[#0b5ed7] dark:bg-[#60a5fa] dark:text-[#061733] dark:hover:bg-[#93c5fd]`}
                   href="/terrenos"
                 >
                   <Map size={18} />
@@ -326,7 +328,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="rounded-[8px] border border-[#0f766e]/30 bg-[#0f766e] p-5 text-white shadow-xl shadow-[#0f766e]/12 dark:bg-[#115e59]">
+              <div className="rounded-[8px] border border-[#0d6efd]/30 bg-[#0d6efd] p-5 text-white shadow-xl shadow-[#0d6efd]/18 dark:bg-[#0b5ed7]">
                 <div className="mb-5 grid gap-3 sm:grid-cols-2">
                   <div className="relative h-24 overflow-hidden rounded-[8px] border border-white/20">
                     <Image
@@ -424,17 +426,18 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {steps.map((step, index) => (
-              <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5" key={step.title}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
-                    <step.icon size={20} />
+              <div className="relative overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5 text-center" key={step.title}>
+                <span className="absolute right-4 top-4 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">0{index + 1}</span>
+                <div className="mx-auto flex h-32 items-center justify-center">
+                  <div className="relative flex h-28 w-28 items-center justify-center">
+                    <span className="absolute inset-3 rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]" />
+                    <step.icon className="relative text-[var(--accent)]" size={88} strokeWidth={1.8} />
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">0{index + 1}</span>
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{step.description}</p>
+                <h3 className="mt-2 text-2xl font-semibold leading-tight">{step.title}</h3>
+                <p className="mx-auto mt-3 max-w-[15rem] text-sm leading-6 text-[var(--muted)]">{step.description}</p>
               </div>
             ))}
           </div>
@@ -444,16 +447,16 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-6 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <p className="text-sm uppercase text-[var(--muted)]">Anunciar terreno</p>
+            <p className="text-sm uppercase text-[var(--muted)]">Quer vender seu terreno?</p>
             <h2 className="mt-2 text-3xl font-semibold">Tem terreno para anunciar?</h2>
             <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              Envie as informacoes do lote, fotos e medidas. O time avalia os dados e coloca o terreno no fluxo certo do
-              catalogo.
+              Faca seu cadastro e nos envie as informacoes do seu terreno/lote juntamente com as fotos e medidas. Nossos
+              especialistas avaliarao os dados e os colocarao em evidencia em nosso catalogo.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              className={`${actionLinkClass} bg-[#0f766e] text-white hover:bg-[#0d655f] dark:bg-[#2dd4bf] dark:text-[#062522] dark:hover:bg-[#5eead4]`}
+              className={`${actionLinkClass} bg-[#0d6efd] text-white hover:bg-[#0b5ed7] dark:bg-[#60a5fa] dark:text-[#061733] dark:hover:bg-[#93c5fd]`}
               href="/anunciar-terreno"
             >
               <Building2 size={18} />

@@ -255,11 +255,11 @@ export default function AnnounceTerrainPage() {
             <p className="text-sm font-semibold uppercase text-[var(--accent)]">Anuncie seu terreno</p>
             <h1 className="mt-3 text-4xl font-semibold">Anuncie seu terreno conosco!</h1>
             <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              Cadastre com total seguranca. Para enviar o anuncio, use uma conta de proprietario.
+              Cadastre com total seguranca. Para enviar seu anuncio, use uma conta de Proprietario ou Corretor.
             </p>
             {accessToken ? (
               <p className="mt-3 text-sm text-[var(--muted)]">
-                Voce esta logado como {user?.role}. Entre com uma conta de proprietario para anunciar.
+                Voce esta logado como {user?.role}. Entre com uma conta de Proprietario ou Corretor para anunciar.
               </p>
             ) : null}
           </div>
@@ -273,7 +273,7 @@ export default function AnnounceTerrainPage() {
             <Link href="/register?role=TERRAIN_OWNER&next=/anunciar-terreno">
               <Button className="w-full" type="button" variant="secondary">
                 <UserRound size={18} />
-                Cadastrar proprietario
+                Cadastrar proprietario/corretor
               </Button>
             </Link>
             {accessToken ? (
@@ -377,7 +377,7 @@ export default function AnnounceTerrainPage() {
                   </span>
                   <input
                     accept="image/*"
-                    className="block w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#11150f] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white dark:file:bg-white dark:file:text-[#11150f]"
+                    className="block w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#061733] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white dark:file:bg-white dark:file:text-[#061733]"
                     onChange={(event) => {
                       const file = event.target.files?.[0] ?? null;
                       setPhotos((current) => {

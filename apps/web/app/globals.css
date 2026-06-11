@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8f5;
-  --foreground: #151714;
-  --muted: #6d746b;
-  --line: #dfe4dc;
+  --background: #f6f8fc;
+  --foreground: #061733;
+  --muted: #64748b;
+  --line: #d9e2f2;
   --panel: #ffffff;
-  --accent: #0f766e;
-  --accent-2: #274690;
-  --accent-3: #b7791f;
+  --accent: #0d6efd;
+  --accent-2: #123f8c;
+  --accent-3: #f6b21a;
 }
 
 .dark {
-  --background: #10120f;
-  --foreground: #f4f6f0;
-  --muted: #a5ad9f;
-  --line: #293126;
-  --panel: #171b15;
-  --accent: #2dd4bf;
-  --accent-2: #8fb3ff;
-  --accent-3: #f2c14e;
+  --background: #061733;
+  --foreground: #f8fbff;
+  --muted: #aebbd0;
+  --line: #1d355c;
+  --panel: #0b1f3d;
+  --accent: #60a5fa;
+  --accent-2: #93c5fd;
+  --accent-3: #facc15;
 }
 
 * {
@@ -33,7 +33,7 @@ html {
 body {
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(15, 118, 110, 0.08), transparent 280px),
+    linear-gradient(180deg, rgba(13, 110, 253, 0.08), transparent 280px),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
