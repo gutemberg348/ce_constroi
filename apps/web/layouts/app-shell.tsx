@@ -70,17 +70,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link className="flex min-w-0 items-center gap-2 font-semibold" href="/">
             {hasLogo ? (
-              <span className="relative flex h-11 w-36 shrink-0 items-center overflow-hidden sm:h-12 sm:w-56 md:w-64">
+              <span className="relative flex h-[52px] w-44 shrink-0 items-center overflow-hidden sm:w-56 md:w-64">
                 {logoLightUrl ? (
-                  <img alt={settings.brandName} className="h-full w-full object-contain object-left dark:hidden" src={logoLightUrl} />
+                  <img alt={settings.brandName} className="absolute left-0 top-1/2 w-full max-w-none -translate-y-1/2 dark:hidden" src={logoLightUrl} />
                 ) : null}
                 {logoDarkUrl ? (
-                  <img alt={settings.brandName} className="hidden h-full w-full object-contain object-left dark:block" src={logoDarkUrl} />
+                  <img alt={settings.brandName} className="absolute left-0 top-1/2 hidden w-full max-w-none -translate-y-1/2 dark:block" src={logoDarkUrl} />
                 ) : null}
                 <span className="sr-only">{settings.brandName}</span>
               </span>
             ) : isLoadingSettings ? (
-              <span aria-hidden="true" className="h-11 w-36 shrink-0 rounded-[8px] bg-white/10 sm:h-12 sm:w-56 md:w-64" />
+              <span aria-hidden="true" className="h-[52px] w-44 shrink-0 rounded-[8px] bg-white/10 sm:w-56 md:w-64" />
             ) : (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#0d6efd] text-white">
