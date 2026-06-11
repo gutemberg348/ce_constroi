@@ -50,10 +50,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const logout = useAuthStore((state) => state.logout);
   const isLoggedIn = Boolean(user && accessToken);
   const dashboardHref = getDashboardHref(user?.role);
-  const settings = settingsQuery.data ?? defaultSiteSettings;
-  const logoLightUrl = settings.logoLightUrl || settings.logoUrl || settings.logoDarkUrl || null;
-  const logoDarkUrl = settings.logoDarkUrl || settings.logoUrl || logoLightUrl;
+  const loadedSettings = settingsQuery.data;
+  const settings = loadedSettings ?? defaultSiteSettings;
+  const logoLightUrl = loadedSettings?.logoLightUrl || loadedSettings?.logoUrl || loadedSettings?.logoDarkUrl || null;
+  const logoDarkUrl = loadedSettings?.logoDarkUrl || loadedSettings?.logoUrl || logoLightUrl;
   const hasLogo = Boolean(logoLightUrl || logoDarkUrl);
+  const isLoadingSettings = !loadedSettings && settingsQuery.isPending;
 
   useEffect(() => {
     void trackSiteEvent({
@@ -65,18 +67,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#061733]/95 text-white backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link className="flex items-center gap-2 font-semibold" href="/">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link className="flex min-w-0 items-center gap-2 font-semibold" href="/">
             {hasLogo ? (
-              <span className="relative flex h-11 w-28 shrink-0 items-center overflow-hidden sm:w-40 md:w-44">
+              <span className="relative flex h-14 w-36 shrink-0 items-center overflow-hidden sm:h-16 sm:w-60 md:w-72">
                 {logoLightUrl ? (
-                  <img alt={settings.brandName} className="h-full w-full object-contain dark:hidden" src={logoLightUrl} />
+                  <img alt={settings.brandName} className="h-full w-full object-cover object-center dark:hidden" src={logoLightUrl} />
                 ) : null}
                 {logoDarkUrl ? (
-                  <img alt={settings.brandName} className="hidden h-full w-full object-contain dark:block" src={logoDarkUrl} />
+                  <img alt={settings.brandName} className="hidden h-full w-full object-cover object-center dark:block" src={logoDarkUrl} />
                 ) : null}
                 <span className="sr-only">{settings.brandName}</span>
               </span>
+            ) : isLoadingSettings ? (
+              <span aria-hidden="true" className="h-12 w-36 shrink-0 rounded-[8px] bg-white/10 sm:w-60 md:w-72" />
             ) : (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#0d6efd] text-white">

@@ -200,6 +200,11 @@ function formText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function hasFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return Boolean(value && typeof value !== "string" && value.size > 0);
+}
+
 function optionalText(formData: FormData, key: string) {
   const value = formText(formData, key);
   return value.length ? value : undefined;
@@ -674,15 +679,23 @@ export default function AdminPage() {
   function submitLogo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const currentLogo = settingsQuery.data?.logoUrl ?? "";
+    const currentLightLogo = settingsQuery.data?.logoLightUrl ?? currentLogo;
+    const currentDarkLogo = settingsQuery.data?.logoDarkUrl ?? currentLogo;
+    const hasLightFile = hasFile(formData, "logoLightFile");
+    const hasDarkFile = hasFile(formData, "logoDarkFile");
 
     void Promise.all([
-      formDataImageValue(formData, "logoLightFile", settingsQuery.data?.logoLightUrl ?? settingsQuery.data?.logoUrl ?? ""),
-      formDataImageValue(formData, "logoDarkFile", settingsQuery.data?.logoDarkUrl ?? settingsQuery.data?.logoUrl ?? "")
+      formDataImageValue(formData, "logoLightFile", currentLightLogo),
+      formDataImageValue(formData, "logoDarkFile", currentDarkLogo)
     ]).then(([logoLightUrl, logoDarkUrl]) => {
+      const normalizedLightLogo = hasLightFile || !hasDarkFile ? logoLightUrl : logoDarkUrl;
+      const normalizedDarkLogo = hasDarkFile || !hasLightFile ? logoDarkUrl : logoLightUrl;
+
       settingsMutation.mutate({
         brandName: formText(formData, "brandName"),
-        logoLightUrl,
-        logoDarkUrl
+        logoLightUrl: normalizedLightLogo,
+        logoDarkUrl: normalizedDarkLogo
       });
     });
   }
