@@ -11,9 +11,9 @@ export type PublicSiteSettings = {
 
 const defaults: PublicSiteSettings = {
   brandName: "Ce constroi",
-  logoUrl: "/brand/logo-light.svg",
-  logoLightUrl: "/brand/logo-light.svg",
-  logoDarkUrl: "/brand/logo-dark.svg"
+  logoUrl: "/brand/ce-constroi-logo.png",
+  logoLightUrl: "/brand/ce-constroi-logo.png",
+  logoDarkUrl: "/brand/ce-constroi-logo.png"
 };
 
 function stringValue(value: unknown) {

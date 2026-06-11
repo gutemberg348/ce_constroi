@@ -156,7 +156,8 @@ export default function HomePage() {
         className="border-b border-white/10 bg-[#061733] bg-cover bg-center text-white"
         style={{
           backgroundImage:
-            "linear-gradient(90deg, rgba(3,13,34,0.96), rgba(5,24,58,0.86) 42%, rgba(8,46,112,0.38)), url('/brand/home-hero.png')"
+            "linear-gradient(90deg, rgba(3,13,34,0.94) 0%, rgba(6,20,45,0.82) 38%, rgba(8,28,62,0.38) 68%, rgba(8,28,62,0.16) 100%), url('/brand/home-hero.png')",
+          backgroundPosition: "center right"
         }}
       >
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">

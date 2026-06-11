@@ -66,11 +66,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#061733]/95 text-white backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#10284c]/95 text-white backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link className="flex min-w-0 items-center gap-2 font-semibold" href="/">
             {hasLogo ? (
-              <span className="relative flex h-14 w-40 shrink-0 items-center overflow-hidden sm:h-16 sm:w-64 md:w-80">
+              <span className="relative flex h-11 w-36 shrink-0 items-center overflow-hidden sm:h-12 sm:w-56 md:w-64">
                 {logoLightUrl ? (
                   <img alt={settings.brandName} className="h-full w-full object-contain object-left dark:hidden" src={logoLightUrl} />
                 ) : null}
@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="sr-only">{settings.brandName}</span>
               </span>
             ) : isLoadingSettings ? (
-              <span aria-hidden="true" className="h-12 w-40 shrink-0 rounded-[8px] bg-white/10 sm:w-64 md:w-80" />
+              <span aria-hidden="true" className="h-11 w-36 shrink-0 rounded-[8px] bg-white/10 sm:h-12 sm:w-56 md:w-64" />
             ) : (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#0d6efd] text-white">
@@ -156,7 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {isMobileMenuOpen ? (
-          <div className="border-t border-white/10 bg-[#061733] px-4 py-3 md:hidden">
+          <div className="border-t border-white/10 bg-[#10284c] px-4 py-3 md:hidden">
             <nav className="mx-auto grid max-w-7xl gap-2">
               {[announceLink, ...links].map((item) => (
                 <Link
