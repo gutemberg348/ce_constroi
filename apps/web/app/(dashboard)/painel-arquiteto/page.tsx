@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -12,23 +12,21 @@ import {
   ExternalLink,
   FileText,
   Map,
-  MapPin,
   Upload,
   Wallet
 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { ProjectTerrainFitForm } from "@/components/dashboard/project-terrain-fit-form";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { area, money } from "@/lib/format";
 import { formDataImageValue } from "@/lib/files";
 import { getArchitectMe, getArchitectStats, updateArchitectProfile } from "@/services/architects";
-import { upsertCompatibility } from "@/services/compatibility";
 import { addProjectImage } from "@/services/project-images";
 import { createProject, type CreateProjectInput } from "@/services/projects";
 import { getTerrains } from "@/services/terrains";
 import { useAuthStore } from "@/stores/auth-store";
-import type { Project, Terrain } from "@/types/domain";
 
 function toNumber(value: FormDataEntryValue | null) {
   const normalized = String(value ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
@@ -90,11 +88,6 @@ function errorMessage(error: unknown) {
   return "Nao foi possivel carregar o painel agora.";
 }
 
-function numberValue(value: number | string | undefined | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function requireProjectImage(formData: FormData, key: string, label: string) {
   const value = formData.get(key);
 
@@ -131,408 +124,13 @@ function statusLabel(status?: string) {
   return status ? (statusLabels[status] ?? status) : "-";
 }
 
-function defaultCompatibilityScore(project: Project, terrain?: Terrain | null) {
-  if (!terrain) {
-    return 80;
-  }
-
-  const projectArea = numberValue(project.areaM2);
-  const terrainArea = numberValue(terrain.areaM2);
-
-  if (!projectArea || !terrainArea) {
-    return 80;
-  }
-
-  if (projectArea > terrainArea) {
-    return 35;
-  }
-
-  const occupation = projectArea / terrainArea;
-
-  if (occupation <= 0.35) {
-    return 92;
-  }
-
-  if (occupation <= 0.55) {
-    return 84;
-  }
-
-  if (occupation <= 0.7) {
-    return 72;
-  }
-
-  return 58;
-}
-
-function suggestedMinTerrainArea(project: Project) {
-  const projectArea = numberValue(project.areaM2);
-  return projectArea ? Math.ceil(projectArea * 1.15) : 0;
-}
-
-function meters(value: number | string | undefined | null) {
-  const parsed = numberValue(value);
-  return parsed ? `${parsed.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m` : "Nao informado";
-}
-
-function terrainFitScore(project: Project, terrain: Terrain) {
-  const projectArea = numberValue(project.areaM2);
-  const terrainArea = numberValue(terrain.areaM2);
-  const minFrontage = numberValue(project.minFrontageM);
-  const minDepth = numberValue(project.minDepthM);
-  const frontage = numberValue(terrain.frontageM);
-  const depth = numberValue(terrain.depthM);
-
-  if (!projectArea || !terrainArea || terrainArea < projectArea) {
-    return 0;
-  }
-
-  let score = defaultCompatibilityScore(project, terrain);
-  const occupation = projectArea / terrainArea;
-
-  if (occupation >= 0.35 && occupation <= 0.72) {
-    score += 8;
-  }
-
-  if (minFrontage && frontage && frontage >= minFrontage) {
-    score += 5;
-  }
-
-  if (minDepth && depth && depth >= minDepth) {
-    score += 5;
-  }
-
-  return Math.min(100, score);
-}
-
-function terrainSummary(terrain: Terrain) {
-  return [terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ");
-}
-
-function ProjectTerrainFitForm({ project, terrains }: { project: Project; terrains: Terrain[] }) {
-  const queryClient = useQueryClient();
-  const suggestedArea = suggestedMinTerrainArea(project);
-  const suggestedFrontage = numberValue(project.minFrontageM);
-  const suggestedDepth = numberValue(project.minDepthM);
-  const [selectedTerrainId, setSelectedTerrainId] = useState("");
-  const [terrainSearch, setTerrainSearch] = useState("");
-  const [minArea, setMinArea] = useState(() => (suggestedArea ? String(suggestedArea) : ""));
-  const [minFrontage, setMinFrontage] = useState(() => (suggestedFrontage ? String(suggestedFrontage) : ""));
-  const [minDepth, setMinDepth] = useState(() => (suggestedDepth ? String(suggestedDepth) : ""));
-  const linkedTerrains = (project.compatibilities ?? []).filter((compatibility) => compatibility.terrain);
-  const filteredTerrains = useMemo(() => {
-    const search = terrainSearch.trim().toLowerCase();
-    const minAreaValue = numberValue(minArea);
-    const minFrontageValue = numberValue(minFrontage);
-    const minDepthValue = numberValue(minDepth);
-
-    return terrains
-      .map((terrain) => {
-        const searchable = [
-          terrain.title,
-          terrain.address,
-          terrain.neighborhood,
-          terrain.city,
-          terrain.state,
-          String(terrain.areaM2 ?? ""),
-          String(terrain.frontageM ?? ""),
-          String(terrain.depthM ?? "")
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return {
-          terrain,
-          score: terrainFitScore(project, terrain),
-          searchable
-        };
-      })
-      .filter(({ terrain, searchable }) => {
-        return (
-          (!search || searchable.includes(search)) &&
-          (!minAreaValue || numberValue(terrain.areaM2) >= minAreaValue) &&
-          (!minFrontageValue || numberValue(terrain.frontageM) >= minFrontageValue) &&
-          (!minDepthValue || numberValue(terrain.depthM) >= minDepthValue)
-        );
-      })
-      .sort((left, right) => {
-        if (right.score !== left.score) {
-          return right.score - left.score;
-        }
-
-        return numberValue(left.terrain.areaM2) - numberValue(right.terrain.areaM2);
-      })
-      .map(({ terrain }) => terrain);
-  }, [terrains, terrainSearch, minArea, minFrontage, minDepth, project]);
-  const visibleTerrains = filteredTerrains.slice(0, 8);
-  const selectedTerrainValue = filteredTerrains.some((terrain) => terrain.id === selectedTerrainId)
-    ? selectedTerrainId
-    : (filteredTerrains[0]?.id ?? "");
-  const selectedTerrain = terrains.find((terrain) => terrain.id === selectedTerrainValue) ?? null;
-  const suggestedScore = defaultCompatibilityScore(project, selectedTerrain);
-
-  const compatibilityMutation = useMutation({
-    mutationFn: upsertCompatibility,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["architect"] });
-      await queryClient.invalidateQueries({ queryKey: ["terrains"] });
-    }
-  });
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const terrainId = String(formData.get("terrainId") ?? "");
-
-    if (!terrainId) {
-      return;
-    }
-
-    compatibilityMutation.mutate({
-      terrainId,
-      projectId: project.id,
-      status: "SUGGESTED",
-      score: Math.max(0, Math.min(100, toNumber(formData.get("score")) || suggestedScore)),
-      notes: toOptionalString(formData.get("notes"))
-    });
-  }
-
-  return (
-    <details className="mt-4 rounded-[8px] border border-[var(--line)] p-4" open>
-      <summary className="cursor-pointer text-sm font-semibold">Adequar a terreno</summary>
-      {terrains.length ? (
-        <form className="mt-4 grid gap-4" onSubmit={onSubmit}>
-          <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-3 text-sm text-[var(--muted)]">
-            A lista ja prioriza terrenos que comportam este projeto de {area(project.areaM2)}. Ajuste a metragem minima
-            para encontrar lotes com frente, fundo e area alinhados.
-          </div>
-
-          {linkedTerrains.length ? (
-            <div className="grid gap-2 rounded-[8px] border border-[var(--line)] p-3 text-sm">
-              <p className="font-semibold">Terrenos ja vinculados</p>
-              {linkedTerrains.map((compatibility) => (
-                <button
-                  className="focus-ring flex flex-wrap items-center justify-between gap-2 rounded-[8px] bg-black/5 px-3 py-2 text-left dark:bg-white/10"
-                  key={compatibility.id}
-                  onClick={() => setSelectedTerrainId(compatibility.terrain.id)}
-                  type="button"
-                >
-                  <span>
-                    <strong>{compatibility.terrain.title}</strong>
-                    <span className="ml-2 text-xs text-[var(--muted)]">{terrainSummary(compatibility.terrain)}</span>
-                  </span>
-                  <span className="text-xs font-semibold text-[var(--accent)]">
-                    {Number(compatibility.score).toFixed(0)}%
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_120px_120px_120px]">
-            <label className="grid gap-1 text-xs font-semibold uppercase text-[var(--muted)]">
-              Buscar
-              <Input
-                onChange={(event) => setTerrainSearch(event.target.value)}
-                placeholder="Cidade, bairro, rua ou metragem"
-                value={terrainSearch}
-              />
-            </label>
-            <label className="grid gap-1 text-xs font-semibold uppercase text-[var(--muted)]">
-              Area min.
-              <Input
-                inputMode="numeric"
-                min={0}
-                onChange={(event) => setMinArea(event.target.value)}
-                placeholder="m2"
-                type="number"
-                value={minArea}
-              />
-            </label>
-            <label className="grid gap-1 text-xs font-semibold uppercase text-[var(--muted)]">
-              Frente min.
-              <Input
-                inputMode="numeric"
-                min={0}
-                onChange={(event) => setMinFrontage(event.target.value)}
-                placeholder="m"
-                type="number"
-                value={minFrontage}
-              />
-            </label>
-            <label className="grid gap-1 text-xs font-semibold uppercase text-[var(--muted)]">
-              Fundo min.
-              <Input
-                inputMode="numeric"
-                min={0}
-                onChange={(event) => setMinDepth(event.target.value)}
-                placeholder="m"
-                type="number"
-                value={minDepth}
-              />
-            </label>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-[var(--muted)]">
-              {filteredTerrains.length} {filteredTerrains.length === 1 ? "terreno encontrado" : "terrenos encontrados"} com esta metragem.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                className="focus-ring rounded-[8px] border border-[var(--line)] px-3 py-2 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
-                onClick={() => {
-                  setMinArea(suggestedArea ? String(suggestedArea) : "");
-                  setMinFrontage(suggestedFrontage ? String(suggestedFrontage) : "");
-                  setMinDepth(suggestedDepth ? String(suggestedDepth) : "");
-                }}
-                type="button"
-              >
-                Usar sugestao
-              </button>
-              <button
-                className="focus-ring rounded-[8px] border border-[var(--line)] px-3 py-2 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
-                onClick={() => {
-                  setTerrainSearch("");
-                  setMinArea("");
-                  setMinFrontage("");
-                  setMinDepth("");
-                }}
-                type="button"
-              >
-                Ver todos
-              </button>
-            </div>
-          </div>
-
-          <input name="terrainId" type="hidden" value={selectedTerrainValue} />
-
-          {visibleTerrains.length ? (
-            <div className="grid gap-3 xl:grid-cols-2">
-              {visibleTerrains.map((terrain) => {
-                const isSelected = terrain.id === selectedTerrainValue;
-                const score = terrainFitScore(project, terrain);
-
-                return (
-                  <button
-                    className={`focus-ring rounded-[8px] border p-3 text-left transition ${
-                      isSelected
-                        ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
-                        : "border-[var(--line)] hover:bg-black/5 dark:hover:bg-white/10"
-                    }`}
-                    key={terrain.id}
-                    onClick={() => setSelectedTerrainId(terrain.id)}
-                    type="button"
-                  >
-                    <span className="flex items-start justify-between gap-3">
-                      <span>
-                        <strong className="block text-sm">{terrain.title}</strong>
-                        <span className="mt-1 flex items-center gap-1 text-xs text-[var(--muted)]">
-                          <MapPin size={13} />
-                          {terrainSummary(terrain) || "Localizacao nao informada"}
-                        </span>
-                      </span>
-                      <span className="rounded-[8px] bg-[var(--accent)] px-2 py-1 text-xs font-semibold text-white">
-                        {score}%
-                      </span>
-                    </span>
-                    <span className="mt-3 grid grid-cols-3 gap-2 text-xs text-[var(--muted)]">
-                      <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-2 py-2">
-                        {area(terrain.areaM2)}
-                      </span>
-                      <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-2 py-2">
-                        Frente {meters(terrain.frontageM)}
-                      </span>
-                      <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-2 py-2">
-                        Fundo {meters(terrain.depthM)}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-[8px] border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">
-              Nenhum terreno bate com essa metragem. Diminua area, frente ou fundo minimo para ver mais opcoes.
-            </div>
-          )}
-
-          <div className="grid gap-3 md:grid-cols-[120px_1fr_auto]">
-            <Input
-              defaultValue={String(suggestedScore)}
-              inputMode="numeric"
-              key={selectedTerrainValue}
-              max={100}
-              min={0}
-              name="score"
-              placeholder="Nota"
-              type="number"
-            />
-            <textarea
-              className={`${textAreaClass()} min-h-11 py-3`}
-              name="notes"
-              placeholder="Observacao para aparecer na pagina do terreno, por exemplo: projeto compacto com boa folga lateral."
-            />
-            <Button disabled={compatibilityMutation.isPending || !selectedTerrainValue} type="submit" variant="secondary">
-              <Map size={18} />
-              Vincular terreno
-            </Button>
-          </div>
-
-          {selectedTerrain ? (
-            <div className="grid gap-3 rounded-[8px] bg-black/5 p-4 text-sm dark:bg-white/10 md:grid-cols-4">
-              <div className="md:col-span-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong>{selectedTerrain.title}</strong>
-                  <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                    {statusLabel(selectedTerrain.status)}
-                  </span>
-                </div>
-                <p className="mt-1 flex items-center gap-2 text-[var(--muted)]">
-                  <MapPin size={15} />
-                  {terrainSummary(selectedTerrain) || "Localizacao nao informada"}
-                </p>
-              </div>
-              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
-                Area: <strong>{area(selectedTerrain.areaM2)}</strong>
-              </span>
-              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
-                Frente: <strong>{selectedTerrain.frontageM ? `${selectedTerrain.frontageM} m` : "Nao informada"}</strong>
-              </span>
-              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
-                Fundo: <strong>{selectedTerrain.depthM ? `${selectedTerrain.depthM} m` : "Nao informado"}</strong>
-              </span>
-              <span className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2">
-                Valor: <strong>{money(selectedTerrain.price)}</strong>
-              </span>
-            </div>
-          ) : null}
-
-          {compatibilityMutation.isSuccess ? (
-            <p className="rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
-              Terreno vinculado ao projeto. Ele ja pode aparecer na pagina do lote.
-            </p>
-          ) : null}
-          {compatibilityMutation.isError ? (
-            <p className="rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">
-              Nao foi possivel salvar a adequacao: {errorMessage(compatibilityMutation.error)}
-            </p>
-          ) : null}
-        </form>
-      ) : (
-        <div className="mt-4 rounded-[8px] border border-[var(--line)] p-4 text-sm text-[var(--muted)]">
-          Nenhum terreno disponivel para escolher agora.
-        </div>
-      )}
-    </details>
-  );
-}
-
 export default function ArchitectPanelPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const isArchitect = user?.role === "ARCHITECT";
-  const [activeWorkspace, setActiveWorkspace] = useState<"projects" | "new-project" | "profile">("projects");
+  const [activeWorkspace, setActiveWorkspace] = useState<"projects" | "fit" | "new-project" | "profile">("projects");
+  const [selectedFitProjectId, setSelectedFitProjectId] = useState("");
   const [projectFormError, setProjectFormError] = useState<string | null>(null);
 
   const profileQuery = useQuery({
@@ -592,9 +190,9 @@ export default function ArchitectPanelPage() {
       <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-8 text-center">
           <Building2 className="mx-auto text-[var(--accent)]" size={38} />
-          <h1 className="mt-4 text-3xl font-semibold">Entre como arquiteto</h1>
+          <h1 className="mt-4 text-3xl font-semibold">Entre como construtora/arquiteto</h1>
           <p className="mt-3 text-[var(--muted)]">
-            Use uma conta de arquiteto para completar perfil, publicar projetos e acompanhar vendas.
+            Use uma conta de construtora/arquiteto para completar perfil, publicar projetos e acompanhar vendas.
           </p>
           <div className="mt-6 rounded-[8px] border border-[var(--line)] bg-black/5 p-4 text-left text-sm dark:bg-white/10">
             <p>
@@ -613,6 +211,7 @@ export default function ArchitectPanelPage() {
   }
 
   const terrains = terrainsQuery.data?.items ?? [];
+  const fitProject = projects.find((project) => project.id === selectedFitProjectId) ?? projects[0] ?? null;
 
   function onProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -719,7 +318,7 @@ export default function ArchitectPanelPage() {
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <p className="text-sm font-semibold uppercase text-[var(--accent)]">Painel arquiteto</p>
+          <p className="text-sm font-semibold uppercase text-[var(--accent)]">Painel construtora/arquiteto</p>
           <h1 className="mt-3 text-4xl font-semibold">
             {profile?.companyName ?? profile?.user.name ?? "Studio"}
           </h1>
@@ -747,7 +346,7 @@ export default function ArchitectPanelPage() {
               <h2 className="text-xl font-semibold">{isApproved ? "Perfil aprovado" : "Perfil aguardando aprovacao"}</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 {isApproved
-                  ? "Voce ja pode publicar projetos e eles entram direto na vitrine."
+                  ? "Voce ja pode publicar projetos, adequar terrenos e acompanhar a vitrine."
                   : "Complete seus dados profissionais. O admin aprova o perfil antes de liberar publicacao."}
               </p>
             </div>
@@ -778,6 +377,7 @@ export default function ArchitectPanelPage() {
           <div className="mt-3 grid gap-2">
             {[
               { id: "projects" as const, icon: Building2, label: "Meus projetos", helper: `${projects.length} publicados` },
+              { id: "fit" as const, icon: Map, label: "Adequar terrenos", helper: terrainsQuery.isLoading ? "Carregando terrenos" : `${terrains.length} terrenos` },
               { id: "new-project" as const, icon: Upload, label: "Novo projeto", helper: isApproved ? "Enviar modelo" : "Aguardando aprovacao" },
               { id: "profile" as const, icon: FileText, label: "Perfil", helper: profile?.cauNumber ? "Dados completos" : "Completar dados" }
             ].map((item) => {
@@ -853,6 +453,58 @@ export default function ArchitectPanelPage() {
                 </Button>
               </div>
             </form>
+          ) : null}
+
+          {activeWorkspace === "fit" ? (
+            <section className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+              <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div>
+                  <p className="text-sm uppercase text-[var(--muted)]">Adequacao</p>
+                  <h2 className="text-2xl font-semibold">Adequar projetos aos terrenos</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                    Escolha o projeto. Abaixo aparecem primeiro terrenos que cabem pela metragem, com busca por metros,
+                    nome, cidade, bairro, rua e localizacao.
+                  </p>
+                </div>
+                <Button onClick={() => setActiveWorkspace("new-project")} type="button" variant="ghost">
+                  <Upload size={18} />
+                  Novo projeto
+                </Button>
+              </div>
+
+              {projects.length ? (
+                <>
+                  <label className="grid gap-2 text-sm font-semibold">
+                    Projeto para adequar
+                    <select
+                      className={selectClass()}
+                      onChange={(event) => setSelectedFitProjectId(event.target.value)}
+                      value={fitProject?.id ?? ""}
+                    >
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.title} - {area(project.areaM2)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {fitProject ? (
+                    terrainsQuery.isLoading ? (
+                      <div className="mt-4 rounded-[8px] border border-[var(--line)] p-4 text-sm text-[var(--muted)]">
+                        Carregando terrenos para adequacao...
+                      </div>
+                    ) : (
+                      <ProjectTerrainFitForm key={fitProject.id} project={fitProject} terrains={terrains} />
+                    )
+                  ) : null}
+                </>
+              ) : (
+                <div className="rounded-[8px] border border-dashed border-[var(--line)] p-5 text-sm text-[var(--muted)]">
+                  Cadastre um projeto antes de adequar terrenos.
+                </div>
+              )}
+            </section>
           ) : null}
 
           {activeWorkspace === "new-project" ? (
@@ -982,9 +634,19 @@ export default function ArchitectPanelPage() {
                         <Link className="inline-flex text-sm font-semibold text-[var(--accent)]" href={`/projetos/${project.id}`}>
                           Abrir projeto
                         </Link>
+                        <button
+                          className="focus-ring inline-flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                          onClick={() => {
+                            setSelectedFitProjectId(project.id);
+                            setActiveWorkspace("fit");
+                          }}
+                          type="button"
+                        >
+                          <Map size={16} />
+                          Adequar a terrenos
+                        </button>
                         {terrainsQuery.isLoading ? <span className="text-sm text-[var(--muted)]">Carregando terrenos...</span> : null}
                       </div>
-                      <ProjectTerrainFitForm project={project} terrains={terrains} />
                     </div>
                   ))}
                 </div>

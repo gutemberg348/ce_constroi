@@ -25,6 +25,7 @@ import { usePathname } from "next/navigation";
 import { Children, FormEvent, useMemo, useState } from "react";
 import type { UrlObject } from "url";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { ProjectTerrainFitForm } from "@/components/dashboard/project-terrain-fit-form";
 import { SimulationRequestsPanel } from "@/components/dashboard/simulation-requests-panel";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { Button } from "@/components/ui/button";
@@ -397,7 +398,7 @@ export default function AdminPage() {
   const terrainsQuery = useQuery({
     queryKey: ["admin", "terrains"],
     queryFn: () => getAdminTerrains({ limit: 100 }),
-    enabled: Boolean(accessToken && isAdmin && activeSection === "terrenos")
+    enabled: Boolean(accessToken && isAdmin && (activeSection === "terrenos" || activeSection === "projetos"))
   });
   const projectsQuery = useQuery({
     queryKey: ["admin", "projects"],
@@ -864,6 +865,8 @@ export default function AdminPage() {
                 projectImageRemoveMutation.isPending
               }
               projects={projects}
+              terrains={terrains}
+              terrainsLoading={terrainsQuery.isLoading}
             />
           ) : null}
 
@@ -1557,6 +1560,8 @@ function TerrainEditForm({
 
 function ProjectsSection({
   projects,
+  terrains,
+  terrainsLoading,
   isLoading,
   pending,
   imagePending,
@@ -1568,6 +1573,8 @@ function ProjectsSection({
   onRemoveImage
 }: {
   projects: Project[];
+  terrains: Terrain[];
+  terrainsLoading: boolean;
   isLoading: boolean;
   pending: boolean;
   imagePending: boolean;
@@ -1635,6 +1642,15 @@ function ProjectsSection({
                     onRemove={onRemoveImage}
                     title="Imagens do projeto"
                   />
+                </EditPanel>
+                <EditPanel label="Adequar projetos aos terrenos">
+                  {terrainsLoading ? (
+                    <div className="rounded-[8px] border border-[var(--line)] p-4 text-sm text-[var(--muted)]">
+                      Carregando terrenos para adequacao...
+                    </div>
+                  ) : (
+                    <ProjectTerrainFitForm key={project.id} project={project} terrains={terrains} />
+                  )}
                 </EditPanel>
               </div>
             </td>

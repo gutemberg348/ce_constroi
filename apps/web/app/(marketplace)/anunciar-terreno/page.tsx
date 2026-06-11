@@ -14,6 +14,7 @@ import { useAuthStore } from "@/stores/auth-store";
 
 type AnnouncementForm = {
   announcerType: "Proprietario" | "Corretor";
+  creci: string;
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
@@ -24,12 +25,8 @@ type AnnouncementForm = {
   neighborhood: string;
   state: string;
   city: string;
-  bedrooms: string;
-  parkingSpaces: string;
-  bathrooms: string;
   intention: string;
   expectedValue: string;
-  propertyType: string;
   totalArea: string;
   usefulArea: string;
   features: string;
@@ -37,6 +34,7 @@ type AnnouncementForm = {
 
 const initialForm: AnnouncementForm = {
   announcerType: "Proprietario",
+  creci: "",
   ownerName: "",
   ownerPhone: "",
   ownerEmail: "",
@@ -47,12 +45,8 @@ const initialForm: AnnouncementForm = {
   neighborhood: "",
   state: "",
   city: "",
-  bedrooms: "",
-  parkingSpaces: "",
-  bathrooms: "",
   intention: "Venda",
   expectedValue: "",
-  propertyType: "Terreno",
   totalArea: "",
   usefulArea: "",
   features: ""
@@ -91,8 +85,8 @@ export default function AnnounceTerrainPage() {
 
   const title = useMemo(() => {
     const place = form.neighborhood || form.city || "novo anuncio";
-    return `${form.propertyType || "Imovel"} em ${place}`;
-  }, [form.city, form.neighborhood, form.propertyType]);
+    return `Terreno em ${place}`;
+  }, [form.city, form.neighborhood]);
 
   function update<Key extends keyof AnnouncementForm>(key: Key, value: AnnouncementForm[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -150,12 +144,17 @@ export default function AnnounceTerrainPage() {
     setSuccess("");
 
     if (!canAnnounce) {
-      setError("Entre como proprietario para anunciar.");
+      setError("Entre como proprietario ou corretor para anunciar.");
+      return;
+    }
+
+    if (form.announcerType === "Corretor" && !form.creci.trim()) {
+      setError("Informe o CRECI para anunciar como corretor.");
       return;
     }
 
     if (selectedPhotoCount < 3) {
-      setError("Selecione pelo menos 3 fotos do imovel.");
+      setError("Selecione pelo menos 3 fotos do terreno.");
       return;
     }
 
@@ -174,11 +173,8 @@ export default function AnnounceTerrainPage() {
         title,
         description: [
           form.features,
-          `Tipo: ${form.propertyType}`,
           `Pretensao: ${form.intention}`,
-          `Quartos: ${form.bedrooms || "0"}`,
-          `Vagas: ${form.parkingSpaces || "0"}`,
-          `Banheiros: ${form.bathrooms || "0"}`
+          `Area total: ${areaM2} m2`
         ]
           .filter(Boolean)
           .join("\n"),
@@ -189,11 +185,12 @@ export default function AnnounceTerrainPage() {
         zipCode: onlyDigits(form.cep),
         areaM2,
         price,
-        zoning: `${form.propertyType} - ${form.intention}`,
+        zoning: `Terreno - ${form.intention}`,
         metadata: {
           source: "owner_announcement",
           owner: {
             type: form.announcerType,
+            creci: form.announcerType === "Corretor" ? form.creci : undefined,
             name: ownerName,
             phone: form.ownerPhone,
             email: ownerEmail
@@ -202,11 +199,7 @@ export default function AnnounceTerrainPage() {
             street: form.street,
             number: form.number,
             complement: form.complement,
-            bedrooms: Number(onlyDigits(form.bedrooms)) || 0,
-            parkingSpaces: Number(onlyDigits(form.parkingSpaces)) || 0,
-            bathrooms: Number(onlyDigits(form.bathrooms)) || 0,
             intention: form.intention,
-            propertyType: form.propertyType,
             totalArea: areaM2,
             usefulArea: toNumber(form.usefulArea),
             features: form.features
@@ -315,11 +308,20 @@ export default function AnnounceTerrainPage() {
               <Input onChange={(event) => update("ownerName", event.target.value)} placeholder={user?.name ?? "Nome completo"} required value={form.ownerName} />
               <Input onChange={(event) => update("ownerPhone", event.target.value)} placeholder="Telefone / WhatsApp" required value={form.ownerPhone} />
               <Input onChange={(event) => update("ownerEmail", event.target.value)} placeholder={user?.email ?? "E-mail"} required type="email" value={form.ownerEmail} />
+              {form.announcerType === "Corretor" ? (
+                <Input
+                  className="md:col-span-4"
+                  onChange={(event) => update("creci", event.target.value)}
+                  placeholder="CRECI"
+                  required
+                  value={form.creci}
+                />
+              ) : null}
             </div>
           </fieldset>
 
           <fieldset className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
-            <legend className="px-1 text-lg font-semibold">2. Imovel</legend>
+          <legend className="px-1 text-lg font-semibold">2. Terreno</legend>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               <div className="md:col-span-2">
                 <div className="flex gap-2">
@@ -337,29 +339,18 @@ export default function AnnounceTerrainPage() {
               <Input onChange={(event) => update("neighborhood", event.target.value)} placeholder="Bairro" required value={form.neighborhood} />
               <Input onChange={(event) => update("state", event.target.value.toUpperCase())} placeholder="Estado" required value={form.state} />
               <Input className="md:col-span-2" onChange={(event) => update("city", event.target.value)} placeholder="Cidade" required value={form.city} />
-              <Input inputMode="numeric" onChange={(event) => update("bedrooms", event.target.value)} placeholder="Quantidade de quartos" value={form.bedrooms} />
-              <Input inputMode="numeric" onChange={(event) => update("parkingSpaces", event.target.value)} placeholder="Quantidade de vagas" value={form.parkingSpaces} />
-              <Input inputMode="numeric" onChange={(event) => update("bathrooms", event.target.value)} placeholder="Quantidade de banheiros" value={form.bathrooms} />
               <select className={inputClass()} onChange={(event) => update("intention", event.target.value)} value={form.intention}>
                 <option>Venda</option>
                 <option>Venda ou permuta</option>
                 <option>Parceria</option>
-                <option>Locacao</option>
               </select>
               <CurrencyInput onValueChange={(value) => update("expectedValue", value)} placeholder="Valor aproximado" required value={form.expectedValue} />
-              <select className={inputClass()} onChange={(event) => update("propertyType", event.target.value)} value={form.propertyType}>
-                <option>Terreno</option>
-                <option>Casa</option>
-                <option>Apartamento</option>
-                <option>Comercial</option>
-                <option>Rural</option>
-              </select>
-              <Input inputMode="decimal" onChange={(event) => update("totalArea", event.target.value)} placeholder="Area total" required value={form.totalArea} />
-              <Input inputMode="decimal" onChange={(event) => update("usefulArea", event.target.value)} placeholder="Area util" value={form.usefulArea} />
+              <Input inputMode="decimal" onChange={(event) => update("totalArea", event.target.value)} placeholder="Area total do terreno" required value={form.totalArea} />
+              <Input inputMode="decimal" onChange={(event) => update("usefulArea", event.target.value)} placeholder="Area de aproveitamento" value={form.usefulArea} />
               <textarea
                 className={`${textAreaClass()} md:col-span-4`}
                 onChange={(event) => update("features", event.target.value)}
-                placeholder="Descreva as caracteristicas do imovel"
+                placeholder="Descreva as caracteristicas do terreno"
                 required
                 value={form.features}
               />
@@ -406,17 +397,20 @@ export default function AnnounceTerrainPage() {
         <aside className="h-fit rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5 lg:sticky lg:top-24">
           <Home className="text-[var(--accent)]" size={26} />
           <h2 className="mt-4 text-2xl font-semibold">Resumo do anuncio</h2>
-          <div className="mt-5 space-y-3 text-sm text-[var(--muted)]">
-            <p>
-              <strong className="text-[var(--foreground)]">{title}</strong>
-            </p>
-            <p>
-              {form.neighborhood || "Bairro"} - {form.city || "Cidade"} / {form.state || "UF"}
-            </p>
-            <p>{form.totalArea || "0"} m2 de area total</p>
-            <p>{selectedPhotoCount} foto(s) anexada(s)</p>
-            <p>Responsavel: {form.announcerType}</p>
-          </div>
+            <div className="mt-5 space-y-3 text-sm text-[var(--muted)]">
+              <p>
+                <strong className="text-[var(--foreground)]">{title}</strong>
+              </p>
+              <p>
+                {form.neighborhood || "Bairro"} - {form.city || "Cidade"} / {form.state || "UF"}
+              </p>
+              <p>{form.totalArea || "0"} m2 de area total</p>
+              <p>{selectedPhotoCount} foto(s) anexada(s)</p>
+              <p>
+                Responsavel: {form.announcerType}
+                {form.announcerType === "Corretor" && form.creci ? ` - CRECI ${form.creci}` : ""}
+              </p>
+            </div>
 
           {error ? <p className="mt-5 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">{error}</p> : null}
           {success ? (
