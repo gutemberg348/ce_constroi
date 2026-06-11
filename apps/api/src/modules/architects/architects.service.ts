@@ -15,7 +15,25 @@ export class ArchitectsService {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           take: 10,
-          include: { images: { where: { deletedAt: null }, take: 1 } }
+          include: {
+            images: { where: { deletedAt: null }, take: 1 },
+            compatibilities: {
+              where: { deletedAt: null },
+              orderBy: { score: "desc" },
+              take: 12,
+              include: {
+                terrain: {
+                  include: {
+                    images: {
+                      where: { deletedAt: null },
+                      orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+                      take: 1
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     });

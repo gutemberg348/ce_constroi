@@ -1086,7 +1086,7 @@ function UsersSection({
                 </ActionButton>
               </div>
               <div className="mt-3">
-                <EditPanel label="Editar cliente/proprietario">
+                <EditPanel label="Editar">
                   <UserEditForm adminUser={adminUser} disabled={updateMutationPending} onSubmit={onUpdate} />
                 </EditPanel>
               </div>
