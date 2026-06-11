@@ -29,7 +29,7 @@ import { SimulationRequestsPanel } from "@/components/dashboard/simulation-reque
 import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { formDataImageValue } from "@/lib/files";
+import { formDataImageValue, formDataLogoImageValue } from "@/lib/files";
 import { area, money } from "@/lib/format";
 import {
   addAdminProjectImage,
@@ -686,8 +686,8 @@ export default function AdminPage() {
     const hasDarkFile = hasFile(formData, "logoDarkFile");
 
     void Promise.all([
-      formDataImageValue(formData, "logoLightFile", currentLightLogo),
-      formDataImageValue(formData, "logoDarkFile", currentDarkLogo)
+      formDataLogoImageValue(formData, "logoLightFile", currentLightLogo),
+      formDataLogoImageValue(formData, "logoDarkFile", currentDarkLogo)
     ]).then(([logoLightUrl, logoDarkUrl]) => {
       const normalizedLightLogo = hasLightFile || !hasDarkFile ? logoLightUrl : logoDarkUrl;
       const normalizedDarkLogo = hasDarkFile || !hasLightFile ? logoDarkUrl : logoLightUrl;
