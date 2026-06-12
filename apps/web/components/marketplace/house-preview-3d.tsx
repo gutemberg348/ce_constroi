@@ -492,22 +492,11 @@ function buildScene(scene: THREE.Scene, project: Project, terrain: Terrain) {
   return root;
 }
 
-export function HousePreview3D({
-  project,
-  terrain,
-  score,
-  note
-}: {
-  project: Project;
-  terrain: Terrain;
-  score?: number | string;
-  note?: string;
-}) {
+export function HousePreview3D({ project, terrain }: { project: Project; terrain: Terrain }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rooms = `${project.bedrooms} quartos, ${project.bathrooms} banheiros`;
   const terrainFrontage = numeric(terrain.frontageM) || 5;
   const terrainDepth = numeric(terrain.depthM) || 20;
-  const compatibilityScore = score === undefined ? null : numeric(score);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -581,14 +570,10 @@ export function HousePreview3D({
               Maquete do projeto
             </div>
             <h3 className="mt-1 text-lg font-semibold sm:text-2xl">{project.title}</h3>
-            <p className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-[var(--muted)] sm:text-sm sm:leading-6">{note ?? "Projeto encaixado neste terreno."}</p>
+            <p className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-[var(--muted)] sm:text-sm sm:leading-6">
+              Visualização do projeto no terreno escolhido.
+            </p>
           </div>
-          {compatibilityScore !== null ? (
-            <div className="rounded-[8px] bg-[#061733] px-3 py-2 text-right text-white shadow-xl dark:bg-white dark:text-[#061733] sm:px-4 sm:py-3">
-              <span className="block text-[11px] uppercase opacity-70">Compatibilidade</span>
-              <strong className="text-lg sm:text-xl">{compatibilityScore.toFixed(0)}%</strong>
-            </div>
-          ) : null}
         </div>
       </div>
 

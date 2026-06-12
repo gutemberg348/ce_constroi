@@ -39,7 +39,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-2xl font-semibold text-[var(--foreground)]">4. Terrenos e projetos</h2>
           <p className="mt-3">
-            Informacoes de preco, metragem, compatibilidade, estimativa de obra e simulacao financeira podem depender de
+            Informacoes de preco, metragem, disponibilidade, estimativa de obra e simulacao financeira podem depender de
             validacoes tecnicas, comerciais e documentais. Antes de uma compra real, documentos, contratos e dados tecnicos
             devem ser conferidos pelas partes.
           </p>

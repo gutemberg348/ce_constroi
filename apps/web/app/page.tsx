@@ -303,7 +303,7 @@ export default function HomePage() {
 
                 <div className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--background)] shadow-sm">
                   <Image
-                    alt="Exemplo de projeto de casa compativel"
+                    alt="Exemplo de projeto de casa"
                     className="h-36 w-full object-cover"
                     height={360}
                     src={exampleImages.project}
@@ -313,7 +313,7 @@ export default function HomePage() {
                     <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]">
                       <Building2 size={20} />
                     </div>
-                    <p className="mt-5 text-sm uppercase text-[var(--muted)]">Projeto compativel</p>
+                    <p className="mt-5 text-sm uppercase text-[var(--muted)]">Projeto escolhido</p>
                     <h3 className="mt-2 text-2xl font-semibold">Casa Essencial 92</h3>
                     <dl className="mt-4 grid gap-3 text-sm">
                       <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
