@@ -22,6 +22,25 @@ export async function getTerrains(params?: Record<string, string | number | unde
   return unwrap<Paginated<Terrain>>(response);
 }
 
+export async function getAllTerrains(params?: Record<string, string | number | undefined>) {
+  const firstPage = await getTerrains({ ...params, page: 1, limit: 100 });
+
+  if (firstPage.meta.totalPages <= 1) {
+    return firstPage;
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.meta.totalPages - 1 }, (_, index) =>
+      getTerrains({ ...params, page: index + 2, limit: 100 })
+    )
+  );
+
+  return {
+    ...firstPage,
+    items: [firstPage, ...remainingPages].flatMap((page) => page.items)
+  };
+}
+
 export async function getTerrain(id: string) {
   const response = await api.get<Terrain>(`/terrains/${id}`);
   return unwrap<Terrain>(response);

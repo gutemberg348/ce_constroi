@@ -25,7 +25,7 @@ import { formDataImageValue } from "@/lib/files";
 import { getArchitectMe, getArchitectStats, updateArchitectProfile } from "@/services/architects";
 import { addProjectImage } from "@/services/project-images";
 import { createProject, type CreateProjectInput } from "@/services/projects";
-import { getTerrains } from "@/services/terrains";
+import { getAllTerrains } from "@/services/terrains";
 import { useAuthStore } from "@/stores/auth-store";
 
 function toNumber(value: FormDataEntryValue | null) {
@@ -152,7 +152,7 @@ export default function ArchitectPanelPage() {
 
   const terrainsQuery = useQuery({
     queryKey: ["architect", "available-terrains"],
-    queryFn: () => getTerrains({ limit: 300 }),
+    queryFn: () => getAllTerrains(),
     enabled: Boolean(accessToken && isArchitect && isApproved)
   });
 
@@ -493,6 +493,10 @@ export default function ArchitectPanelPage() {
                     terrainsQuery.isLoading ? (
                       <div className="mt-4 rounded-[8px] border border-[var(--line)] p-4 text-sm text-[var(--muted)]">
                         Carregando terrenos para adequacao...
+                      </div>
+                    ) : terrainsQuery.isError ? (
+                      <div className="mt-4 rounded-[8px] border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-700">
+                        Nao foi possivel carregar os terrenos. Atualize a pagina e tente novamente.
                       </div>
                     ) : (
                       <ProjectTerrainFitForm key={fitProject.id} project={fitProject} terrains={terrains} />

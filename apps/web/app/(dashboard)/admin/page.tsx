@@ -50,7 +50,7 @@ import {
   getAdminOverview,
   getAdminProjects,
   getAdminSimulations,
-  getAdminTerrains,
+  getAllAdminTerrains,
   getAdminUsers,
   getArchitectsForReview,
   rejectArchitect,
@@ -397,7 +397,7 @@ export default function AdminPage() {
   });
   const terrainsQuery = useQuery({
     queryKey: ["admin", "terrains"],
-    queryFn: () => getAdminTerrains({ limit: 100 }),
+    queryFn: () => getAllAdminTerrains(),
     enabled: Boolean(accessToken && isAdmin && (activeSection === "terrenos" || activeSection === "projetos"))
   });
   const projectsQuery = useQuery({
