@@ -140,7 +140,7 @@ export default async function ProjectDetailPage({
           <Sparkles className="text-[var(--accent)]" size={22} />
           <div>
             <p className="text-sm uppercase text-[var(--muted)]">Implantacao</p>
-            <h2 className="text-2xl font-semibold">Terrenos onde esta casa encaixa</h2>
+            <h2 className="text-2xl font-semibold">Terrenos disponíveis para este projeto</h2>
           </div>
         </div>
         {project.compatibilities?.length ? (
@@ -148,13 +148,12 @@ export default async function ProjectDetailPage({
             {project.compatibilities.map((compatibility) => (
               <div key={compatibility.id}>
                 <TerrainCard terrain={compatibility.terrain} />
-                <div className="mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-3 text-sm text-[var(--muted)]">
-                  Compatibilidade {toNumber(compatibility.score).toFixed(0)}% - {compatibility.notes ?? "Terreno compativel."}
+                <div className="mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-3 text-sm">
                   <Link
-                    className="mt-2 inline-flex font-semibold text-[var(--accent)]"
+                    className="inline-flex font-semibold text-[var(--accent)]"
                     href={`/projetos/${project.id}?terrainId=${compatibility.terrain.id}` as Route}
                   >
-                    Ver com este terreno
+                    Escolher este terreno
                   </Link>
                 </div>
               </div>
@@ -163,7 +162,7 @@ export default async function ProjectDetailPage({
         ) : (
           <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6 text-[var(--muted)]">
             <Map className="mb-3 text-[var(--accent)]" size={22} />
-            Ainda nao existem terrenos compativeis cadastrados para este projeto.
+            Ainda não existem terrenos disponíveis para este projeto.
           </div>
         )}
       </div>

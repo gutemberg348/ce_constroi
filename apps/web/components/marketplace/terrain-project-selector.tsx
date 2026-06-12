@@ -5,14 +5,10 @@ import type { Route } from "next";
 import { ArrowRight, Bath, BedDouble, Home, Ruler, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrivacyImage } from "@/components/privacy/privacy-image";
-import { area, money, toNumber, type NumericValue } from "@/lib/format";
+import { area, money } from "@/lib/format";
 import { Terrain } from "@/types/domain";
 
 type Compatibility = NonNullable<Terrain["compatibilities"]>[number];
-
-function numeric(value: NumericValue) {
-  return toNumber(value);
-}
 
 function buildProjectHref(projectId: string, terrainId: string) {
   return `/projetos/${projectId}?terrainId=${terrainId}` as Route;
@@ -21,7 +17,6 @@ function buildProjectHref(projectId: string, terrainId: string) {
 function ProjectOption({ compatibility, terrainId }: { compatibility: Compatibility; terrainId: string }) {
   const { project } = compatibility;
   const image = project.images?.[0]?.url ?? project.renderUrl;
-  const score = numeric(compatibility.score);
 
   return (
     <article className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)]">
@@ -37,10 +32,7 @@ function ProjectOption({ compatibility, terrainId }: { compatibility: Compatibil
 
       <div className="grid gap-4 p-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2 text-xs uppercase text-[var(--muted)]">
-            <span>{project.style ?? "Projeto residencial"}</span>
-            <span>Compatibilidade {score.toFixed(0)}%</span>
-          </div>
+          <p className="text-xs uppercase text-[var(--muted)]">{project.style ?? "Projeto residencial"}</p>
           <h3 className="mt-2 text-lg font-semibold">{project.title}</h3>
           <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{project.description}</p>
         </div>
@@ -69,11 +61,9 @@ function ProjectOption({ compatibility, terrainId }: { compatibility: Compatibil
           </span>
         </div>
 
-        {compatibility.notes ? <p className="text-sm leading-6 text-[var(--muted)]">{compatibility.notes}</p> : null}
-
         <Link href={buildProjectHref(project.id, terrainId)}>
           <Button className="w-full" type="button" variant="secondary">
-            Detalhes
+            Ver projeto
             <ArrowRight size={18} />
           </Button>
         </Link>
@@ -92,7 +82,7 @@ export function TerrainProjectSelector({ terrain }: { terrain: Terrain }) {
           <Sparkles className="text-[var(--accent)]" size={20} />
           <div>
             <p className="text-sm uppercase text-[var(--muted)]">Projetos</p>
-            <h2 className="text-xl font-semibold sm:text-2xl">Projetos compativeis com este terreno</h2>
+            <h2 className="text-xl font-semibold sm:text-2xl">Projetos disponíveis para este terreno</h2>
           </div>
         </div>
       </div>
@@ -106,7 +96,7 @@ export function TerrainProjectSelector({ terrain }: { terrain: Terrain }) {
       ) : (
         <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6 text-[var(--muted)]">
           <Home className="mb-3 text-[var(--accent)]" size={22} />
-          Ainda nao existem projetos compativeis cadastrados para este terreno.
+          Ainda não existem projetos disponíveis para este terreno.
         </div>
       )}
     </section>
