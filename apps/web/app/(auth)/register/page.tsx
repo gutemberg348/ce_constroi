@@ -7,6 +7,7 @@ import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getSafePostAuthPath } from "@/lib/navigation";
+import { getApiErrorMessage } from "@/services/api";
 import { register, type RegisterInput } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { UserRole } from "@/types/domain";
@@ -79,8 +80,8 @@ function RegisterForm() {
       const session = await register(input);
       setSession(session);
       router.push(getSafePostAuthPath(searchParams.get("next")));
-    } catch {
-      setError("Nao foi possivel criar a conta.");
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError, "Não foi possível criar a conta."));
     }
   }
 
@@ -93,7 +94,7 @@ function RegisterForm() {
           Aqui entram cliente e proprietario. Arquitetos sao criados pelo admin e aprovados antes de publicar projetos.
         </p>
       </div>
-      <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6" onSubmit={onSubmit}>
+      <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6" noValidate onSubmit={onSubmit}>
         <div className="space-y-4">
           <Input name="name" placeholder="Nome completo" required />
           <Input autoComplete="email" name="email" placeholder="email@empresa.com" required type="email" />

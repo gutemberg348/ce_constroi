@@ -24,13 +24,13 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     if (dto.role === UserRole.ADMIN || dto.role === UserRole.ARCHITECT) {
-      throw new BadRequestException("Esse perfil deve ser criado pelo admin");
+      throw new BadRequestException("Esse perfil deve ser criado pelo administrador.");
     }
 
     const existingUser = await this.usersRepository.findByEmail(dto.email);
 
     if (existingUser) {
-      throw new ConflictException("Email already registered");
+      throw new ConflictException("Este e-mail já está cadastrado.");
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -56,13 +56,13 @@ export class AuthService {
     const user = await this.usersRepository.findByEmail(dto.email);
 
     if (!user) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException("E-mail ou senha inválidos.");
     }
 
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!passwordMatches) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException("E-mail ou senha inválidos.");
     }
 
     return this.issueAndPersistTokens({
@@ -80,13 +80,13 @@ export class AuthService {
       const user = await this.usersRepository.findById(payload.sub);
 
       if (!user?.refreshTokenHash) {
-        throw new UnauthorizedException("Invalid refresh token");
+        throw new UnauthorizedException("Sua sessão expirou. Entre novamente.");
       }
 
       const tokenMatches = await bcrypt.compare(dto.refreshToken, user.refreshTokenHash);
 
       if (!tokenMatches) {
-        throw new UnauthorizedException("Invalid refresh token");
+        throw new UnauthorizedException("Sua sessão expirou. Entre novamente.");
       }
 
       return this.issueAndPersistTokens({
@@ -95,7 +95,7 @@ export class AuthService {
         role: user.role
       });
     } catch {
-      throw new UnauthorizedException("Invalid refresh token");
+      throw new UnauthorizedException("Sua sessão expirou. Entre novamente.");
     }
   }
 
@@ -108,7 +108,7 @@ export class AuthService {
     const user = await this.usersRepository.findById(userId);
 
     if (!user) {
-      throw new UnauthorizedException("User not found");
+      throw new UnauthorizedException("Usuário não encontrado.");
     }
 
     const { passwordHash, refreshTokenHash, ...safeUser } = user;

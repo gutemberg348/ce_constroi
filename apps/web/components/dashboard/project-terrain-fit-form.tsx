@@ -6,6 +6,7 @@ import { Map, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { area, money } from "@/lib/format";
+import { getApiErrorMessage } from "@/services/api";
 import { upsertCompatibility } from "@/services/compatibility";
 import type { Project, Terrain } from "@/types/domain";
 
@@ -385,7 +386,7 @@ export function ProjectTerrainFitForm({ project, terrains }: { project: Project;
           ) : null}
           {compatibilityMutation.isError ? (
             <p className="rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">
-              Nao foi possivel salvar a adequacao: {compatibilityMutation.error instanceof Error ? compatibilityMutation.error.message : "erro desconhecido"}
+              Não foi possível salvar a adequação: {getApiErrorMessage(compatibilityMutation.error)}
             </p>
           ) : null}
         </>

@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { SimulationRequestsPanel } from "@/components/dashboard/simulation-requests-panel";
 import { Button } from "@/components/ui/button";
 import { area, money } from "@/lib/format";
+import { getApiErrorMessage } from "@/services/api";
 import { getMyDashboard } from "@/services/dashboard";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -62,11 +63,7 @@ function panelClass() {
 }
 
 function errorMessage(error: unknown) {
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
-  }
-
-  return "Nao foi possivel carregar seu painel agora.";
+  return getApiErrorMessage(error, "Não foi possível carregar seu painel agora.");
 }
 
 export default function DashboardPage() {

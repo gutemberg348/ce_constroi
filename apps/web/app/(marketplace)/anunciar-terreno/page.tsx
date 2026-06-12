@@ -8,6 +8,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { readFileAsDataUrl } from "@/lib/files";
 import { toNumber } from "@/lib/format";
+import { getApiErrorMessage } from "@/services/api";
 import { createTerrain } from "@/services/terrains";
 import { createTerrainImage } from "@/services/terrain-images";
 import { useAuthStore } from "@/stores/auth-store";
@@ -233,8 +234,8 @@ export default function AnnounceTerrainPage() {
       }
 
       setSuccess(`Anuncio enviado para analise. Protocolo: ${terrain.id}`);
-    } catch {
-      setError("Nao foi possivel enviar o anuncio agora.");
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError, "Não foi possível enviar o anúncio agora."));
     } finally {
       setIsSubmitting(false);
     }
@@ -296,7 +297,7 @@ export default function AnnounceTerrainPage() {
         </div>
       </div>
 
-      <form className="grid gap-6 lg:grid-cols-[1fr_340px]" onSubmit={onSubmit}>
+      <form className="grid gap-6 lg:grid-cols-[1fr_340px]" noValidate onSubmit={onSubmit}>
         <div className="space-y-6">
           <fieldset className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
             <legend className="px-1 text-lg font-semibold">1. Responsavel pelo anuncio</legend>

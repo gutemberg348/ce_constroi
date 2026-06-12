@@ -22,6 +22,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { area, money } from "@/lib/format";
 import { formDataImageValue } from "@/lib/files";
+import { getApiErrorMessage } from "@/services/api";
 import { getArchitectMe, getArchitectStats, updateArchitectProfile } from "@/services/architects";
 import { addProjectImage } from "@/services/project-images";
 import { createProject, type CreateProjectInput } from "@/services/projects";
@@ -62,30 +63,7 @@ const maxProjectImageSizeMb = 8;
 const maxProjectImageSize = maxProjectImageSizeMb * 1024 * 1024;
 
 function errorMessage(error: unknown) {
-  if (error && typeof error === "object" && "response" in error) {
-    const response = (error as { response?: { data?: { error?: unknown; message?: unknown } } }).response;
-    const bodyError = response?.data?.error;
-    const bodyMessage = response?.data?.message;
-
-    if (typeof bodyError === "string") {
-      return bodyError;
-    }
-
-    if (bodyError && typeof bodyError === "object" && "message" in bodyError) {
-      const message = (bodyError as { message?: unknown }).message;
-      return Array.isArray(message) ? message.join(" ") : String(message ?? "Nao foi possivel concluir a acao.");
-    }
-
-    if (typeof bodyMessage === "string") {
-      return bodyMessage;
-    }
-  }
-
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
-  }
-
-  return "Nao foi possivel carregar o painel agora.";
+  return getApiErrorMessage(error, "Não foi possível carregar o painel agora.");
 }
 
 function requireProjectImage(formData: FormData, key: string, label: string) {
@@ -429,6 +407,7 @@ export default function ArchitectPanelPage() {
             <form
               className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5"
               key={profile?.id ?? "profile"}
+              noValidate
               onSubmit={onProfileSubmit}
             >
               <div className="mb-5 flex items-center gap-2">
@@ -512,7 +491,7 @@ export default function ArchitectPanelPage() {
           ) : null}
 
           {activeWorkspace === "new-project" ? (
-            <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" onSubmit={onProjectSubmit}>
+            <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5" noValidate onSubmit={onProjectSubmit}>
               <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div className="flex items-center gap-2">
                   <Upload className="text-[var(--accent)]" size={21} />

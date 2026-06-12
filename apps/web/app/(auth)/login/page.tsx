@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { login } from "@/services/auth";
 import { getSafePostAuthPath } from "@/lib/navigation";
+import { getApiErrorMessage } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
 
 const demoLogins: Array<{
@@ -72,8 +73,8 @@ function LoginForm() {
       const session = await login({ email, password });
       setSession(session);
       router.push(getSafePostAuthPath(searchParams.get("next")));
-    } catch {
-      setError("Email ou senha invalidos.");
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError, "E-mail ou senha inválidos."));
     }
   }
 
@@ -106,7 +107,7 @@ function LoginForm() {
           ))}
         </div>
       </div>
-      <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6 shadow-2xl shadow-black/10" onSubmit={onSubmit}>
+      <form className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6 shadow-2xl shadow-black/10" noValidate onSubmit={onSubmit}>
         <div className="mb-6">
           <p className="text-sm uppercase text-[var(--muted)]">Login</p>
           <h2 className="mt-2 text-2xl font-semibold">Entrar</h2>

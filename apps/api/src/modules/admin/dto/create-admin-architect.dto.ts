@@ -5,6 +5,7 @@ import { ArchitectStatus } from "@/generated/prisma/enums";
 export class CreateAdminArchitectDto {
   @ApiProperty()
   @IsString()
+  @MinLength(3)
   name!: string;
 
   @ApiProperty()

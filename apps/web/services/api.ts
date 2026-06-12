@@ -128,3 +128,52 @@ export function unwrap<T>(response: { data: ApiResponse<T> | T }) {
   const body = response.data as ApiResponse<T>;
   return "success" in body && "data" in body ? body.data : (response.data as T);
 }
+
+function messageFromValue(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const messages = value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+    return messages.length ? messages.join(" ") : null;
+  }
+
+  if (value && typeof value === "object" && "message" in value) {
+    return messageFromValue(value.message);
+  }
+
+  return null;
+}
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Não foi possível concluir a operação."
+) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+
+    if (data && typeof data === "object") {
+      const body = data as { error?: unknown; message?: unknown };
+      const apiMessage = messageFromValue(body.error) ?? messageFromValue(body.message);
+
+      if (apiMessage) {
+        return apiMessage;
+      }
+    }
+
+    if (!error.response) {
+      return "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
+    }
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = messageFromValue(error.message);
+
+    if (message && !/^Request failed with status code \d+$/i.test(message)) {
+      return message;
+    }
+  }
+
+  return fallback;
+}

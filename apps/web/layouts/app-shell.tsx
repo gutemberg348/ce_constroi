@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Calculator, Heart, Info, LogOut, Map, Megaphone, Menu, UserRound, X } from "lucide-react";
+import { Building2, Calculator, Heart, LogOut, Map, Megaphone, Menu, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CookiePreferencesButton } from "@/components/privacy/cookie-preferences-button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
@@ -17,9 +17,10 @@ const links: Array<{ href: Route; label: string; icon: LucideIcon }> = [
   { href: "/terrenos", label: "Terrenos", icon: Map },
   { href: "/projetos", label: "Projetos", icon: Building2 },
   { href: "/simulacao", label: "Simulacao", icon: Calculator },
-  { href: "/favoritos", label: "Favoritos", icon: Heart },
-  { href: "/quem-somos", label: "Quem somos", icon: Info }
+  { href: "/favoritos", label: "Favoritos", icon: Heart }
 ];
+
+const desktopLinks = links.slice(0, 3);
 
 const announceLink: { href: Route; label: string; icon: LucideIcon } = {
   href: "/anunciar-terreno",
@@ -71,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link className="flex min-w-0 items-center gap-2 font-semibold" href="/">
             {hasLogo ? (
-              <span className="relative flex h-[52px] w-44 shrink-0 items-center overflow-hidden sm:w-48 lg:w-52">
+              <span className="relative flex h-[52px] w-44 shrink-0 items-center overflow-hidden sm:w-48">
                 {logoLightUrl ? (
                   <img
                     alt={settings.brandName}
@@ -91,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="sr-only">{settings.brandName}</span>
               </span>
             ) : isLoadingSettings ? (
-              <span aria-hidden="true" className="h-[52px] w-44 shrink-0 rounded-[8px] bg-white/10 sm:w-48 lg:w-52" />
+              <span aria-hidden="true" className="h-[52px] w-44 shrink-0 rounded-[8px] bg-white/10 sm:w-48" />
             ) : (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#0d6efd] text-white">
@@ -102,9 +103,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </Link>
           <nav className="hidden items-center gap-1 xl:flex">
-            {links.map((item) => (
+            {desktopLinks.map((item) => (
               <Link
-                className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] px-3 text-sm text-white/74 transition hover:bg-white/10 hover:text-white"
+                className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] px-2.5 text-sm text-white/74 transition hover:bg-white/10 hover:text-white"
                 href={item.href}
                 key={item.href}
               >
@@ -117,10 +118,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href={announceLink.href}
             >
               <announceLink.icon size={16} />
-              {announceLink.label}
+              Anunciar terreno
             </Link>
           </nav>
           <div className="flex items-center gap-2">
+            <Link
+              aria-label="Favoritos"
+              className="focus-ring hidden h-10 w-10 items-center justify-center rounded-[8px] text-white/74 hover:bg-white/10 hover:text-white xl:inline-flex"
+              href="/favoritos"
+              title="Favoritos"
+            >
+              <Heart size={18} />
+            </Link>
             <ModeToggle />
             {isLoggedIn ? (
               <>
@@ -129,15 +138,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   href={dashboardHref}
                 >
                   <UserRound size={16} />
-                  Meu painel
+                  Painel
                 </Link>
                 <button
-                  className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] border border-white/18 px-3 text-sm font-semibold text-white hover:bg-white/10 xl:inline-flex"
+                  aria-label="Sair"
+                  className="focus-ring hidden h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white hover:bg-white/10 xl:inline-flex"
                   onClick={logout}
+                  title="Sair"
                   type="button"
                 >
                   <LogOut size={16} />
-                  Sair
                 </button>
               </>
             ) : (

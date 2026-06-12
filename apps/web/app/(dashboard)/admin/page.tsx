@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formDataImageValue, formDataLogoImageValue } from "@/lib/files";
 import { area, money } from "@/lib/format";
+import { getApiErrorMessage } from "@/services/api";
 import {
   addAdminProjectImage,
   addAdminTerrainImage,
@@ -276,11 +277,7 @@ function dateTime(value?: string) {
 }
 
 function errorMessage(error: unknown) {
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
-  }
-
-  return "Nao foi possivel carregar os dados agora.";
+  return getApiErrorMessage(error, "Não foi possível carregar os dados agora.");
 }
 
 function confirmAction(message: string) {
@@ -650,7 +647,7 @@ export default function AdminPage() {
       setLogoMessage("Marca atualizada com sucesso.");
       await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
     },
-    onError: () => setLogoMessage("Nao foi possivel salvar a marca.")
+    onError: (error) => setLogoMessage(getApiErrorMessage(error, "Não foi possível salvar a marca."))
   });
 
   const failedQuery = [
@@ -982,7 +979,7 @@ export default function AdminPage() {
                 </div>
                 {statusPill(settingsMutation.isPending ? "PENDING_REVIEW" : "ACTIVE")}
               </div>
-              <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={submitLogo}>
+              <form className="mt-5 grid gap-4 md:grid-cols-2" noValidate onSubmit={submitLogo}>
                 <label>
                   <FieldLabel>Nome da marca</FieldLabel>
                   <input className={inputClass()} defaultValue={settingsQuery.data?.brandName ?? ""} name="brandName" required />
@@ -1185,6 +1182,7 @@ function UserEditForm({
   return (
     <form
       className="grid gap-3 md:grid-cols-2"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(adminUser.id, new FormData(event.currentTarget));
@@ -1319,6 +1317,7 @@ function ArchitectCreateForm({
   return (
     <form
       className="mb-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(new FormData(event.currentTarget));
@@ -1400,6 +1399,7 @@ function ArchitectEditForm({
   return (
     <form
       className="grid gap-3 md:grid-cols-2"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(architect.id, new FormData(event.currentTarget));
@@ -1544,6 +1544,7 @@ function TerrainCreateForm({
   return (
     <form
       className="mb-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(new FormData(event.currentTarget));
@@ -1605,6 +1606,7 @@ function TerrainEditForm({
   return (
     <form
       className="grid gap-3 md:grid-cols-2"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(terrain.id, new FormData(event.currentTarget));
@@ -1745,6 +1747,7 @@ function ProjectEditForm({
   return (
     <form
       className="grid gap-3 md:grid-cols-2"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(project.id, new FormData(event.currentTarget));
@@ -1838,6 +1841,7 @@ function AdminImageManager({
 
       <form
         className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4 md:grid-cols-2"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -1895,6 +1899,7 @@ function NewsSection({
 
       <form
         className="mb-6 grid gap-4 border-b border-[var(--line)] pb-6 md:grid-cols-2"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           onCreate(new FormData(event.currentTarget));
@@ -1906,7 +1911,7 @@ function NewsSection({
         </div>
         <label>
           <FieldLabel>Titulo</FieldLabel>
-          <input className={inputClass()} maxLength={180} name="title" required />
+          <input className={inputClass()} maxLength={180} minLength={3} name="title" required />
         </label>
         <label>
           <FieldLabel>Autor</FieldLabel>
@@ -1914,11 +1919,11 @@ function NewsSection({
         </label>
         <label className="md:col-span-2">
           <FieldLabel>Resumo</FieldLabel>
-          <textarea className={textareaClass()} maxLength={420} name="excerpt" required />
+          <textarea className={textareaClass()} maxLength={420} minLength={3} name="excerpt" required />
         </label>
         <label className="md:col-span-2">
           <FieldLabel>Conteudo completo</FieldLabel>
-          <textarea className={`${textareaClass()} min-h-64`} name="content" required />
+          <textarea className={`${textareaClass()} min-h-64`} minLength={3} name="content" required />
         </label>
         <label>
           <FieldLabel>Imagem de capa</FieldLabel>
@@ -1991,15 +1996,16 @@ function NewsSection({
                 <EditPanel label="Editar noticia">
                   <form
                     className="grid gap-3"
+                    noValidate
                     onSubmit={(event) => {
                       event.preventDefault();
                       onUpdate(post, new FormData(event.currentTarget));
                     }}
                   >
-                    <input className={inputClass()} defaultValue={post.title} maxLength={180} name="title" required />
+                    <input className={inputClass()} defaultValue={post.title} maxLength={180} minLength={3} name="title" required />
                     <input className={inputClass()} defaultValue={post.author ?? ""} maxLength={120} name="author" placeholder="Autor" />
-                    <textarea className={textareaClass()} defaultValue={post.excerpt} maxLength={420} name="excerpt" required />
-                    <textarea className={`${textareaClass()} min-h-56`} defaultValue={post.content} name="content" required />
+                    <textarea className={textareaClass()} defaultValue={post.excerpt} maxLength={420} minLength={3} name="excerpt" required />
+                    <textarea className={`${textareaClass()} min-h-56`} defaultValue={post.content} minLength={3} name="content" required />
                     <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
                     <input className={inputClass()} defaultValue={post.imageUrl ?? ""} name="imageUrl" placeholder="URL da imagem" />
                     <select className={inputClass()} defaultValue={post.status} name="status">

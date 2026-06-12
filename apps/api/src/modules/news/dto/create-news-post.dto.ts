@@ -11,13 +11,13 @@ export class CreateNewsPostDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(10)
+  @MinLength(3)
   @MaxLength(420)
   excerpt!: string;
 
   @ApiProperty()
   @IsString()
-  @MinLength(20)
+  @MinLength(3)
   content!: string;
 
   @ApiPropertyOptional()

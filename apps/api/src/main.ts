@@ -10,6 +10,7 @@ import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 import { ResponseTransformInterceptor } from "./common/interceptors/response-transform.interceptor";
+import { validationExceptionFactory } from "./common/validation/validation-errors";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -37,7 +38,8 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true }
+      transformOptions: { enableImplicitConversion: true },
+      exceptionFactory: validationExceptionFactory
     })
   );
   app.useGlobalFilters(new HttpExceptionFilter());

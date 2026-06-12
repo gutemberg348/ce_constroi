@@ -909,7 +909,7 @@ export class AdminService {
     });
 
     if (existingUser) {
-      throw new BadRequestException("E-mail ja cadastrado.");
+      throw new BadRequestException("Este e-mail já está cadastrado.");
     }
 
     if (cauNumber) {
@@ -919,7 +919,7 @@ export class AdminService {
       });
 
       if (existingCau) {
-        throw new BadRequestException("CAU ja cadastrado.");
+        throw new BadRequestException("Este número de CAU já está cadastrado.");
       }
     }
 
