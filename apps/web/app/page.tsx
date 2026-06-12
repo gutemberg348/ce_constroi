@@ -16,6 +16,7 @@ import {
   Map,
   MapPin,
   MessageCircleMore,
+  Newspaper,
   Ruler,
   Search,
   ShieldCheck,
@@ -25,6 +26,8 @@ import {
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TerrainCard } from "@/components/marketplace/terrain-card";
+import { NewsCard } from "@/components/marketplace/news-card";
+import { getNews } from "@/services/news";
 import { getTerrains } from "@/services/terrains";
 import type { LucideIcon } from "lucide-react";
 
@@ -132,9 +135,14 @@ export default function HomePage() {
     queryKey: ["home", "terrains"],
     queryFn: () => getTerrains({ limit: 9 })
   });
+  const newsQuery = useQuery({
+    queryKey: ["home", "news"],
+    queryFn: () => getNews({ limit: 3 })
+  });
 
   const terrains = terrainQuery.data?.items ?? [];
   const displayedTerrains = terrains.slice(0, 6);
+  const latestNews = newsQuery.data?.items ?? [];
   const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "5511999999999").replace(/\D/g, "");
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     "Ola, quero ajuda para encontrar um terreno."
@@ -480,6 +488,45 @@ export default function HomePage() {
               Falar com especialista
             </a>
           </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--line)] bg-[var(--panel)]">
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase text-[var(--accent)]">
+                <Newspaper size={17} />
+                Ultimas noticias
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold sm:text-4xl">Informacao para construir melhor.</h2>
+              <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
+                Conteudos sobre terrenos, projetos, obra, documentacao e financiamento.
+              </p>
+            </div>
+            <Link className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]" href={"/noticias" as Route}>
+              Ver todas as noticias
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {newsQuery.isLoading ? (
+            <div className="grid gap-5 md:grid-cols-3">
+              {[1, 2, 3].map((item) => (
+                <div className="h-80 animate-pulse rounded-[8px] bg-black/5 dark:bg-white/10" key={item} />
+              ))}
+            </div>
+          ) : latestNews.length ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {latestNews.map((post) => (
+                <NewsCard key={post.id} post={post} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-6 text-sm text-[var(--muted)]">
+              As primeiras noticias serao publicadas em breve.
+            </div>
+          )}
         </div>
       </section>
     </>

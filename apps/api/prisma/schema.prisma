@@ -100,6 +100,11 @@ enum Currency {
   USD
 }
 
+enum NewsStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model User {
   id               String     @id @default(cuid())
   name             String
@@ -466,4 +471,24 @@ model Notification {
   @@index([readAt])
   @@index([deletedAt])
   @@map("notifications")
+}
+
+model NewsPost {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String
+  content     String
+  imageUrl    String?
+  author      String?
+  status      NewsStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, publishedAt])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("news_posts")
 }

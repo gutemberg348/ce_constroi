@@ -25,6 +25,7 @@ import { AdminModule } from "./modules/admin/admin.module";
 import { SettingsModule } from "./modules/settings/settings.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { NewsModule } from "./modules/news/news.module";
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
     SettingsModule,
     AnalyticsModule,
     DashboardModule,
+    NewsModule,
     AdminModule
   ],
   providers: [

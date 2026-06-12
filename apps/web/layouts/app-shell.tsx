@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Calculator, Heart, LogOut, Map, Megaphone, Menu, UserRound, X } from "lucide-react";
+import { Building2, Calculator, Heart, Info, LogOut, Map, Megaphone, Menu, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CookiePreferencesButton } from "@/components/privacy/cookie-preferences-button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
@@ -17,7 +17,8 @@ const links: Array<{ href: Route; label: string; icon: LucideIcon }> = [
   { href: "/terrenos", label: "Terrenos", icon: Map },
   { href: "/projetos", label: "Projetos", icon: Building2 },
   { href: "/simulacao", label: "Simulacao", icon: Calculator },
-  { href: "/favoritos", label: "Favoritos", icon: Heart }
+  { href: "/favoritos", label: "Favoritos", icon: Heart },
+  { href: "/quem-somos", label: "Quem somos", icon: Info }
 ];
 
 const announceLink: { href: Route; label: string; icon: LucideIcon } = {
@@ -240,6 +241,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <Link className="font-semibold hover:text-[var(--foreground)]" href="/cookies">
               Cookies
+            </Link>
+            <Link className="font-semibold hover:text-[var(--foreground)]" href="/quem-somos">
+              Quem somos
             </Link>
             <CookiePreferencesButton />
           </div>

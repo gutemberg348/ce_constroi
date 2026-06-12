@@ -5,6 +5,7 @@ export type TerrainStatus = "DRAFT" | "PENDING_REVIEW" | "AVAILABLE" | "RESERVED
 export type ProjectStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "ARCHIVED";
 export type SimulationStatus = "DRAFT" | "SENT" | "CONVERTED" | "EXPIRED";
 export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "CANCELED" | "REFUNDED";
+export type NewsStatus = "DRAFT" | "PUBLISHED";
 
 export type ApiResponse<T> = {
   success: boolean;
@@ -232,6 +233,20 @@ export type SiteEvent = {
   metadata?: Record<string, unknown> | null;
   createdAt: string;
   user?: Pick<AdminUser, "id" | "name" | "email" | "role"> | null;
+};
+
+export type NewsPost = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  imageUrl?: string | null;
+  author?: string | null;
+  status: NewsStatus;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AdminOverview = {

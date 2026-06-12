@@ -11,6 +11,7 @@ import {
   FileText,
   Image as ImageIcon,
   Map,
+  Newspaper,
   Pencil,
   RefreshCw,
   ShieldAlert,
@@ -21,6 +22,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Children, FormEvent, useMemo, useState } from "react";
 import type { UrlObject } from "url";
@@ -66,6 +68,12 @@ import {
   updateAdminUser,
   updateAdminUserStatus
 } from "@/services/admin";
+import {
+  createNewsPost,
+  deleteNewsPost,
+  getAdminNews,
+  updateNewsPost
+} from "@/services/news";
 import { getSiteSettings, updateSiteSettings } from "@/services/settings";
 import { useAuthStore } from "@/stores/auth-store";
 import {
@@ -76,6 +84,8 @@ import {
   ArchitectProfile,
   ArchitectStatus,
   OrderStatus,
+  NewsPost,
+  NewsStatus,
   Project,
   ProjectStatus,
   SimulationStatus,
@@ -94,6 +104,7 @@ type AdminSection =
   | "arquitetos"
   | "terrenos"
   | "projetos"
+  | "noticias"
   | "simulacoes"
   | "pedidos"
   | "anuncios"
@@ -115,6 +126,7 @@ const adminSections: AdminNavItem[] = [
   { id: "arquitetos", href: { pathname: "/admin/arquitetos" }, path: "/admin/arquitetos", label: "Arquitetos", description: "Aprovacao e curadoria", icon: Building2 },
   { id: "terrenos", href: { pathname: "/admin/terrenos" }, path: "/admin/terrenos", label: "Terrenos", description: "Catalogo de lotes", icon: Map },
   { id: "projetos", href: { pathname: "/admin/projetos" }, path: "/admin/projetos", label: "Projetos", description: "Casas e modelos", icon: ClipboardList },
+  { id: "noticias", href: { pathname: "/admin/noticias" }, path: "/admin/noticias", label: "Noticias", description: "Conteudos e novidades", icon: Newspaper },
   { id: "simulacoes", href: { pathname: "/admin/simulacoes" }, path: "/admin/simulacoes", label: "Simulacoes", description: "Resultados financeiros", icon: CreditCard },
   { id: "pedidos", href: { pathname: "/admin/pedidos" }, path: "/admin/pedidos", label: "Pedidos", description: "Vendas e contratos", icon: FileText },
   { id: "anuncios", href: { pathname: "/admin/anuncios" }, path: "/admin/anuncios", label: "Anuncios", description: "Fila de terrenos", icon: ShieldAlert },
@@ -128,6 +140,7 @@ const terrainStatuses: TerrainStatus[] = ["DRAFT", "PENDING_REVIEW", "AVAILABLE"
 const projectStatuses: ProjectStatus[] = ["DRAFT", "PENDING_REVIEW", "PUBLISHED", "ARCHIVED"];
 const simulationStatuses: SimulationStatus[] = ["DRAFT", "SENT", "CONVERTED", "EXPIRED"];
 const orderStatuses: OrderStatus[] = ["DRAFT", "PENDING_PAYMENT", "PAID", "CANCELED", "REFUNDED"];
+const newsStatuses: NewsStatus[] = ["DRAFT", "PUBLISHED"];
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
@@ -405,6 +418,11 @@ export default function AdminPage() {
     queryFn: () => getAdminProjects({ limit: 100 }),
     enabled: Boolean(accessToken && isAdmin && activeSection === "projetos")
   });
+  const newsQuery = useQuery({
+    queryKey: ["admin", "news"],
+    queryFn: () => getAdminNews({ limit: 100 }),
+    enabled: Boolean(accessToken && isAdmin && activeSection === "noticias")
+  });
   const simulationsQuery = useQuery({
     queryKey: ["admin", "simulations"],
     queryFn: () => getAdminSimulations({ limit: 100 }),
@@ -430,6 +448,8 @@ export default function AdminPage() {
     await queryClient.invalidateQueries({ queryKey: ["admin"] });
     await queryClient.invalidateQueries({ queryKey: ["terrains"] });
     await queryClient.invalidateQueries({ queryKey: ["projects"] });
+    await queryClient.invalidateQueries({ queryKey: ["news"] });
+    await queryClient.invalidateQueries({ queryKey: ["home", "news"] });
   };
 
   const userStatusMutation = useMutation({
@@ -586,6 +606,35 @@ export default function AdminPage() {
     onSuccess: invalidateAdmin
   });
 
+  const newsCreateMutation = useMutation({
+    mutationFn: async (formData: FormData) =>
+      createNewsPost({
+        title: formText(formData, "title"),
+        excerpt: formText(formData, "excerpt"),
+        content: formText(formData, "content"),
+        imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl")),
+        author: optionalText(formData, "author"),
+        status: formText(formData, "status") as NewsStatus
+      }),
+    onSuccess: invalidateAdmin
+  });
+  const newsUpdateMutation = useMutation({
+    mutationFn: async ({ post, formData }: { post: NewsPost; formData: FormData }) =>
+      updateNewsPost(post.id, {
+        title: formText(formData, "title"),
+        excerpt: formText(formData, "excerpt"),
+        content: formText(formData, "content"),
+        imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl") || post.imageUrl || ""),
+        author: optionalText(formData, "author"),
+        status: formText(formData, "status") as NewsStatus
+      }),
+    onSuccess: invalidateAdmin
+  });
+  const newsDeleteMutation = useMutation({
+    mutationFn: deleteNewsPost,
+    onSuccess: invalidateAdmin
+  });
+
   const simulationStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: SimulationStatus }) => updateAdminSimulationStatus(id, status),
     onSuccess: invalidateAdmin
@@ -611,6 +660,7 @@ export default function AdminPage() {
     architectsQuery,
     terrainsQuery,
     projectsQuery,
+    newsQuery,
     simulationsQuery,
     ordersQuery,
     eventsQuery,
@@ -623,9 +673,11 @@ export default function AdminPage() {
   const architects = architectsQuery.data ?? [];
   const terrains = terrainsQuery.data?.items ?? [];
   const projects = projectsQuery.data?.items ?? [];
+  const news = newsQuery.data?.items ?? [];
   const simulations = simulationsQuery.data?.items ?? [];
   const orders = ordersQuery.data?.items ?? [];
   const events = eventsQuery.data?.items ?? [];
+  const newsTotal = newsQuery.data?.meta.total;
 
   const navItems = useMemo(
     () =>
@@ -639,8 +691,10 @@ export default function AdminPage() {
                 ? metrics?.architects
                 : item.id === "terrenos"
                   ? metrics?.terrains
-                  : item.id === "projetos"
-                    ? metrics?.projects
+                : item.id === "projetos"
+                  ? metrics?.projects
+                  : item.id === "noticias"
+                    ? newsTotal
                     : item.id === "simulacoes"
                       ? metrics?.simulations
                       : item.id === "pedidos"
@@ -653,7 +707,7 @@ export default function AdminPage() {
 
         return { ...item, count };
       }),
-    [metrics]
+    [metrics, newsTotal]
   );
 
   if (!hasHydrated) {
@@ -867,6 +921,24 @@ export default function AdminPage() {
               projects={projects}
               terrains={terrains}
               terrainsLoading={terrainsQuery.isLoading}
+            />
+          ) : null}
+
+          {activeSection === "noticias" ? (
+            <NewsSection
+              createError={newsCreateMutation.error}
+              createPending={newsCreateMutation.isPending}
+              createSuccess={newsCreateMutation.isSuccess}
+              isLoading={newsQuery.isLoading}
+              news={news}
+              onCreate={(formData) => newsCreateMutation.mutate(formData)}
+              onDelete={(id) => {
+                if (confirmAction("Excluir esta noticia?")) {
+                  newsDeleteMutation.mutate(id);
+                }
+              }}
+              onUpdate={(post, formData) => newsUpdateMutation.mutate({ post, formData })}
+              pending={newsCreateMutation.isPending || newsUpdateMutation.isPending || newsDeleteMutation.isPending}
             />
           ) : null}
 
@@ -1793,6 +1865,166 @@ function AdminImageManager({
         </Button>
       </form>
     </div>
+  );
+}
+
+function NewsSection({
+  news,
+  isLoading,
+  onCreate,
+  onUpdate,
+  onDelete,
+  pending,
+  createPending,
+  createSuccess,
+  createError
+}: {
+  news: NewsPost[];
+  isLoading: boolean;
+  onCreate: (formData: FormData) => void;
+  onUpdate: (post: NewsPost, formData: FormData) => void;
+  onDelete: (id: string) => void;
+  pending: boolean;
+  createPending: boolean;
+  createSuccess: boolean;
+  createError: unknown;
+}) {
+  return (
+    <section className={panelClass()}>
+      <SectionHeader eyebrow="Conteudo" title="Noticias da construcao" total={news.length} />
+
+      <form
+        className="mb-6 grid gap-4 border-b border-[var(--line)] pb-6 md:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCreate(new FormData(event.currentTarget));
+        }}
+      >
+        <div className="md:col-span-2">
+          <p className="text-sm font-semibold uppercase text-[var(--accent)]">Nova noticia</p>
+          <h4 className="mt-1 text-xl font-semibold">Cadastrar postagem</h4>
+        </div>
+        <label>
+          <FieldLabel>Titulo</FieldLabel>
+          <input className={inputClass()} maxLength={180} name="title" required />
+        </label>
+        <label>
+          <FieldLabel>Autor</FieldLabel>
+          <input className={inputClass()} maxLength={120} name="author" placeholder="Equipe Ce Constroi" />
+        </label>
+        <label className="md:col-span-2">
+          <FieldLabel>Resumo</FieldLabel>
+          <textarea className={textareaClass()} maxLength={420} name="excerpt" required />
+        </label>
+        <label className="md:col-span-2">
+          <FieldLabel>Conteudo completo</FieldLabel>
+          <textarea className={`${textareaClass()} min-h-64`} name="content" required />
+        </label>
+        <label>
+          <FieldLabel>Imagem de capa</FieldLabel>
+          <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+        </label>
+        <label>
+          <FieldLabel>Ou URL da imagem</FieldLabel>
+          <input className={inputClass()} name="imageUrl" placeholder="https://..." />
+        </label>
+        <label>
+          <FieldLabel>Status</FieldLabel>
+          <select className={inputClass()} defaultValue="DRAFT" name="status">
+            {newsStatuses.map((status) => (
+              <option key={status} value={status}>
+                {statusLabel(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-end">
+          <Button className="w-full" disabled={createPending} type="submit" variant="secondary">
+            <Newspaper size={18} />
+            {createPending ? "Salvando..." : "Cadastrar noticia"}
+          </Button>
+        </div>
+        {createSuccess ? (
+          <p className="md:col-span-2 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
+            Noticia cadastrada com sucesso.
+          </p>
+        ) : null}
+        {createError ? (
+          <p className="md:col-span-2 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-700">
+            Nao foi possivel cadastrar: {errorMessage(createError)}
+          </p>
+        ) : null}
+      </form>
+
+      <AdminTable columns={["Capa", "Noticia", "Status", "Publicacao", "Acoes"]} empty="Nenhuma noticia cadastrada." isLoading={isLoading}>
+        {news.map((post) => (
+          <tr className="align-top" key={post.id}>
+            <td className="px-4 py-4">
+              <div className="h-16 w-24 overflow-hidden rounded-[8px] bg-black/5 dark:bg-white/10">
+                {post.imageUrl ? (
+                  <PrivacyImage alt={post.title} className="h-full w-full object-cover" src={post.imageUrl} />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-[var(--accent)]">
+                    <Newspaper size={24} />
+                  </div>
+                )}
+              </div>
+            </td>
+            <td className="max-w-md px-4 py-4">
+              <strong>{post.title}</strong>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{post.excerpt}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{post.author || "Sem autor informado"}</p>
+            </td>
+            <td className="px-4 py-4">{statusPill(post.status)}</td>
+            <td className="px-4 py-4">{dateTime(post.publishedAt ?? post.createdAt)}</td>
+            <td className="min-w-72 px-4 py-4">
+              <div className="grid gap-2">
+                {post.status === "PUBLISHED" ? (
+                  <Link
+                    className="focus-ring inline-flex h-9 items-center justify-center rounded-[8px] border border-[var(--line)] px-3 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                    href={`/noticias/${post.slug}` as Route}
+                    target="_blank"
+                  >
+                    Ver noticia
+                  </Link>
+                ) : null}
+                <EditPanel label="Editar noticia">
+                  <form
+                    className="grid gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      onUpdate(post, new FormData(event.currentTarget));
+                    }}
+                  >
+                    <input className={inputClass()} defaultValue={post.title} maxLength={180} name="title" required />
+                    <input className={inputClass()} defaultValue={post.author ?? ""} maxLength={120} name="author" placeholder="Autor" />
+                    <textarea className={textareaClass()} defaultValue={post.excerpt} maxLength={420} name="excerpt" required />
+                    <textarea className={`${textareaClass()} min-h-56`} defaultValue={post.content} name="content" required />
+                    <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+                    <input className={inputClass()} defaultValue={post.imageUrl ?? ""} name="imageUrl" placeholder="URL da imagem" />
+                    <select className={inputClass()} defaultValue={post.status} name="status">
+                      {newsStatuses.map((status) => (
+                        <option key={status} value={status}>
+                          {statusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                    <Button disabled={pending} type="submit" variant="secondary">
+                      <Check size={16} />
+                      Salvar noticia
+                    </Button>
+                  </form>
+                </EditPanel>
+                <ActionButton disabled={pending} onClick={() => onDelete(post.id)} tone="danger">
+                  <Trash2 size={15} />
+                  Excluir
+                </ActionButton>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </AdminTable>
+    </section>
   );
 }
 
