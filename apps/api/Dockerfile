@@ -23,4 +23,4 @@ COPY --from=builder /app/apps/api/prisma.config.ts ./apps/api/prisma.config.ts
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 WORKDIR /app/apps/api
 EXPOSE 3333
-CMD ["sh", "-c", "npm run prisma:deploy && npm run prisma:seed && node dist/src/main.js"]
+CMD ["sh", "-c", "npm run prisma:deploy && if [ \"${RUN_DATABASE_SEED:-false}\" = \"true\" ]; then npm run prisma:seed; fi && node dist/src/main.js"]

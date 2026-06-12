@@ -70,17 +70,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link className="flex min-w-0 items-center gap-2 font-semibold" href="/">
             {hasLogo ? (
-              <span className="relative flex h-[52px] w-44 shrink-0 items-center overflow-hidden sm:w-56 md:w-64">
+              <span className="relative flex h-[52px] w-44 shrink-0 items-center overflow-hidden sm:w-48 lg:w-52">
                 {logoLightUrl ? (
-                  <img alt={settings.brandName} className="absolute left-0 top-1/2 w-full max-w-none -translate-y-1/2 dark:hidden" src={logoLightUrl} />
+                  <img
+                    alt={settings.brandName}
+                    className="absolute left-0 top-1/2 w-full max-w-none -translate-y-1/2 select-none dark:hidden"
+                    decoding="async"
+                    src={logoLightUrl}
+                  />
                 ) : null}
                 {logoDarkUrl ? (
-                  <img alt={settings.brandName} className="absolute left-0 top-1/2 hidden w-full max-w-none -translate-y-1/2 dark:block" src={logoDarkUrl} />
+                  <img
+                    alt={settings.brandName}
+                    className="absolute left-0 top-1/2 hidden w-full max-w-none -translate-y-1/2 select-none dark:block"
+                    decoding="async"
+                    src={logoDarkUrl}
+                  />
                 ) : null}
                 <span className="sr-only">{settings.brandName}</span>
               </span>
             ) : isLoadingSettings ? (
-              <span aria-hidden="true" className="h-[52px] w-44 shrink-0 rounded-[8px] bg-white/10 sm:w-56 md:w-64" />
+              <span aria-hidden="true" className="h-[52px] w-44 shrink-0 rounded-[8px] bg-white/10 sm:w-48 lg:w-52" />
             ) : (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#0d6efd] text-white">
@@ -90,7 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </>
             )}
           </Link>
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 xl:flex">
             {links.map((item) => (
               <Link
                 className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] px-3 text-sm text-white/74 transition hover:bg-white/10 hover:text-white"
@@ -114,14 +124,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isLoggedIn ? (
               <>
                 <Link
-                  className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white sm:inline-flex"
+                  className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white xl:inline-flex"
                   href={dashboardHref}
                 >
                   <UserRound size={16} />
                   Meu painel
                 </Link>
                 <button
-                  className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] border border-white/18 px-3 text-sm font-semibold text-white hover:bg-white/10"
+                  className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] border border-white/18 px-3 text-sm font-semibold text-white hover:bg-white/10 xl:inline-flex"
                   onClick={logout}
                   type="button"
                 >
@@ -132,13 +142,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : (
               <>
                 <Link
-                  className="focus-ring hidden h-10 items-center rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white sm:inline-flex"
+                  className="focus-ring hidden h-10 items-center rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white xl:inline-flex"
                   href="/login"
                 >
                   Entrar
                 </Link>
                 <Link
-                  className="focus-ring inline-flex h-10 items-center rounded-[8px] bg-[#0d6efd] px-4 text-sm font-semibold text-white hover:bg-[#0b5ed7]"
+                  className="focus-ring hidden h-10 items-center rounded-[8px] bg-[#0d6efd] px-4 text-sm font-semibold text-white hover:bg-[#0b5ed7] xl:inline-flex"
                   href="/register"
                 >
                   Criar conta
@@ -147,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <button
               aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white md:hidden"
+              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white xl:hidden"
               onClick={() => setIsMobileMenuOpen((current) => !current)}
               type="button"
             >
@@ -156,7 +166,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {isMobileMenuOpen ? (
-          <div className="border-t border-white/10 bg-[#10284c] px-4 py-3 md:hidden">
+          <div className="border-t border-white/10 bg-[#10284c] px-4 py-3 xl:hidden">
             <nav className="mx-auto grid max-w-7xl gap-2">
               {[announceLink, ...links].map((item) => (
                 <Link
@@ -174,14 +184,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
               {isLoggedIn ? (
-                <Link
-                  className="focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white"
-                  href={dashboardHref}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <UserRound size={17} />
-                  Meu painel
-                </Link>
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <Link
+                    className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[#0d6efd] px-3 text-sm font-semibold text-white"
+                    href={dashboardHref}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <UserRound size={17} />
+                    Meu painel
+                  </Link>
+                  <button
+                    className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-[8px] border border-white/18 px-3 text-sm font-semibold text-white"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      logout();
+                    }}
+                    type="button"
+                  >
+                    <LogOut size={17} />
+                    Sair
+                  </button>
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <Link
