@@ -6,12 +6,14 @@ import { MediaGallery } from "@/components/marketplace/media-gallery";
 import { TerrainProjectSelector } from "@/components/marketplace/terrain-project-selector";
 import { area, money } from "@/lib/format";
 import { getTerrainPhoto } from "@/lib/terrain-images";
+import { getTerrainDevelopmentType, terrainDevelopmentLabel } from "@/lib/terrain-metadata";
 import { getTerrain } from "@/services/terrains";
 
 export default async function TerrainDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const terrain = await getTerrain(id);
   const fallbackImage = getTerrainPhoto(terrain);
+  const developmentType = getTerrainDevelopmentType(terrain.metadata);
   const gallery = [
     ...(terrain.images ?? []).map((image, index) => ({
       src: image.url,
@@ -30,6 +32,11 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
             <MapPin size={16} />
             {[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}
           </div>
+          {developmentType ? (
+            <p className="mt-2 text-sm font-semibold text-[var(--accent)]">
+              {terrainDevelopmentLabel(developmentType)}
+            </p>
+          ) : null}
           <h1 className="mt-2 text-2xl font-semibold sm:mt-3 sm:text-3xl lg:text-4xl">{terrain.title}</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:mt-4 sm:text-base sm:leading-7">{terrain.description}</p>
           <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">

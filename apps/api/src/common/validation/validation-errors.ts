@@ -13,6 +13,7 @@ const fieldLabels: Record<string, string> = {
   phone: "telefone",
   companyName: "nome da empresa",
   cauNumber: "número do CAU",
+  defaultCreci: "CRECI padrão da empresa",
   website: "site",
   bio: "biografia",
   title: "título",

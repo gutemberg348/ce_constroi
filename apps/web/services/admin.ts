@@ -121,6 +121,7 @@ export type UpdateAdminTerrainInput = Partial<
 > & {
   zipCode?: string;
   zoning?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type AdminImageInput = {

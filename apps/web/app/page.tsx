@@ -63,7 +63,7 @@ const steps: Step[] = [
   {
     icon: BadgeCheck,
     title: "Aprovacao do financiamento",
-    description: "Simule com login e avance para atendimento quando fizer sentido para sua renda."
+    description: "Cadastre-se, simule e avance para atendimento quando fizer sentido para sua renda."
   }
 ];
 
@@ -262,10 +262,10 @@ export default function HomePage() {
                 </Link>
                 <Link
                   className={`${actionLinkClass} border border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10`}
-                  href="/login?next=/terrenos"
+                  href="/register?next=/simulacao"
                 >
                   <Calculator size={18} />
-                  Simular com login
+                  Cadastre-se e simule
                 </Link>
               </div>
             </div>
@@ -370,8 +370,8 @@ export default function HomePage() {
                 </div>
                 <h3 className="mt-3 text-3xl font-semibold leading-tight">Descubra se o plano cabe na sua renda antes de avancar.</h3>
                 <p className="mt-3 max-w-2xl leading-7 text-white/76">
-                  A simulacao pede login para salvar terreno e projeto. Depois, o atendimento ajuda a conferir renda,
-                  documentos e proximos passos.
+                  Cadastre-se para salvar o terreno e o projeto durante a simulação. Depois, o atendimento ajuda a conferir
+                  renda, documentos e próximos passos.
                 </p>
                 <dl className="mt-5 grid gap-4 border-t border-white/20 pt-4 sm:grid-cols-3">
                   <div>
@@ -384,7 +384,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <dt className="text-sm text-white/64">Proximo passo</dt>
-                    <dd className="mt-1 text-xl font-semibold">Login</dd>
+                    <dd className="mt-1 text-xl font-semibold">Cadastro</dd>
                   </div>
                 </dl>
               </div>
@@ -430,8 +430,8 @@ export default function HomePage() {
             <p className="text-sm uppercase text-[var(--muted)]">Como funciona</p>
             <h2 className="mt-2 text-4xl font-semibold">Terreno primeiro. Projeto depois.</h2>
             <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              O cliente nao precisa adivinhar. Ele parte da regiao, entende o lote e so entao ve os projetos compativeis
-              dentro da pagina do terreno.
+              O CÊ Constrói conecta terreno, construção e viabilidade. Você escolhe o lote e a plataforma apresenta as
+              soluções compatíveis para construir com segurança.
             </p>
           </div>
 

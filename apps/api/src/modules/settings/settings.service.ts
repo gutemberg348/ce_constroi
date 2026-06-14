@@ -7,13 +7,15 @@ export type PublicSiteSettings = {
   logoUrl: string | null;
   logoLightUrl: string | null;
   logoDarkUrl: string | null;
+  defaultCreci: string;
 };
 
 const defaults: PublicSiteSettings = {
   brandName: "Ce constroi",
   logoUrl: "/brand/ce-constroi-logo.png",
   logoLightUrl: "/brand/ce-constroi-logo.png",
-  logoDarkUrl: "/brand/ce-constroi-logo.png"
+  logoDarkUrl: "/brand/ce-constroi-logo.png",
+  defaultCreci: ""
 };
 
 function stringValue(value: unknown) {
@@ -26,7 +28,7 @@ export class SettingsService {
 
   async publicSettings(): Promise<PublicSiteSettings> {
     const rows = await this.prisma.siteSetting.findMany({
-      where: { key: { in: ["brandName", "logoUrl", "logoLightUrl", "logoDarkUrl"] } }
+      where: { key: { in: ["brandName", "logoUrl", "logoLightUrl", "logoDarkUrl", "defaultCreci"] } }
     });
 
     const byKey = new Map(rows.map((row) => [row.key, row.value]));
@@ -38,7 +40,8 @@ export class SettingsService {
       brandName: stringValue(byKey.get("brandName")) || defaults.brandName,
       logoUrl: logoLightUrl,
       logoLightUrl,
-      logoDarkUrl
+      logoDarkUrl,
+      defaultCreci: stringValue(byKey.get("defaultCreci")) || defaults.defaultCreci
     };
   }
 
@@ -47,7 +50,8 @@ export class SettingsService {
       ["brandName", dto.brandName?.trim()],
       ["logoUrl", dto.logoUrl?.trim()],
       ["logoLightUrl", dto.logoLightUrl?.trim()],
-      ["logoDarkUrl", dto.logoDarkUrl?.trim()]
+      ["logoDarkUrl", dto.logoDarkUrl?.trim()],
+      ["defaultCreci", dto.defaultCreci?.trim()]
     ].filter((entry): entry is [string, string] => entry[1] !== undefined);
 
     await this.prisma.$transaction(

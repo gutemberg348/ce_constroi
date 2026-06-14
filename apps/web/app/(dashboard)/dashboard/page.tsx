@@ -102,7 +102,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-sm uppercase text-[var(--muted)]">Dashboard</p>
           <h1 className="mt-3 text-4xl font-semibold">
-            {isOwner ? "Painel do proprietario" : isArchitect ? "Painel do arquiteto" : "Painel do cliente"}
+            {isArchitect ? "Painel do arquiteto" : "Painel do usuário interessado"}
           </h1>
           <p className="mt-3 max-w-2xl text-[var(--muted)]">
             {dashboard?.user.name ?? user?.name ?? "Sua conta"} - dados carregados do PostgreSQL.
@@ -115,14 +115,6 @@ export default function DashboardPage() {
               Nova simulacao
             </Button>
           </Link>
-          {isOwner ? (
-            <Link href="/anunciar-terreno">
-              <Button type="button" variant="secondary">
-                <Map size={18} />
-                Anunciar terreno
-              </Button>
-            </Link>
-          ) : null}
           {isArchitect ? (
             <Link href="/painel-arquiteto">
               <Button type="button" variant="secondary">

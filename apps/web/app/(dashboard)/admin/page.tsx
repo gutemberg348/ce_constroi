@@ -34,6 +34,12 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formDataImageValue, formDataLogoImageValue } from "@/lib/files";
 import { area, money } from "@/lib/format";
+import {
+  getTerrainDevelopmentType,
+  terrainDevelopmentLabel,
+  type TerrainDevelopmentType,
+  withTerrainDevelopmentType
+} from "@/lib/terrain-metadata";
 import { getApiErrorMessage } from "@/services/api";
 import {
   addAdminProjectImage,
@@ -132,7 +138,14 @@ const adminSections: AdminNavItem[] = [
   { id: "pedidos", href: { pathname: "/admin/pedidos" }, path: "/admin/pedidos", label: "Pedidos", description: "Vendas e contratos", icon: FileText },
   { id: "anuncios", href: { pathname: "/admin/anuncios" }, path: "/admin/anuncios", label: "Anuncios", description: "Fila de terrenos", icon: ShieldAlert },
   { id: "acessos", href: { pathname: "/admin/acessos" }, path: "/admin/acessos", label: "Acessos", description: "Eventos do site", icon: Activity },
-  { id: "marca", href: { pathname: "/admin/marca" }, path: "/admin/marca", label: "Marca", description: "Logo e identidade", icon: ImageIcon }
+  {
+    id: "marca",
+    href: { pathname: "/admin/marca" },
+    path: "/admin/marca",
+    label: "Configurações",
+    description: "Marca e CRECI padrão",
+    icon: ImageIcon
+  }
 ];
 
 const userStatuses: UserStatus[] = ["ACTIVE", "INACTIVE", "SUSPENDED"];
@@ -197,6 +210,10 @@ function statusPill(status?: string) {
 
 function inputClass() {
   return "focus-ring h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 text-sm outline-none";
+}
+
+function selectClass() {
+  return inputClass();
 }
 
 function textareaClass() {
@@ -529,7 +546,11 @@ export default function AdminPage() {
         areaM2: requiredFormNumber(formData, "areaM2", "Area total"),
         frontageM: formNumber(formData, "frontageM"),
         depthM: formNumber(formData, "depthM"),
-        price: requiredFormNumber(formData, "price", "Valor")
+        price: requiredFormNumber(formData, "price", "Valor"),
+        metadata: withTerrainDevelopmentType(
+          undefined,
+          formText(formData, "developmentType") as TerrainDevelopmentType
+        )
       };
       const terrain = await createTerrain(input);
 
@@ -542,7 +563,15 @@ export default function AdminPage() {
     onSuccess: invalidateAdmin
   });
   const terrainUpdateMutation = useMutation({
-    mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
+    mutationFn: ({
+      id,
+      formData,
+      metadata
+    }: {
+      id: string;
+      formData: FormData;
+      metadata?: Record<string, unknown>;
+    }) =>
       updateAdminTerrain(id, {
         title: formText(formData, "title"),
         description: formText(formData, "description"),
@@ -555,7 +584,11 @@ export default function AdminPage() {
         areaM2: formNumber(formData, "areaM2"),
         frontageM: formNumber(formData, "frontageM"),
         depthM: formNumber(formData, "depthM"),
-        price: formNumber(formData, "price")
+        price: formNumber(formData, "price"),
+        metadata: withTerrainDevelopmentType(
+          metadata,
+          formText(formData, "developmentType") as TerrainDevelopmentType
+        )
       }),
     onSuccess: invalidateAdmin
   });
@@ -647,7 +680,7 @@ export default function AdminPage() {
       setLogoMessage("Marca atualizada com sucesso.");
       await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
     },
-    onError: (error) => setLogoMessage(getApiErrorMessage(error, "Não foi possível salvar a marca."))
+    onError: (error) => setLogoMessage(getApiErrorMessage(error, "Não foi possível salvar as configurações."))
   });
 
   const failedQuery = [
@@ -747,7 +780,8 @@ export default function AdminPage() {
       settingsMutation.mutate({
         brandName: formText(formData, "brandName"),
         logoLightUrl: normalizedLightLogo,
-        logoDarkUrl: normalizedDarkLogo
+        logoDarkUrl: normalizedDarkLogo,
+        defaultCreci: formText(formData, "defaultCreci")
       });
     });
   }
@@ -885,7 +919,7 @@ export default function AdminPage() {
               onDelete={(id) => terrainDeleteMutation.mutate(id)}
               onRemoveImage={(id) => terrainImageRemoveMutation.mutate(id)}
               onStatus={(id, status) => terrainStatusMutation.mutate({ id, status })}
-              onUpdate={(id, formData) => terrainUpdateMutation.mutate({ id, formData })}
+              onUpdate={(id, formData, metadata) => terrainUpdateMutation.mutate({ id, formData, metadata })}
               pending={
                 terrainStatusMutation.isPending ||
                 terrainCreateMutation.isPending ||
@@ -974,8 +1008,8 @@ export default function AdminPage() {
             <section className={panelClass()}>
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm uppercase text-[var(--muted)]">Identidade</p>
-                  <h3 className="mt-1 text-2xl font-semibold">Marca do site</h3>
+                  <p className="text-sm uppercase text-[var(--muted)]">Configurações</p>
+                  <h3 className="mt-1 text-2xl font-semibold">Marca e identificação da empresa</h3>
                 </div>
                 {statusPill(settingsMutation.isPending ? "PENDING_REVIEW" : "ACTIVE")}
               </div>
@@ -984,7 +1018,15 @@ export default function AdminPage() {
                   <FieldLabel>Nome da marca</FieldLabel>
                   <input className={inputClass()} defaultValue={settingsQuery.data?.brandName ?? ""} name="brandName" required />
                 </label>
-                <div />
+                <label>
+                  <FieldLabel>CRECI padrão da empresa</FieldLabel>
+                  <input
+                    className={inputClass()}
+                    defaultValue={settingsQuery.data?.defaultCreci ?? ""}
+                    name="defaultCreci"
+                    placeholder="Ex.: CRECI 12345-J"
+                  />
+                </label>
                 <label>
                   <FieldLabel>Logo clara</FieldLabel>
                   <input accept="image/*" className={inputClass()} name="logoLightFile" type="file" />
@@ -995,7 +1037,7 @@ export default function AdminPage() {
                 </label>
                 <Button className="md:col-span-2" disabled={settingsMutation.isPending} type="submit" variant="secondary">
                   <Check size={18} />
-                  Salvar marca
+                  Salvar configurações
                 </Button>
               </form>
               {logoMessage ? <p className="mt-3 text-sm text-[var(--muted)]">{logoMessage}</p> : null}
@@ -1454,7 +1496,7 @@ function TerrainsSection({
   onApprove: (id: string) => void;
   onArchive: (id: string) => void;
   onStatus: (id: string, status: TerrainStatus) => void;
-  onUpdate: (id: string, formData: FormData) => void;
+  onUpdate: (id: string, formData: FormData, metadata?: Record<string, unknown>) => void;
   onDelete: (id: string) => void;
   onCreate: (formData: FormData) => void;
   onAddImage: (id: string, formData: FormData) => void;
@@ -1483,6 +1525,9 @@ function TerrainsSection({
             <td className="px-4 py-4">
               <p>{[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}</p>
               <p className="mt-1 text-xs text-[var(--muted)]">{terrain.address ?? "Endereco nao informado"}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {terrainDevelopmentLabel(getTerrainDevelopmentType(terrain.metadata))}
+              </p>
             </td>
             <td className="px-4 py-4">
               <p>{money(terrain.price)}</p>
@@ -1569,6 +1614,10 @@ function TerrainCreateForm({
         <input className={inputClass()} min={0} name="frontageM" placeholder="Frente em metros" type="number" />
         <input className={inputClass()} min={0} name="depthM" placeholder="Fundo em metros" type="number" />
         <input className={inputClass()} name="zoning" placeholder="Zoneamento" />
+        <select className={selectClass()} defaultValue="OPEN" name="developmentType" required>
+          <option value="OPEN">Local aberto</option>
+          <option value="CLOSED">Condomínio ou loteamento fechado</option>
+        </select>
         <textarea className={`${textareaClass()} xl:col-span-4`} name="description" placeholder="Descricao do terreno" required />
       </div>
 
@@ -1601,15 +1650,17 @@ function TerrainEditForm({
 }: {
   terrain: Terrain;
   disabled: boolean;
-  onSubmit: (id: string, formData: FormData) => void;
+  onSubmit: (id: string, formData: FormData, metadata?: Record<string, unknown>) => void;
 }) {
+  const developmentType = getTerrainDevelopmentType(terrain.metadata);
+
   return (
     <form
       className="grid gap-3 md:grid-cols-2"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit(terrain.id, new FormData(event.currentTarget));
+        onSubmit(terrain.id, new FormData(event.currentTarget), terrain.metadata);
       }}
     >
       <input className={inputClass()} defaultValue={terrain.title} name="title" placeholder="Titulo" required />
@@ -1622,7 +1673,11 @@ function TerrainEditForm({
       <input className={inputClass()} defaultValue={terrain.zipCode ?? ""} name="zipCode" placeholder="CEP" />
       <input className={inputClass()} defaultValue={String(terrain.frontageM ?? "")} name="frontageM" placeholder="Frente" type="number" />
       <input className={inputClass()} defaultValue={String(terrain.depthM ?? "")} name="depthM" placeholder="Fundo" type="number" />
-      <input className={`${inputClass()} md:col-span-2`} defaultValue={terrain.zoning ?? ""} name="zoning" placeholder="Zoneamento" />
+      <input className={inputClass()} defaultValue={terrain.zoning ?? ""} name="zoning" placeholder="Zoneamento" />
+      <select className={selectClass()} defaultValue={developmentType ?? "OPEN"} name="developmentType">
+        <option value="OPEN">Local aberto</option>
+        <option value="CLOSED">Condomínio ou loteamento fechado</option>
+      </select>
       <textarea className={`${textareaClass()} md:col-span-2`} defaultValue={terrain.description} name="description" placeholder="Descricao" />
       <Button className="md:col-span-2" disabled={disabled} type="submit" variant="secondary">
         <Pencil size={16} />

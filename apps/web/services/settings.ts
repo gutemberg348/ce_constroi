@@ -5,7 +5,8 @@ export const defaultSiteSettings: SiteSettings = {
   brandName: "Ce constroi",
   logoUrl: "/brand/ce-constroi-logo.png",
   logoLightUrl: "/brand/ce-constroi-logo.png",
-  logoDarkUrl: "/brand/ce-constroi-logo.png"
+  logoDarkUrl: "/brand/ce-constroi-logo.png",
+  defaultCreci: ""
 };
 
 export async function getSiteSettings() {

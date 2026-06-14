@@ -1187,8 +1187,9 @@ export function SimpleFinancingSimulator() {
               <h2 className="text-lg font-semibold">Importante</h2>
             </div>
             <p className="text-sm leading-6 text-[var(--muted)]">
-              Essa ferramenta nao garante aprovacao. O atendimento precisa conferir documentos, renda real, restricao, avaliacao
-              do imovel e simulacao oficial do banco.
+              As informações apresentadas servem como uma estimativa inicial de viabilidade. A aprovação do financiamento
+              depende da análise da instituição financeira, considerando documentação, renda, condições de crédito,
+              avaliação do imóvel e demais requisitos aplicáveis.
             </p>
           </div>
         </aside>

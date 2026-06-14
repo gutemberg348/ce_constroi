@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useMemo, useState } from "react";
 import { Camera, CheckCircle2, Home, LogIn, Plus, Search, ShieldCheck, UploadCloud, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { readFileAsDataUrl } from "@/lib/files";
 import { toNumber } from "@/lib/format";
 import { getApiErrorMessage } from "@/services/api";
+import { getSiteSettings } from "@/services/settings";
 import { createTerrain } from "@/services/terrains";
 import { createTerrainImage } from "@/services/terrain-images";
 import { useAuthStore } from "@/stores/auth-store";
@@ -27,6 +29,7 @@ type AnnouncementForm = {
   state: string;
   city: string;
   intention: string;
+  developmentType: "OPEN" | "CLOSED";
   expectedValue: string;
   totalArea: string;
   usefulArea: string;
@@ -47,6 +50,7 @@ const initialForm: AnnouncementForm = {
   state: "",
   city: "",
   intention: "Venda",
+  developmentType: "OPEN",
   expectedValue: "",
   totalArea: "",
   usefulArea: "",
@@ -69,6 +73,10 @@ export default function AnnounceTerrainPage() {
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const logout = useAuthStore((state) => state.logout);
+  const settingsQuery = useQuery({
+    queryKey: ["site-settings"],
+    queryFn: getSiteSettings
+  });
   const [form, setForm] = useState<AnnouncementForm>(initialForm);
   const [photoSlots, setPhotoSlots] = useState([0, 1, 2, 3]);
   const [photos, setPhotos] = useState<Array<File | null>>([null, null, null, null]);
@@ -83,6 +91,7 @@ export default function AnnounceTerrainPage() {
 
   const ownerName = form.ownerName || user?.name || "";
   const ownerEmail = form.ownerEmail || user?.email || "";
+  const effectiveCreci = form.creci.trim() || settingsQuery.data?.defaultCreci?.trim() || "";
 
   const title = useMemo(() => {
     const place = form.neighborhood || form.city || "novo anuncio";
@@ -149,8 +158,8 @@ export default function AnnounceTerrainPage() {
       return;
     }
 
-    if (form.announcerType === "Corretor" && !form.creci.trim()) {
-      setError("Informe o CRECI para anunciar como corretor.");
+    if (!effectiveCreci) {
+      setError("Informe o CRECI do responsável ou peça ao administrador para cadastrar o CRECI padrão da empresa.");
       return;
     }
 
@@ -191,7 +200,8 @@ export default function AnnounceTerrainPage() {
           source: "owner_announcement",
           owner: {
             type: form.announcerType,
-            creci: form.announcerType === "Corretor" ? form.creci : undefined,
+            creci: effectiveCreci,
+            creciSource: form.creci.trim() ? "announcer" : "company_default",
             name: ownerName,
             phone: form.ownerPhone,
             email: ownerEmail
@@ -201,6 +211,7 @@ export default function AnnounceTerrainPage() {
             number: form.number,
             complement: form.complement,
             intention: form.intention,
+            developmentType: form.developmentType,
             totalArea: areaM2,
             usefulArea: toNumber(form.usefulArea),
             features: form.features
@@ -310,14 +321,21 @@ export default function AnnounceTerrainPage() {
               <Input onChange={(event) => update("ownerPhone", event.target.value)} placeholder="Telefone / WhatsApp" required value={form.ownerPhone} />
               <Input onChange={(event) => update("ownerEmail", event.target.value)} placeholder={user?.email ?? "E-mail"} required type="email" value={form.ownerEmail} />
               {form.announcerType === "Corretor" ? (
-                <Input
-                  className="md:col-span-4"
-                  onChange={(event) => update("creci", event.target.value)}
-                  placeholder="CRECI"
-                  required
-                  value={form.creci}
-                />
-              ) : null}
+                <div className="md:col-span-4">
+                  <Input
+                    onChange={(event) => update("creci", event.target.value)}
+                    placeholder="CRECI do corretor (opcional se houver padrão da empresa)"
+                    value={form.creci}
+                  />
+                  <p className="mt-2 text-xs text-[var(--muted)]">
+                    Se ficar vazio, será utilizado o CRECI padrão cadastrado pelo administrador.
+                  </p>
+                </div>
+              ) : (
+                <p className="md:col-span-4 text-sm text-[var(--muted)]">
+                  CRECI responsável: {settingsQuery.data?.defaultCreci || "aguardando configuração do administrador"}
+                </p>
+              )}
             </div>
           </fieldset>
 
@@ -344,6 +362,14 @@ export default function AnnounceTerrainPage() {
                 <option>Venda</option>
                 <option>Venda ou permuta</option>
                 <option>Parceria</option>
+              </select>
+              <select
+                className={inputClass()}
+                onChange={(event) => update("developmentType", event.target.value as AnnouncementForm["developmentType"])}
+                value={form.developmentType}
+              >
+                <option value="OPEN">Local aberto</option>
+                <option value="CLOSED">Condomínio ou loteamento fechado</option>
               </select>
               <CurrencyInput onValueChange={(value) => update("expectedValue", value)} placeholder="Valor aproximado" required value={form.expectedValue} />
               <Input inputMode="decimal" onChange={(event) => update("totalArea", event.target.value)} placeholder="Area total do terreno" required value={form.totalArea} />
@@ -406,10 +432,11 @@ export default function AnnounceTerrainPage() {
                 {form.neighborhood || "Bairro"} - {form.city || "Cidade"} / {form.state || "UF"}
               </p>
               <p>{form.totalArea || "0"} m2 de area total</p>
+              <p>{form.developmentType === "CLOSED" ? "Local fechado" : "Local aberto"}</p>
               <p>{selectedPhotoCount} foto(s) anexada(s)</p>
               <p>
                 Responsavel: {form.announcerType}
-                {form.announcerType === "Corretor" && form.creci ? ` - CRECI ${form.creci}` : ""}
+                {effectiveCreci ? ` - CRECI ${effectiveCreci}` : ""}
               </p>
             </div>
 

@@ -21,4 +21,9 @@ export class UpdateSiteSettingsDto {
   @IsString()
   @IsOptional()
   logoDarkUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  defaultCreci?: string;
 }

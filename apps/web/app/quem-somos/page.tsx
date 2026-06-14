@@ -213,7 +213,7 @@ export default function AboutPage() {
             <p className="mt-3 text-white/78">Uma única plataforma para transformar seu projeto em realidade.</p>
           </div>
           <Link href="/terrenos">
-            <Button className="w-full bg-white text-[#061733] hover:bg-white/90 sm:w-auto" type="button">
+            <Button className="w-full sm:w-auto" type="button" variant="light">
               Conhecer terrenos
               <ArrowRight size={18} />
             </Button>

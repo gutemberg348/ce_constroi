@@ -18,6 +18,7 @@ export type SiteSettings = {
   logoUrl?: string | null;
   logoLightUrl: string | null;
   logoDarkUrl: string | null;
+  defaultCreci: string;
 };
 
 export type Paginated<T> = {
