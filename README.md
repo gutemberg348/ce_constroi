@@ -43,3 +43,17 @@ docker compose down
 ```
 
 Evite `docker compose down -v`, `docker volume rm` ou apagar volumes pelo Docker Desktop em ambiente com dados que voce quer manter.
+
+## Deploy na VPS
+
+O script constroi as imagens antes de parar os containers. Se o build falhar, o deploy para e a versao atual continua rodando.
+
+```bash
+chmod +x scripts/deploy-vps.sh
+
+# Somente alteracoes do site/header
+./scripts/deploy-vps.sh web
+
+# API e site
+./scripts/deploy-vps.sh api web
+```
