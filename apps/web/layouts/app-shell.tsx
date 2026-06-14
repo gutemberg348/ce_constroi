@@ -13,15 +13,17 @@ import { trackSiteEvent } from "@/services/analytics";
 import { defaultSiteSettings, getSiteSettings } from "@/services/settings";
 import { useAuthStore } from "@/stores/auth-store";
 
-const links: Array<{ href: Route; label: string; icon: LucideIcon }> = [
+const desktopLinks: Array<{ href: Route; label: string; icon: LucideIcon }> = [
   { href: "/terrenos", label: "Terrenos", icon: Map },
   { href: "/projetos", label: "Projetos", icon: Building2 },
-  { href: "/simulacao", label: "Simulacao", icon: Calculator },
+  { href: "/simulacao", label: "Simulacao", icon: Calculator }
+];
+
+const mobileLinks: Array<{ href: Route; label: string; icon: LucideIcon }> = [
+  ...desktopLinks,
   { href: "/favoritos", label: "Favoritos", icon: Heart },
   { href: "/quem-somos", label: "Quem somos", icon: Info }
 ];
-
-const desktopLinks = links.slice(0, 3);
 
 const announceLink: { href: Route; label: string; icon: LucideIcon } = {
   href: "/anunciar-terreno",
@@ -187,7 +189,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {isMobileMenuOpen ? (
           <div className="border-t border-white/10 bg-[#10284c] px-4 py-3 2xl:hidden">
             <nav className="mx-auto grid max-w-[1500px] gap-2">
-              {[announceLink, ...links].map((item) => (
+              {[announceLink, ...mobileLinks].map((item) => (
                 <Link
                   className={`focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold ${
                     item.href === announceLink.href
