@@ -21,8 +21,7 @@ const desktopLinks: Array<{ href: Route; label: string; icon: LucideIcon }> = [
 
 const mobileLinks: Array<{ href: Route; label: string; icon: LucideIcon }> = [
   ...desktopLinks,
-  { href: "/favoritos", label: "Favoritos", icon: Heart },
-  { href: "/quem-somos", label: "Quem somos", icon: Info }
+  { href: "/favoritos", label: "Favoritos", icon: Heart }
 ];
 
 const announceLink: { href: Route; label: string; icon: LucideIcon } = {
@@ -204,6 +203,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {item.label}
                 </Link>
               ))}
+              <Link
+                className="focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white"
+                href="/quem-somos"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Info size={17} />
+                Quem somos
+              </Link>
               {isLoggedIn ? (
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <Link
