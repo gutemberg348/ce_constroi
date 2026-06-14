@@ -104,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </>
             )}
           </Link>
-          <nav className="hidden items-center gap-1 2xl:flex">
+          <nav className="hidden items-center gap-1 xl:flex">
             {desktopLinks.map((item) => (
               <Link
                 className="focus-ring inline-flex h-10 items-center gap-2 rounded-[8px] px-2.5 text-sm text-white/74 transition hover:bg-white/10 hover:text-white"
@@ -125,15 +125,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="flex items-center gap-2">
             <Link
-              className="focus-ring hidden h-10 items-center gap-2 rounded-[8px] bg-[#0d6efd] px-3 text-sm font-semibold text-white transition hover:bg-[#0b5ed7] xl:inline-flex 2xl:hidden"
-              href={announceLink.href}
-            >
-              <announceLink.icon size={16} />
-              Anunciar
-            </Link>
-            <Link
               aria-label="Favoritos"
-              className="focus-ring hidden h-10 w-10 items-center justify-center rounded-[8px] text-white/74 hover:bg-white/10 hover:text-white 2xl:inline-flex"
+              className="focus-ring hidden h-10 w-10 items-center justify-center rounded-[8px] text-white/74 hover:bg-white/10 hover:text-white xl:inline-flex"
               href="/favoritos"
               title="Favoritos"
             >
@@ -151,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
                 <button
                   aria-label="Sair"
-                  className="focus-ring hidden h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white hover:bg-white/10 2xl:inline-flex"
+                  className="focus-ring hidden h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white hover:bg-white/10 xl:inline-flex"
                   onClick={logout}
                   title="Sair"
                   type="button"
@@ -177,7 +170,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <button
               aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white 2xl:hidden"
+              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-white/18 text-white xl:hidden"
               onClick={() => setIsMobileMenuOpen((current) => !current)}
               type="button"
             >
@@ -186,7 +179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {isMobileMenuOpen ? (
-          <div className="border-t border-white/10 bg-[#10284c] px-4 py-3 2xl:hidden">
+          <div className="border-t border-white/10 bg-[#10284c] px-4 py-3 xl:hidden">
             <nav className="mx-auto grid max-w-[1500px] gap-2">
               {[announceLink, ...mobileLinks].map((item) => (
                 <Link
