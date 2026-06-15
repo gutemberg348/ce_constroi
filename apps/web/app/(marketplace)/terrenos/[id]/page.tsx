@@ -3,6 +3,7 @@ import { Home, MapPin, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/components/marketplace/favorite-button";
 import { MediaGallery } from "@/components/marketplace/media-gallery";
+import { TerrainCreciBadge } from "@/components/marketplace/terrain-creci-badge";
 import { TerrainProjectSelector } from "@/components/marketplace/terrain-project-selector";
 import { area, money } from "@/lib/format";
 import { getTerrainPhoto } from "@/lib/terrain-images";
@@ -32,11 +33,14 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
             <MapPin size={16} />
             {[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}
           </div>
-          {developmentType ? (
-            <p className="mt-2 text-sm font-semibold text-[var(--accent)]">
-              {terrainDevelopmentLabel(developmentType)}
-            </p>
-          ) : null}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {developmentType ? (
+              <p className="text-sm font-semibold text-[var(--accent)]">
+                {terrainDevelopmentLabel(developmentType)}
+              </p>
+            ) : null}
+            <TerrainCreciBadge metadata={terrain.metadata} />
+          </div>
           <h1 className="mt-2 text-2xl font-semibold sm:mt-3 sm:text-3xl lg:text-4xl">{terrain.title}</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:mt-4 sm:text-base sm:leading-7">{terrain.description}</p>
           <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">

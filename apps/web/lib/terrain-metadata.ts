@@ -13,6 +13,17 @@ export function getTerrainDevelopmentType(metadata: unknown): TerrainDevelopment
     : undefined;
 }
 
+export function getTerrainCreci(metadata: unknown) {
+  const owner = objectValue(objectValue(metadata).owner);
+  return typeof owner.creci === "string" && owner.creci.trim()
+    ? owner.creci.trim()
+    : undefined;
+}
+
+export function resolveTerrainCreci(metadata: unknown, defaultCreci?: string | null) {
+  return getTerrainCreci(metadata) ?? defaultCreci?.trim() ?? "";
+}
+
 export function withTerrainDevelopmentType(
   metadata: unknown,
   developmentType: TerrainDevelopmentType
