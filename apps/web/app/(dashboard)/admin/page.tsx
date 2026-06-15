@@ -6,6 +6,8 @@ import {
   Ban,
   Building2,
   Check,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   CreditCard,
   FileText,
@@ -14,6 +16,7 @@ import {
   Newspaper,
   Pencil,
   RefreshCw,
+  Search,
   ShieldAlert,
   Trash2,
   UserPlus,
@@ -394,6 +397,8 @@ export default function AdminPage() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [logoMessage, setLogoMessage] = useState<string | null>(null);
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsSearch, setEventsSearch] = useState("");
 
   const isAdmin = user?.role === "ADMIN";
   const activeSection = getAdminSection(pathname ?? "/admin");
@@ -448,8 +453,8 @@ export default function AdminPage() {
     enabled: Boolean(accessToken && isAdmin && activeSection === "pedidos")
   });
   const eventsQuery = useQuery({
-    queryKey: ["admin", "events"],
-    queryFn: () => getAdminEvents({ limit: 100 }),
+    queryKey: ["admin", "events", eventsPage, eventsSearch],
+    queryFn: () => getAdminEvents({ page: eventsPage, limit: 20, search: eventsSearch || undefined }),
     enabled: Boolean(accessToken && isAdmin && activeSection === "acessos")
   });
   const settingsQuery = useQuery({
@@ -707,6 +712,7 @@ export default function AdminPage() {
   const simulations = simulationsQuery.data?.items ?? [];
   const orders = ordersQuery.data?.items ?? [];
   const events = eventsQuery.data?.items ?? [];
+  const eventsMeta = eventsQuery.data?.meta ?? { page: eventsPage, limit: 20, total: 0, totalPages: 1 };
   const newsTotal = newsQuery.data?.meta.total;
 
   const navItems = useMemo(
@@ -1002,7 +1008,19 @@ export default function AdminPage() {
             />
           ) : null}
 
-          {activeSection === "acessos" ? <EventsSection events={events} isLoading={eventsQuery.isLoading} /> : null}
+          {activeSection === "acessos" ? (
+            <EventsSection
+              events={events}
+              isLoading={eventsQuery.isLoading}
+              meta={eventsMeta}
+              onPageChange={setEventsPage}
+              onSearch={(search) => {
+                setEventsPage(1);
+                setEventsSearch(search);
+              }}
+              search={eventsSearch}
+            />
+          ) : null}
 
           {activeSection === "marca" ? (
             <section className={panelClass()}>
@@ -2233,20 +2251,157 @@ function AnnouncementsSection({
   );
 }
 
-function EventsSection({ events, isLoading }: { events: Array<Awaited<ReturnType<typeof getAdminEvents>>["items"][number]>; isLoading: boolean }) {
+function EventsSection({
+  events,
+  isLoading,
+  meta,
+  onPageChange,
+  onSearch,
+  search
+}: {
+  events: Array<Awaited<ReturnType<typeof getAdminEvents>>["items"][number]>;
+  isLoading: boolean;
+  meta: Awaited<ReturnType<typeof getAdminEvents>>["meta"];
+  onPageChange: (page: number) => void;
+  onSearch: (search: string) => void;
+  search: string;
+}) {
+  const [searchDraft, setSearchDraft] = useState(search);
+  const totalPages = Math.max(meta.totalPages, 1);
+  const pageNumbers = Array.from(
+    { length: Math.min(5, totalPages) },
+    (_, index) => Math.min(Math.max(meta.page - 2, 1), Math.max(totalPages - 4, 1)) + index
+  );
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSearch(searchDraft.trim());
+  }
+
   return (
     <section className={panelClass()}>
-      <SectionHeader eyebrow="Acessos" title="Eventos do site" total={events.length} />
-      <AdminTable columns={["Caminho", "Tipo", "Usuario", "Quando"]} empty="Nenhum acesso registrado." isLoading={isLoading}>
-        {events.map((event) => (
-          <tr className="align-top" key={event.id}>
-            <td className="px-4 py-4">{event.path}</td>
-            <td className="px-4 py-4">{statusPill(event.type)}</td>
-            <td className="px-4 py-4">{event.user?.name ?? "Visitante"}</td>
-            <td className="px-4 py-4">{dateTime(event.createdAt)}</td>
-          </tr>
-        ))}
-      </AdminTable>
+      <SectionHeader eyebrow="Acessos" title="Eventos do site" total={meta.total} />
+
+      <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={submitSearch}>
+        <label className="relative min-w-0 flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+            size={17}
+          />
+          <input
+            className={`${inputClass()} pl-10`}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            placeholder="Buscar caminho, tipo, nome ou e-mail"
+            value={searchDraft}
+          />
+        </label>
+        <Button className="sm:w-auto" type="submit" variant="secondary">
+          <Search size={17} />
+          Buscar
+        </Button>
+        {search ? (
+          <Button
+            onClick={() => {
+              setSearchDraft("");
+              onSearch("");
+            }}
+            type="button"
+            variant="ghost"
+          >
+            Limpar
+          </Button>
+        ) : null}
+      </form>
+
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="rounded-[8px] border border-[var(--line)] p-5 text-sm text-[var(--muted)]">Carregando acessos...</div>
+        ) : events.length ? (
+          events.map((event) => (
+            <article className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4" key={event.id}>
+              <div className="flex items-start justify-between gap-3">
+                <strong className="min-w-0 break-all text-sm">{event.path}</strong>
+                {statusPill(event.type === "page_view" ? "Visualização" : event.type)}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="block uppercase text-[var(--muted)]">Usuário</span>
+                  <span className="mt-1 block font-semibold">{event.user?.name ?? "Visitante"}</span>
+                </div>
+                <div>
+                  <span className="block uppercase text-[var(--muted)]">Data e hora</span>
+                  <span className="mt-1 block font-semibold">{dateTime(event.createdAt)}</span>
+                </div>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="rounded-[8px] border border-[var(--line)] p-5 text-sm text-[var(--muted)]">
+            Nenhum acesso registrado.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden md:block">
+        <AdminTable columns={["Caminho", "Tipo", "Usuário", "Quando"]} empty="Nenhum acesso registrado." isLoading={isLoading}>
+          {events.map((event) => (
+            <tr className="align-top" key={event.id}>
+              <td className="max-w-md break-all px-4 py-4 font-medium">{event.path}</td>
+              <td className="px-4 py-4">{statusPill(event.type === "page_view" ? "Visualização" : event.type)}</td>
+              <td className="px-4 py-4">
+                <strong className="block">{event.user?.name ?? "Visitante"}</strong>
+                {event.user?.email ? <span className="mt-1 block text-xs text-[var(--muted)]">{event.user.email}</span> : null}
+              </td>
+              <td className="whitespace-nowrap px-4 py-4">{dateTime(event.createdAt)}</td>
+            </tr>
+          ))}
+        </AdminTable>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 border-t border-[var(--line)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-[var(--muted)]">
+          Página <strong className="text-[var(--foreground)]">{meta.page}</strong> de{" "}
+          <strong className="text-[var(--foreground)]">{totalPages}</strong>
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            aria-label="Página anterior"
+            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-[var(--line)] disabled:opacity-40"
+            disabled={meta.page <= 1 || isLoading}
+            onClick={() => onPageChange(meta.page - 1)}
+            title="Página anterior"
+            type="button"
+          >
+            <ChevronLeft size={17} />
+          </button>
+          {pageNumbers.map((page) => (
+            <button
+              aria-current={page === meta.page ? "page" : undefined}
+              className={`focus-ring inline-flex h-9 min-w-9 items-center justify-center rounded-[8px] border px-2 text-sm font-semibold ${
+                page === meta.page
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : "border-[var(--line)] hover:bg-black/5 dark:hover:bg-white/10"
+              }`}
+              disabled={isLoading}
+              key={page}
+              onClick={() => onPageChange(page)}
+              type="button"
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            aria-label="Próxima página"
+            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-[var(--line)] disabled:opacity-40"
+            disabled={meta.page >= totalPages || isLoading}
+            onClick={() => onPageChange(meta.page + 1)}
+            title="Próxima página"
+            type="button"
+          >
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
