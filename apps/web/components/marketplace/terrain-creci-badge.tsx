@@ -14,25 +14,31 @@ export function TerrainCreciBadge({
 }) {
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
-    queryFn: getSiteSettings
+    queryFn: getSiteSettings,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0
   });
   const creci = resolveTerrainCreci(metadata, settingsQuery.data?.defaultCreci);
-
-  if (!creci) {
-    return null;
-  }
+  const label = creci || "CRECI a confirmar";
 
   return (
     <span
       className={`inline-flex h-7 items-center gap-1.5 rounded-[6px] border px-2 text-[11px] font-semibold uppercase ${
         overlay
           ? "border-white/25 bg-[#061733]/88 text-white shadow-lg backdrop-blur-sm"
-          : "border-[color-mix(in_srgb,var(--accent)_25%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_8%,var(--panel))] text-[var(--accent)]"
+          : creci
+            ? "border-[color-mix(in_srgb,var(--accent)_25%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_8%,var(--panel))] text-[var(--accent)]"
+            : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)]"
       }`}
-      title={`Anúncio vinculado ao ${creci}`}
+      title={
+        creci
+          ? `Anúncio vinculado ao ${creci}`
+          : "Cadastre o CRECI padrão da empresa no painel administrativo"
+      }
     >
       <BadgeCheck size={13} />
-      {creci}
+      {label}
     </span>
   );
 }
