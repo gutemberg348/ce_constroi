@@ -8,7 +8,6 @@ import { area, money } from "@/lib/format";
 import { getTerrainPhoto } from "@/lib/terrain-images";
 import { Terrain } from "@/types/domain";
 import { FavoriteButton } from "./favorite-button";
-import { TerrainCreciBadge } from "./terrain-creci-badge";
 
 export function TerrainCard({ terrain }: { terrain: Terrain }) {
   const image = getTerrainPhoto(terrain);
@@ -24,9 +23,6 @@ export function TerrainCard({ terrain }: { terrain: Terrain }) {
             src={image}
           />
         </Link>
-        <div className="absolute bottom-3 left-3">
-          <TerrainCreciBadge metadata={terrain.metadata} overlay />
-        </div>
         <FavoriteButton className="absolute right-3 top-3" targetId={terrain.id} targetType="terrain" />
       </div>
       <Link className="block space-y-3 p-3 sm:space-y-4 sm:p-4" href={`/terrenos/${terrain.id}` as Route}>
