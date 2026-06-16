@@ -912,7 +912,7 @@ export function SimpleFinancingSimulator() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
-                <FieldLabel>Renda mensal principal</FieldLabel>
+                <FieldLabel>Renda bruta mensal</FieldLabel>
                 <CurrencyInput onValueChange={(value) => update("monthlyIncome", value)} value={form.monthlyIncome} />
               </label>
               <label>
