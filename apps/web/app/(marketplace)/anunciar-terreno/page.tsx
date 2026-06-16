@@ -32,6 +32,8 @@ type AnnouncementForm = {
   developmentType: "OPEN" | "CLOSED";
   expectedValue: string;
   totalArea: string;
+  frontageM: string;
+  depthM: string;
   usefulArea: string;
   features: string;
 };
@@ -53,6 +55,8 @@ const initialForm: AnnouncementForm = {
   developmentType: "OPEN",
   expectedValue: "",
   totalArea: "",
+  frontageM: "",
+  depthM: "",
   usefulArea: "",
   features: ""
 };
@@ -169,10 +173,12 @@ export default function AnnounceTerrainPage() {
     }
 
     const areaM2 = toNumber(form.totalArea);
+    const frontageM = toNumber(form.frontageM);
+    const depthM = toNumber(form.depthM);
     const price = toNumber(form.expectedValue);
 
-    if (!areaM2 || !price) {
-      setError("Informe area total e valor aproximado.");
+    if (!areaM2 || !frontageM || !depthM || !price) {
+      setError("Informe area total, frente, fundo e valor aproximado.");
       return;
     }
 
@@ -184,7 +190,9 @@ export default function AnnounceTerrainPage() {
         description: [
           form.features,
           `Pretensao: ${form.intention}`,
-          `Area total: ${areaM2} m2`
+          `Area total: ${areaM2} m2`,
+          `Frente: ${frontageM} m`,
+          `Fundo: ${depthM} m`
         ]
           .filter(Boolean)
           .join("\n"),
@@ -194,6 +202,8 @@ export default function AnnounceTerrainPage() {
         state: form.state,
         zipCode: onlyDigits(form.cep),
         areaM2,
+        frontageM,
+        depthM,
         price,
         zoning: `Terreno - ${form.intention}`,
         metadata: {
@@ -213,6 +223,8 @@ export default function AnnounceTerrainPage() {
             intention: form.intention,
             developmentType: form.developmentType,
             totalArea: areaM2,
+            frontageM,
+            depthM,
             usefulArea: toNumber(form.usefulArea),
             features: form.features
           },
@@ -372,7 +384,9 @@ export default function AnnounceTerrainPage() {
                 <option value="CLOSED">Condomínio ou loteamento fechado</option>
               </select>
               <CurrencyInput onValueChange={(value) => update("expectedValue", value)} placeholder="Valor aproximado" required value={form.expectedValue} />
-              <Input inputMode="decimal" onChange={(event) => update("totalArea", event.target.value)} placeholder="Area total do terreno" required value={form.totalArea} />
+              <Input inputMode="decimal" onChange={(event) => update("totalArea", event.target.value)} placeholder="Area total do terreno (m2)" required value={form.totalArea} />
+              <Input inputMode="decimal" onChange={(event) => update("frontageM", event.target.value)} placeholder="Frente do terreno (m)" required value={form.frontageM} />
+              <Input inputMode="decimal" onChange={(event) => update("depthM", event.target.value)} placeholder="Fundo do terreno (m)" required value={form.depthM} />
               <Input inputMode="decimal" onChange={(event) => update("usefulArea", event.target.value)} placeholder="Area de aproveitamento" value={form.usefulArea} />
               <textarea
                 className={`${textAreaClass()} md:col-span-4`}
@@ -432,6 +446,9 @@ export default function AnnounceTerrainPage() {
                 {form.neighborhood || "Bairro"} - {form.city || "Cidade"} / {form.state || "UF"}
               </p>
               <p>{form.totalArea || "0"} m2 de area total</p>
+              <p>
+                Frente {form.frontageM || "0"} m / Fundo {form.depthM || "0"} m
+              </p>
               <p>{form.developmentType === "CLOSED" ? "Local fechado" : "Local aberto"}</p>
               <p>{selectedPhotoCount} foto(s) anexada(s)</p>
               <p>
