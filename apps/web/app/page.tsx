@@ -262,10 +262,10 @@ export default function HomePage() {
                 </Link>
                 <Link
                   className={`${actionLinkClass} border border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10`}
-                  href="/register?next=/simulacao"
+                  href="/projetos"
                 >
-                  <Calculator size={18} />
-                  Cadastre-se e simule
+                  <Building2 size={18} />
+                  Escolha sua casa
                 </Link>
               </div>
             </div>

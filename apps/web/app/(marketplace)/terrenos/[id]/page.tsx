@@ -7,7 +7,7 @@ import { TerrainCreciBadge } from "@/components/marketplace/terrain-creci-badge"
 import { TerrainProjectSelector } from "@/components/marketplace/terrain-project-selector";
 import { area, money } from "@/lib/format";
 import { getTerrainPhoto } from "@/lib/terrain-images";
-import { getTerrainDevelopmentType, terrainDevelopmentLabel } from "@/lib/terrain-metadata";
+import { getTerrainDevelopmentType, getTerrainPropertyDetails, terrainDevelopmentLabel } from "@/lib/terrain-metadata";
 import { getTerrain } from "@/services/terrains";
 
 export default async function TerrainDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +15,16 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
   const terrain = await getTerrain(id);
   const fallbackImage = getTerrainPhoto(terrain);
   const developmentType = getTerrainDevelopmentType(terrain.metadata);
+  const propertyDetails = getTerrainPropertyDetails(terrain.metadata);
+  const detailItems = [
+    ["Tipo", propertyDetails.propertyType ?? "Terreno"],
+    ["Destino", propertyDetails.destination ?? "Residencial"],
+    ["Situacao", propertyDetails.situation ?? "Nao informado"],
+    ["Frente", terrain.frontageM ? `${terrain.frontageM} m` : "Nao informado"],
+    ["Fundo", terrain.depthM ? `${terrain.depthM} m` : "Nao informado"],
+    propertyDetails.iptuValue ? ["IPTU", money(propertyDetails.iptuValue)] : null,
+    propertyDetails.condominiumValue ? ["Condominio", money(propertyDetails.condominiumValue)] : null
+  ].filter(Boolean) as Array<[string, string]>;
   const gallery = [
     ...(terrain.images ?? []).map((image, index) => ({
       src: image.url,
@@ -56,6 +66,14 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
               </strong>
             </div>
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:gap-3">
+            {detailItems.map(([label, value]) => (
+              <div className="rounded-[8px] border border-[var(--line)] px-3 py-2" key={label}>
+                <p className="text-xs uppercase text-[var(--muted)]">{label}</p>
+                <strong className="mt-1 block break-words text-[var(--foreground)]">{value}</strong>
+              </div>
+            ))}
+          </div>
           <div className="mt-5 grid gap-2 sm:mt-6 sm:flex sm:flex-wrap sm:gap-3">
             <Link className="w-full sm:w-auto" href={`/checkout?type=terrain&terrainId=${terrain.id}`}>
               <Button className="w-full sm:w-auto">Fechar somente terreno</Button>
@@ -63,7 +81,7 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
             <Link className="w-full sm:w-auto" href="#monte-sua-casa">
               <Button className="w-full sm:w-auto" variant="secondary">
                 <Home size={18} />
-                Monte sua casa
+                Escolha sua casa
               </Button>
             </Link>
             <FavoriteButton targetId={terrain.id} targetType="terrain" />

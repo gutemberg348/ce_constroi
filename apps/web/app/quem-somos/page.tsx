@@ -187,12 +187,21 @@ export default function AboutPage() {
         <div className="grid gap-10 lg:grid-cols-2">
           <div>
             <p className="text-sm font-semibold uppercase text-[var(--accent)]">O que nos torna diferentes</p>
-            <h2 className="mt-2 text-3xl font-semibold">Tudo conectado em uma única experiência.</h2>
-            <p className="mt-5 leading-8 text-[var(--muted)]">
-              O mercado oferece portais de imóveis, sites de construtoras e plataformas de crédito. O CÊ Constrói vai além
-              ao integrar essas etapas, permitindo que o usuário visualize todo o caminho desde a escolha do terreno até a
-              aprovação do financiamento.
-            </p>
+            <h2 className="mt-2 text-3xl font-semibold">Tudo conectado em uma unica experiencia.</h2>
+            <div className="mt-5 grid gap-3">
+              {[
+                "Escolha a regiao desejada",
+                "Encontre terrenos disponiveis",
+                "Descubra as opcoes de construcao compativeis",
+                "Avalie a viabilidade financeira",
+                "Centralize tudo em um unico processo"
+              ].map((item) => (
+                <p className="flex items-start gap-3 leading-7 text-[var(--muted)]" key={item}>
+                  <BadgeCheck className="mt-1 shrink-0 text-[var(--accent)]" size={18} />
+                  <span>{item}</span>
+                </p>
+              ))}
+            </div>
           </div>
           <div>
             <p className="text-sm font-semibold uppercase text-[var(--accent)]">Nosso compromisso</p>

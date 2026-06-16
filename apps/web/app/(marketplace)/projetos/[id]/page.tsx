@@ -123,9 +123,13 @@ export default async function ProjectDetailPage({
               </Link>
             ) : (
               <>
-                <Link href="/checkout">
-                  <Button>Comprar projeto</Button>
-                </Link>
+                <div className="w-full rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4">
+                  <p className="text-sm font-semibold text-[var(--accent)]">Compra do projeto em preparacao</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    A compra direta sera liberada com o pacote completo: projeto arquitetonico, estrutural, eletrico,
+                    hidraulico e demais itens alinhados com os construtores viabilizadores junto a Caixa.
+                  </p>
+                </div>
                 <Link href="/simulacao">
                   <Button variant="secondary">Simular pacote</Button>
                 </Link>

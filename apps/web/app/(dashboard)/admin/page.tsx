@@ -39,9 +39,10 @@ import { formDataImageValue, formDataLogoImageValue } from "@/lib/files";
 import { area, money } from "@/lib/format";
 import {
   getTerrainDevelopmentType,
+  getTerrainPropertyDetails,
   terrainDevelopmentLabel,
   type TerrainDevelopmentType,
-  withTerrainDevelopmentType
+  withTerrainPropertyDetails
 } from "@/lib/terrain-metadata";
 import { getApiErrorMessage } from "@/services/api";
 import {
@@ -552,9 +553,16 @@ export default function AdminPage() {
         frontageM: formNumber(formData, "frontageM"),
         depthM: formNumber(formData, "depthM"),
         price: requiredFormNumber(formData, "price", "Valor"),
-        metadata: withTerrainDevelopmentType(
+        metadata: withTerrainPropertyDetails(
           undefined,
-          formText(formData, "developmentType") as TerrainDevelopmentType
+          {
+            developmentType: formText(formData, "developmentType") as TerrainDevelopmentType,
+            propertyType: optionalText(formData, "propertyType"),
+            destination: optionalText(formData, "destination"),
+            situation: optionalText(formData, "situation"),
+            iptuValue: formNumber(formData, "iptuValue"),
+            condominiumValue: formNumber(formData, "condominiumValue")
+          }
         )
       };
       const terrain = await createTerrain(input);
@@ -590,9 +598,16 @@ export default function AdminPage() {
         frontageM: formNumber(formData, "frontageM"),
         depthM: formNumber(formData, "depthM"),
         price: formNumber(formData, "price"),
-        metadata: withTerrainDevelopmentType(
+        metadata: withTerrainPropertyDetails(
           metadata,
-          formText(formData, "developmentType") as TerrainDevelopmentType
+          {
+            developmentType: formText(formData, "developmentType") as TerrainDevelopmentType,
+            propertyType: optionalText(formData, "propertyType"),
+            destination: optionalText(formData, "destination"),
+            situation: optionalText(formData, "situation"),
+            iptuValue: formNumber(formData, "iptuValue"),
+            condominiumValue: formNumber(formData, "condominiumValue")
+          }
         )
       }),
     onSuccess: invalidateAdmin
@@ -1534,11 +1549,17 @@ function TerrainsSection({
         <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel alterar a imagem: {errorMessage(imageError)}</p>
       ) : null}
       <AdminTable columns={["Terreno", "Local", "Valores", "Status", "Acoes"]} empty="Nenhum terreno cadastrado." isLoading={isLoading}>
-        {terrains.map((terrain) => (
+        {terrains.map((terrain) => {
+          const details = getTerrainPropertyDetails(terrain.metadata);
+
+          return (
           <tr className="align-top" key={terrain.id}>
             <td className="px-4 py-4">
               <strong>{terrain.title}</strong>
               <p className="mt-1 text-xs text-[var(--muted)]">{terrain.owner?.name ?? "Sem proprietario"}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {[details.propertyType, details.destination, details.situation].filter(Boolean).join(" / ") || "Tipo nao informado"}
+              </p>
             </td>
             <td className="px-4 py-4">
               <p>{[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}</p>
@@ -1550,6 +1571,13 @@ function TerrainsSection({
             <td className="px-4 py-4">
               <p>{money(terrain.price)}</p>
               <p className="mt-1 text-xs text-[var(--muted)]">{area(terrain.areaM2)}</p>
+              {details.iptuValue || details.condominiumValue ? (
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {details.iptuValue ? `IPTU ${money(details.iptuValue)}` : ""}
+                  {details.iptuValue && details.condominiumValue ? " / " : ""}
+                  {details.condominiumValue ? `Condominio ${money(details.condominiumValue)}` : ""}
+                </p>
+              ) : null}
             </td>
             <td className="px-4 py-4">{statusPill(terrain.status)}</td>
             <td className="px-4 py-4">
@@ -1591,7 +1619,8 @@ function TerrainsSection({
               </div>
             </td>
           </tr>
-        ))}
+          );
+        })}
       </AdminTable>
     </section>
   );
@@ -1632,10 +1661,29 @@ function TerrainCreateForm({
         <input className={inputClass()} min={0} name="frontageM" placeholder="Frente em metros" type="number" />
         <input className={inputClass()} min={0} name="depthM" placeholder="Fundo em metros" type="number" />
         <input className={inputClass()} name="zoning" placeholder="Zoneamento" />
+        <select className={selectClass()} defaultValue="Terreno" name="propertyType" required>
+          <option value="Area">Area</option>
+          <option value="Chacara">Chacara</option>
+          <option value="Lote">Lote</option>
+          <option value="Lote em condominio">Lote em condominio</option>
+          <option value="Terreno">Terreno</option>
+          <option value="Terreno em condominio">Terreno em condominio</option>
+        </select>
+        <select className={selectClass()} defaultValue="Residencial" name="destination" required>
+          <option value="Residencial">Residencial</option>
+          <option value="Comercial">Comercial</option>
+        </select>
+        <select className={selectClass()} defaultValue="Liberado para construcao" name="situation" required>
+          <option value="Breve lancamento">Breve lancamento</option>
+          <option value="Lancamento">Lancamento</option>
+          <option value="Liberado para construcao">Liberado para construcao</option>
+        </select>
         <select className={selectClass()} defaultValue="OPEN" name="developmentType" required>
           <option value="OPEN">Local aberto</option>
           <option value="CLOSED">Condomínio ou loteamento fechado</option>
         </select>
+        <CurrencyInput name="iptuValue" placeholder="IPTU" />
+        <CurrencyInput name="condominiumValue" placeholder="Condominio" />
         <textarea className={`${textareaClass()} xl:col-span-4`} name="description" placeholder="Descricao do terreno" required />
       </div>
 
@@ -1671,6 +1719,7 @@ function TerrainEditForm({
   onSubmit: (id: string, formData: FormData, metadata?: Record<string, unknown>) => void;
 }) {
   const developmentType = getTerrainDevelopmentType(terrain.metadata);
+  const details = getTerrainPropertyDetails(terrain.metadata);
 
   return (
     <form
@@ -1692,10 +1741,29 @@ function TerrainEditForm({
       <input className={inputClass()} defaultValue={String(terrain.frontageM ?? "")} name="frontageM" placeholder="Frente" type="number" />
       <input className={inputClass()} defaultValue={String(terrain.depthM ?? "")} name="depthM" placeholder="Fundo" type="number" />
       <input className={inputClass()} defaultValue={terrain.zoning ?? ""} name="zoning" placeholder="Zoneamento" />
+      <select className={selectClass()} defaultValue={details.propertyType ?? "Terreno"} name="propertyType">
+        <option value="Area">Area</option>
+        <option value="Chacara">Chacara</option>
+        <option value="Lote">Lote</option>
+        <option value="Lote em condominio">Lote em condominio</option>
+        <option value="Terreno">Terreno</option>
+        <option value="Terreno em condominio">Terreno em condominio</option>
+      </select>
+      <select className={selectClass()} defaultValue={details.destination ?? "Residencial"} name="destination">
+        <option value="Residencial">Residencial</option>
+        <option value="Comercial">Comercial</option>
+      </select>
+      <select className={selectClass()} defaultValue={details.situation ?? "Liberado para construcao"} name="situation">
+        <option value="Breve lancamento">Breve lancamento</option>
+        <option value="Lancamento">Lancamento</option>
+        <option value="Liberado para construcao">Liberado para construcao</option>
+      </select>
       <select className={selectClass()} defaultValue={developmentType ?? "OPEN"} name="developmentType">
         <option value="OPEN">Local aberto</option>
         <option value="CLOSED">Condomínio ou loteamento fechado</option>
       </select>
+      <CurrencyInput defaultValue={details.iptuValue ? String(details.iptuValue) : ""} name="iptuValue" placeholder="IPTU" />
+      <CurrencyInput defaultValue={details.condominiumValue ? String(details.condominiumValue) : ""} name="condominiumValue" placeholder="Condominio" />
       <textarea className={`${textareaClass()} md:col-span-2`} defaultValue={terrain.description} name="description" placeholder="Descricao" />
       <Button className="md:col-span-2" disabled={disabled} type="submit" variant="secondary">
         <Pencil size={16} />

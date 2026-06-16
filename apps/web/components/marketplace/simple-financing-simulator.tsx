@@ -88,7 +88,11 @@ type Result = {
   totalIncome: number;
   maxInstallment: number;
   maxCredit: number;
+  maxCreditByIncome: number;
+  maxCreditByQuota: number;
   maxPropertyValue: number;
+  minimumRequiredEntry: number;
+  entryShortfall: number;
   desiredPackageValue: number;
   availableEntry: number;
   financedNeeded: number;
@@ -139,6 +143,11 @@ const defaultForm: QuickForm = {
   downPayment: "",
   creditScore: "GOOD"
 };
+
+const INCOME_COMMITMENT_RATE = 0.3;
+const FINANCING_FACTOR = 0.0088;
+const MAX_FINANCING_QUOTA = 0.8;
+const MINIMUM_ENTRY_RATE = 1 - MAX_FINANCING_QUOTA;
 
 const selectClass =
   "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 text-sm outline-none transition";
@@ -290,7 +299,41 @@ function propertyTypeLabel(type: PropertyType) {
   return labels[type];
 }
 
-function buildBaseOptions(terrainPrice: number, projectPrice: number, buildCost: number, maxPropertyValue: number, availableEntry: number, maxInstallment: number) {
+function getMinimumRequiredEntry(amount: number, maxCreditByIncome: number) {
+  if (amount <= 0) {
+    return 0;
+  }
+
+  const minimumEntryByQuota = amount * MINIMUM_ENTRY_RATE;
+  const minimumEntryByIncome = Math.max(amount - maxCreditByIncome, 0);
+
+  return Math.max(minimumEntryByQuota, minimumEntryByIncome);
+}
+
+function getFinancedAmount(amount: number, availableEntry: number, maxCreditByIncome: number) {
+  const entryForScenario = Math.max(availableEntry, getMinimumRequiredEntry(amount, maxCreditByIncome));
+  return Math.max(amount - entryForScenario, 0);
+}
+
+function getMaxPropertyValue(maxCreditByIncome: number, availableEntry: number) {
+  if (maxCreditByIncome <= 0 || availableEntry <= 0) {
+    return 0;
+  }
+
+  const capacityByIncome = maxCreditByIncome / MAX_FINANCING_QUOTA;
+  const capacityByEntry = availableEntry / MINIMUM_ENTRY_RATE;
+
+  return Math.min(capacityByIncome, capacityByEntry);
+}
+
+function buildBaseOptions(
+  terrainPrice: number,
+  projectPrice: number,
+  buildCost: number,
+  maxCreditByIncome: number,
+  availableEntry: number,
+  maxInstallment: number
+) {
   const rawOptions: Array<Omit<BaseOption, "installment" | "isAvailable">> = [
     {
       key: "FULL",
@@ -326,12 +369,13 @@ function buildBaseOptions(terrainPrice: number, projectPrice: number, buildCost:
       return terrainPrice > 0;
     })
     .map((option) => {
-      const financedValue = Math.max(option.amount - availableEntry, 0);
+      const minimumRequiredEntry = getMinimumRequiredEntry(option.amount, maxCreditByIncome);
+      const financedValue = getFinancedAmount(option.amount, availableEntry, maxCreditByIncome);
 
       return {
         ...option,
-        installment: financedValue > 0 ? financedValue / 180 : 0,
-        isAvailable: maxInstallment > 0 && option.amount <= maxPropertyValue
+        installment: financedValue > 0 ? financedValue * FINANCING_FACTOR : 0,
+        isAvailable: maxInstallment > 0 && availableEntry >= minimumRequiredEntry
       };
     });
 }
@@ -349,18 +393,22 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const totalIncome = Math.max(formalIncome + informalIncome + composedIncome, 0);
   const debtPressure =
     Math.max(parseMoney(form.activeLoans), 0) + (form.hasCurrentFinancing === "yes" ? Math.max(parseMoney(form.monthlySpending), 0) : 0);
-  const maxInstallment = Math.max(totalIncome * 0.3 - debtPressure, 0);
-  const maxCredit = maxInstallment * 180;
+  const maxInstallment = Math.max(totalIncome * INCOME_COMMITMENT_RATE - debtPressure, 0);
+  const maxCreditByIncome = maxInstallment > 0 ? maxInstallment / FINANCING_FACTOR : 0;
   const usableFgts = form.useFgts === "yes" ? fgtsValue : 0;
   const availableEntry = Math.max(downPayment + usableFgts, 0);
-  const maxPropertyValue = maxCredit + availableEntry;
   const desiredPackageValue = Math.max(
     getPackageAmount(form.packageMode, terrainPrice, projectPrice, buildCost, desiredPropertyValueInput),
     0
   );
-  const financedNeeded = Math.max(desiredPackageValue - availableEntry, 0);
-  const estimatedInstallment = financedNeeded > 0 ? financedNeeded / 180 : 0;
-  const options = buildBaseOptions(terrainPrice, projectPrice, buildCost, maxPropertyValue, availableEntry, maxInstallment);
+  const maxCreditByQuota = desiredPackageValue > 0 ? desiredPackageValue * MAX_FINANCING_QUOTA : maxCreditByIncome;
+  const maxCredit = Math.min(maxCreditByIncome, maxCreditByQuota);
+  const maxPropertyValue = getMaxPropertyValue(maxCreditByIncome, availableEntry);
+  const minimumRequiredEntry = getMinimumRequiredEntry(desiredPackageValue, maxCreditByIncome);
+  const entryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
+  const financedNeeded = getFinancedAmount(desiredPackageValue, availableEntry, maxCreditByIncome);
+  const estimatedInstallment = financedNeeded > 0 ? financedNeeded * FINANCING_FACTOR : 0;
+  const options = buildBaseOptions(terrainPrice, projectPrice, buildCost, maxCreditByIncome, availableEntry, maxInstallment);
   const requestedOption =
     form.packageMode === "CUSTOM" && desiredPackageValue > 0
       ? {
@@ -368,7 +416,7 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
           label: "Valor escolhido",
           amount: desiredPackageValue,
           installment: estimatedInstallment,
-          isAvailable: maxInstallment > 0 && desiredPackageValue <= maxPropertyValue,
+          isAvailable: maxInstallment > 0 && availableEntry >= minimumRequiredEntry,
           description: "Valor informado manualmente pelo cliente."
         }
       : options.find((option) => option.key === form.packageMode);
@@ -415,6 +463,10 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     notes.push("As dividas atuais consomem a margem de parcela estimada.");
   }
 
+  if (entryShortfall > 0) {
+    notes.push(`Entrada abaixo do minimo estimado de 20%. Falta aproximadamente ${money(entryShortfall)} para enquadrar a cota de financiamento.`);
+  }
+
   if (form.hasIncomeProof === "no") {
     notes.push("Sem comprovacao, a renda fica em analise manual, mas nao entra com desconto automatico.");
   }
@@ -438,7 +490,11 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     totalIncome,
     maxInstallment,
     maxCredit,
+    maxCreditByIncome,
+    maxCreditByQuota,
     maxPropertyValue,
+    minimumRequiredEntry,
+    entryShortfall,
     desiredPackageValue,
     availableEntry,
     financedNeeded,
@@ -466,8 +522,9 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `CEP: ${form.zipCode || "-"}`,
       `Imovel: ${propertyTypeLabel(form.propertyType)} de ${money(result.desiredPackageValue)}`,
       `Renda total considerada: ${money(result.totalIncome)}`,
-      `Base de credito estimada: ${money(result.maxCredit)}`,
-      `Base do cliente: ate ${money(result.maxPropertyValue)}`,
+      `Financiamento maximo estimado: ${money(result.maxCredit)}`,
+      `Entrada minima estimada: ${money(result.minimumRequiredEntry)}`,
+      `Capacidade com entrada informada: ate ${money(result.maxPropertyValue)}`,
       `Parcela base: ${money(result.maxInstallment)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
       `Pacote escolhido: ${result.requestedOption ? `${result.requestedOption.label} - ${money(result.requestedOption.amount)}` : "Valor manual"}`,
@@ -479,12 +536,16 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
 }
 
 function isApprovedResult(result: Result) {
-  return result.desiredPackageValue > 0 && result.maxPropertyValue > 0 && result.desiredPackageValue <= result.maxPropertyValue;
+  return (
+    result.desiredPackageValue > 0 &&
+    result.maxPropertyValue > 0 &&
+    result.entryShortfall <= 0 &&
+    result.desiredPackageValue <= result.maxPropertyValue
+  );
 }
 
 function getEntryNeeded(result: Result) {
-  const minimumEntryForCredit = Math.max(result.desiredPackageValue - result.maxCredit, 0);
-  return Math.max(minimumEntryForCredit, result.availableEntry);
+  return result.minimumRequiredEntry;
 }
 
 function getCapacityUsage(result: Result) {
@@ -498,12 +559,16 @@ function getCapacityUsage(result: Result) {
 function getCapacityMessage(result: Result) {
   const margin = result.maxPropertyValue - result.desiredPackageValue;
 
+  if (result.entryShortfall > 0) {
+    return `Para este projeto, falta aproximadamente ${money(result.entryShortfall)} de entrada para respeitar a cota de 80% financiado e 20% de entrada.`;
+  }
+
   if (margin > 5000) {
     return `Voce ainda possui aproximadamente ${money(margin)} de margem para escolher um projeto maior.`;
   }
 
   if (margin >= 0) {
-    return "Seu projeto esta perfeitamente enquadrado para seguir para aprovacao.";
+    return "Seu projeto esta perfeitamente enquadrado para seguir para analise.";
   }
 
   return `Este projeto ficou aproximadamente ${money(Math.abs(margin))} acima da sua capacidade atual.`;
@@ -688,6 +753,8 @@ export function SimpleFinancingSimulator() {
       requestedOptionValue: currentResult.requestedOption?.amount,
       selectedOptionLabel: currentResult.selectedOption?.label,
       selectedOptionValue: currentResult.selectedOption?.amount,
+      entryGap: currentResult.entryShortfall,
+      financingGap: Math.max(currentResult.desiredPackageValue - currentResult.maxPropertyValue, 0),
       score: currentResult.score,
       status: currentResult.status,
       fitMessage: currentResult.fitMessage
@@ -743,7 +810,7 @@ export function SimpleFinancingSimulator() {
           ) : null}
         </div>
         <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 text-sm leading-6 text-[var(--muted)]">
-          A simulacao mostra aprovacao estimada, entrada, parcela e o proximo passo para atendimento.
+          A simulacao considera ate 30% da renda para parcela, cota maxima de 80% financiado e entrada minima de 20%.
         </div>
       </div>
 
@@ -959,6 +1026,7 @@ export function SimpleFinancingSimulator() {
               <label>
                 <FieldLabel>Entrada em dinheiro</FieldLabel>
                 <CurrencyInput onValueChange={(value) => update("downPayment", value)} value={form.downPayment} />
+                <HelpText>Para esta simulacao, a entrada minima considerada e de 20% do valor do pacote.</HelpText>
               </label>
               <label>
                 <FieldLabel>Vai usar FGTS?</FieldLabel>
@@ -1015,7 +1083,7 @@ export function SimpleFinancingSimulator() {
                 <Loader2 className="mx-auto animate-spin text-[var(--accent)]" size={34} />
                 <h2 className="mt-4 text-2xl font-semibold">Calculando seu resultado...</h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  Estamos organizando aprovacao estimada, entrada, parcela e limite do projeto.
+                  Estamos organizando compatibilidade estimada, entrada, parcela e limite do projeto.
                 </p>
               </div>
             ) : result ? (
@@ -1036,18 +1104,18 @@ export function SimpleFinancingSimulator() {
                       }`}
                     >
                       {isApprovedResult(result) ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
-                      {isApprovedResult(result) ? "Aprovado" : "Precisa ajustar"}
+                      {isApprovedResult(result) ? "Compativel" : "Precisa ajustar"}
                     </span>
                     {isApprovedResult(result) ? <CheckCircle2 className="text-emerald-600 dark:text-emerald-300" size={30} /> : <AlertTriangle className="text-amber-600" size={30} />}
                   </div>
                   <h2 className="mt-5 text-3xl font-semibold leading-tight">
                     {isApprovedResult(result)
-                      ? "Boa noticia! Sua renda comporta este projeto."
+                      ? "Boa noticia! Este projeto e compativel com seu perfil."
                       : "Este projeto ainda precisa de ajuste para seguir."}
                   </h2>
                   <p className="mt-3 text-sm leading-6 opacity-78">
                     {isApprovedResult(result)
-                      ? "Seu projeto esta dentro da capacidade de financiamento estimada."
+                      ? "O pacote esta dentro da capacidade estimada para seguir em atendimento."
                       : "Veja a capacidade calculada e fale com um especialista para ajustar entrada, projeto ou valor."}
                   </p>
                 </div>
@@ -1056,7 +1124,7 @@ export function SimpleFinancingSimulator() {
                   <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
                   <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
-                  <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxPropertyValue)} />
+                  <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxCredit)} />
                 </div>
 
                 <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5">
@@ -1066,7 +1134,7 @@ export function SimpleFinancingSimulator() {
                   </div>
                   <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                     <div>
-                      <span className="text-[var(--muted)]">Sua capacidade</span>
+                      <span className="text-[var(--muted)]">Sua capacidade com entrada informada</span>
                       <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
                     </div>
                     <div>
@@ -1090,7 +1158,7 @@ export function SimpleFinancingSimulator() {
                   </div>
                   <h3 className="mt-3 text-2xl font-semibold">
                     {isApprovedResult(result)
-                      ? "Seu projeto esta apto para seguir para analise documental."
+                      ? "Seu projeto esta compativel para seguir para analise documental."
                       : "Seu projeto pode seguir para atendimento com ajuste de valores."}
                   </h3>
                   <p className="mt-3 text-sm leading-6 opacity-78">
@@ -1127,9 +1195,13 @@ export function SimpleFinancingSimulator() {
                     <div className="grid gap-3 border-t border-[var(--line)] p-4">
                       <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
                       <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
-                      <TechnicalMetric label="Base de credito" value={money(result.maxCredit)} />
+                      <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
+                      <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
+                      <TechnicalMetric label="Financiamento maximo estimado" value={money(result.maxCredit)} />
+                      <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
                       <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
                       <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
+                      {result.entryShortfall > 0 ? <TechnicalMetric label="Entrada que falta" value={money(result.entryShortfall)} /> : null}
                       <TechnicalMetric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
                       <TechnicalMetric label="Enquadramento" value={result.status} />
 
@@ -1161,7 +1233,7 @@ export function SimpleFinancingSimulator() {
                 <CalculatorIcon />
                 <h2 className="mt-4 text-3xl font-semibold leading-tight">Seu resultado aparece aqui.</h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  Preencha os dados principais para ver se foi aprovado, quanto pode financiar, entrada, parcela e proximo passo.
+                  Preencha os dados principais para ver compatibilidade, quanto pode financiar, entrada, parcela e proximo passo.
                 </p>
               </div>
             )}
@@ -1187,9 +1259,9 @@ export function SimpleFinancingSimulator() {
               <h2 className="text-lg font-semibold">Importante</h2>
             </div>
             <p className="text-sm leading-6 text-[var(--muted)]">
-              As informações apresentadas servem como uma estimativa inicial de viabilidade. A aprovação do financiamento
-              depende da análise da instituição financeira, considerando documentação, renda, condições de crédito,
-              avaliação do imóvel e demais requisitos aplicáveis.
+              As informacoes apresentadas servem como uma estimativa inicial de viabilidade. A liberacao do financiamento
+              depende da analise da instituicao financeira, considerando documentacao, renda, condicoes de credito,
+              avaliacao do imovel e demais requisitos aplicaveis.
             </p>
           </div>
         </aside>
