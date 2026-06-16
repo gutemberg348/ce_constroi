@@ -1231,9 +1231,10 @@ export function SimpleFinancingSimulator() {
             ) : (
               <div className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-6">
                 <CalculatorIcon />
-                <h2 className="mt-4 text-3xl font-semibold leading-tight">Seu resultado aparece aqui.</h2>
+                <h2 className="mt-4 text-3xl font-semibold leading-tight">O resultado da sua simulacao aparece aqui.</h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  Preencha os dados principais para ver compatibilidade, quanto pode financiar, entrada, parcela e proximo passo.
+                  Informe seus dados e descubra uma estimativa do valor que podera financiar, da entrada necessaria e da
+                  parcela mensal, alem de orientacoes sobre as proximas etapas da sua jornada.
                 </p>
               </div>
             )}

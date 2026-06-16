@@ -247,11 +247,21 @@ export default function HomePage() {
           <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
             <div>
               <p className="text-sm font-semibold uppercase text-[var(--accent)]">Exemplo pratico</p>
-              <h2 className="mt-3 text-4xl font-semibold leading-tight">Um terreno, um projeto e um sonho realizado.</h2>
-              <p className="mt-4 max-w-xl leading-7 text-[var(--muted)]">
-                O cliente encontra o lote, escolhe qual casa combina com seus sonhos e se cadastra para simular se tudo
-                cabe na renda. A qualquer momento, pode solicitar ajuda de um especialista.
-              </p>
+              <h2 className="mt-3 text-4xl font-semibold leading-tight">Por que o CE Constroi e diferente?</h2>
+              <div className="mt-5 grid max-w-xl gap-3">
+                {[
+                  "Escolha a regiao desejada",
+                  "Encontre terrenos disponiveis",
+                  "Descubra as opcoes de construcao compativeis",
+                  "Avalie a viabilidade financeira",
+                  "Centralize tudo em um unico processo"
+                ].map((item) => (
+                  <p className="flex items-start gap-3 leading-7 text-[var(--muted)]" key={item}>
+                    <BadgeCheck className="mt-1 shrink-0 text-[var(--accent)]" size={18} />
+                    <span>{item}</span>
+                  </p>
+                ))}
+              </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   className={`${actionLinkClass} bg-[#0d6efd] text-white hover:bg-[#0b5ed7] dark:bg-[#60a5fa] dark:text-[#061733] dark:hover:bg-[#93c5fd]`}
