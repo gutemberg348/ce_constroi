@@ -20,10 +20,8 @@ export function TerrainCreciBadge({
     staleTime: 0
   });
   const creci = resolveTerrainCreci(metadata, settingsQuery.data?.defaultCreci);
-  const creciNumber = creci
-    .replace(/^CRECI\s*(?:N[º°O]\s*)?:?\s*/i, "")
-    .trim();
-  const label = `CRECI N° : ${creciNumber || "A CONFIRMAR"}`;
+  const creciNumber = creci.replace(/^CRECI\s*(?:N[\u00ba\u00b0O]\s*)?:?\s*/i, "").trim();
+  const label = `CRECI N\u00b0: ${creciNumber || "A CONFIRMAR"}`;
 
   return (
     <span
@@ -36,8 +34,8 @@ export function TerrainCreciBadge({
       }`}
       title={
         creci
-          ? `Anúncio vinculado ao CRECI N° ${creciNumber}`
-          : "Cadastre o CRECI padrão da empresa no painel administrativo"
+          ? `Anuncio vinculado ao CRECI N\u00b0: ${creciNumber}`
+          : "Cadastre o CRECI padrao da empresa no painel administrativo"
       }
     >
       <BadgeCheck size={13} />
