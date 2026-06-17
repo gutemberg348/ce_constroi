@@ -20,6 +20,7 @@ import {
   TrendingUp,
   UserRound,
   WalletCards,
+  X,
   type LucideIcon
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -28,8 +29,9 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { money, toNumber as parseMoney } from "@/lib/format";
+import { getApiErrorMessage } from "@/services/api";
+import { createSimulation, type SimulationInput } from "@/services/simulations";
 import { useAuthStore } from "@/stores/auth-store";
-import { useSimulationRequestsStore } from "@/stores/simulation-requests-store";
 
 type YesNo = "yes" | "no";
 type IncomeType = "CLT" | "MEI" | "AUTONOMO" | "EMPRESARIO" | "INFORMAL";
@@ -148,6 +150,7 @@ const INCOME_COMMITMENT_RATE = 0.3;
 const FINANCING_FACTOR = 0.0088;
 const MAX_FINANCING_QUOTA = 0.8;
 const MINIMUM_ENTRY_RATE = 1 - MAX_FINANCING_QUOTA;
+const MONEY_TOLERANCE = 1;
 
 const selectClass =
   "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 text-sm outline-none transition";
@@ -320,7 +323,7 @@ function getMaxPropertyValue(maxCreditByIncome: number, availableEntry: number) 
     return 0;
   }
 
-  const capacityByIncome = maxCreditByIncome / MAX_FINANCING_QUOTA;
+  const capacityByIncome = maxCreditByIncome + availableEntry;
   const capacityByEntry = availableEntry / MINIMUM_ENTRY_RATE;
 
   return Math.min(capacityByIncome, capacityByEntry);
@@ -375,7 +378,7 @@ function buildBaseOptions(
       return {
         ...option,
         installment: financedValue > 0 ? financedValue * FINANCING_FACTOR : 0,
-        isAvailable: maxInstallment > 0 && availableEntry >= minimumRequiredEntry
+        isAvailable: maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry
       };
     });
 }
@@ -405,7 +408,8 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const maxCredit = Math.min(maxCreditByIncome, maxCreditByQuota);
   const maxPropertyValue = getMaxPropertyValue(maxCreditByIncome, availableEntry);
   const minimumRequiredEntry = getMinimumRequiredEntry(desiredPackageValue, maxCreditByIncome);
-  const entryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
+  const rawEntryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
+  const entryShortfall = rawEntryShortfall <= MONEY_TOLERANCE ? 0 : rawEntryShortfall;
   const financedNeeded = getFinancedAmount(desiredPackageValue, availableEntry, maxCreditByIncome);
   const estimatedInstallment = financedNeeded > 0 ? financedNeeded * FINANCING_FACTOR : 0;
   const options = buildBaseOptions(terrainPrice, projectPrice, buildCost, maxCreditByIncome, availableEntry, maxInstallment);
@@ -416,7 +420,7 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
           label: "Valor escolhido",
           amount: desiredPackageValue,
           installment: estimatedInstallment,
-          isAvailable: maxInstallment > 0 && availableEntry >= minimumRequiredEntry,
+          isAvailable: maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry,
           description: "Valor informado manualmente pelo cliente."
         }
       : options.find((option) => option.key === form.packageMode);
@@ -530,18 +534,95 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `Pacote escolhido: ${result.requestedOption ? `${result.requestedOption.label} - ${money(result.requestedOption.amount)}` : "Valor manual"}`,
       `Resultado do pacote: ${result.requestedOption?.isAvailable ? "Dentro da base" : "Acima da base"}`,
       `Opcao indicada agora: ${result.selectedOption ? `${result.selectedOption.label} - ${money(result.selectedOption.amount)}` : "Buscar opcao abaixo da base"}`,
-      `Resumo: ${result.fitMessage}`
+      `Ajuste indicado: ${getAdjustmentMessage(result)}`,
+      `Resumo tecnico: ${result.fitMessage}`
     ].join("\n")
   );
 }
 
+function getSelectedPackageParts(
+  mode: PackageMode,
+  terrainPrice: number,
+  projectPrice: number,
+  buildCost: number,
+  desiredPackageValue: number
+) {
+  if (mode === "TERRAIN") {
+    return { terrainPrice, projectPrice: 0, buildCost: 0 };
+  }
+
+  if (mode === "TERRAIN_PROJECT") {
+    return { terrainPrice, projectPrice, buildCost: 0 };
+  }
+
+  if (mode === "FULL") {
+    return { terrainPrice, projectPrice, buildCost };
+  }
+
+  return { terrainPrice: desiredPackageValue, projectPrice: 0, buildCost: 0 };
+}
+
+function mapPropertyTypeToCaixa(type: PropertyType, condition: PropertyCondition): SimulationInput["propertyType"] {
+  if (type === "LAND_BUILD") {
+    return "CONSTRUCTION";
+  }
+
+  if (type === "PLANT") {
+    return "NEW";
+  }
+
+  return condition === "USED" ? "USED" : "NEW";
+}
+
+function buildSimulationInput({
+  form,
+  result,
+  terrainId,
+  projectId,
+  terrainPrice,
+  projectPrice,
+  buildCost
+}: {
+  form: QuickForm;
+  result: Result;
+  terrainId?: string;
+  projectId?: string;
+  terrainPrice: number;
+  projectPrice: number;
+  buildCost: number;
+}): SimulationInput {
+  const selected = getSelectedPackageParts(form.packageMode, terrainPrice, projectPrice, buildCost, result.desiredPackageValue);
+
+  return {
+    ...(terrainId ? { terrainId } : {}),
+    ...(projectId ? { projectId } : {}),
+    terrainPrice: selected.terrainPrice,
+    projectPrice: selected.projectPrice,
+    estimatedBuildCost: selected.buildCost,
+    buildCost: selected.buildCost,
+    familyIncome: result.totalIncome,
+    monthlyDebts:
+      Math.max(parseMoney(form.activeLoans), 0) +
+      (form.hasCurrentFinancing === "yes" ? Math.max(parseMoney(form.monthlySpending), 0) : 0),
+    buyerAge: getAge(form.birthDate),
+    dependents: form.dependents === "yes" ? 1 : 0,
+    ownCash: Math.max(parseMoney(form.downPayment), 0),
+    downPayment: Math.max(parseMoney(form.downPayment), 0),
+    fgtsBalance: form.useFgts === "yes" ? Math.max(parseMoney(form.fgtsValue), 0) : 0,
+    fgtsYears: form.useFgts,
+    hasCreditRestriction: form.hasRestriction,
+    propertyType: mapPropertyTypeToCaixa(form.propertyType, form.propertyCondition),
+    propertyUse: "OWN_HOME",
+    program: "AUTO",
+    system: "SAC",
+    months: 420,
+    annualInterestRate: 0,
+    insuranceRate: 5
+  };
+}
+
 function isApprovedResult(result: Result) {
-  return (
-    result.desiredPackageValue > 0 &&
-    result.maxPropertyValue > 0 &&
-    result.entryShortfall <= 0 &&
-    result.desiredPackageValue <= result.maxPropertyValue
-  );
+  return Boolean(result.requestedOption?.isAvailable);
 }
 
 function getEntryNeeded(result: Result) {
@@ -559,7 +640,7 @@ function getCapacityUsage(result: Result) {
 function getCapacityMessage(result: Result) {
   const margin = result.maxPropertyValue - result.desiredPackageValue;
 
-  if (result.entryShortfall > 0) {
+  if (result.entryShortfall > MONEY_TOLERANCE) {
     return `Para este projeto, falta aproximadamente ${money(result.entryShortfall)} de entrada para respeitar a cota de 80% financiado e 20% de entrada.`;
   }
 
@@ -572,6 +653,34 @@ function getCapacityMessage(result: Result) {
   }
 
   return `Este projeto ficou aproximadamente ${money(Math.abs(margin))} acima da sua capacidade atual.`;
+}
+
+function getAdjustmentMessage(result: Result) {
+  if (isApprovedResult(result)) {
+    return "Seu projeto esta dentro da capacidade estimada. O proximo passo e conferir documentos com atendimento.";
+  }
+
+  if (result.desiredPackageValue <= 0) {
+    return "Informe o valor do terreno, projeto ou pacote para calcular a simulacao.";
+  }
+
+  if (result.totalIncome <= 0) {
+    return "Informe a renda bruta mensal para calcular a capacidade de financiamento.";
+  }
+
+  if (result.maxInstallment <= 0) {
+    return "As dividas informadas consumiram a margem de parcela. Ajuste as dividas ou componha renda para continuar.";
+  }
+
+  if (result.entryShortfall > MONEY_TOLERANCE) {
+    return `So precisa ajustar a entrada: falta aproximadamente ${money(result.entryShortfall)} para chegar na entrada necessaria de ${money(result.minimumRequiredEntry)}.`;
+  }
+
+  if (result.desiredPackageValue > result.maxPropertyValue) {
+    return `O pacote ficou aproximadamente ${money(result.desiredPackageValue - result.maxPropertyValue)} acima da capacidade atual. Ajuste o valor do pacote, aumente a entrada ou componha renda.`;
+  }
+
+  return "Este pacote precisa de um pequeno ajuste de renda, entrada ou valor para seguir com mais seguranca.";
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -593,6 +702,14 @@ export function SimpleFinancingSimulator() {
   const terrainPrice = useMemo(() => getSearchNumber(new URLSearchParams(searchKey), "terrainPrice", 0), [searchKey]);
   const projectPrice = useMemo(() => getSearchNumber(new URLSearchParams(searchKey), "projectPrice", 0), [searchKey]);
   const buildCost = useMemo(() => getSearchNumber(new URLSearchParams(searchKey), "buildCost", 0), [searchKey]);
+  const catalogIds = useMemo(() => {
+    const params = new URLSearchParams(searchKey);
+
+    return {
+      terrainId: params.get("terrainId") || undefined,
+      projectId: params.get("projectId") || undefined
+    };
+  }, [searchKey]);
   const packageTitles = useMemo(() => {
     const params = new URLSearchParams(searchKey);
 
@@ -629,15 +746,18 @@ export function SimpleFinancingSimulator() {
     [buildCost, projectPrice, terrainPrice]
   );
   const hasPackage = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
-  const addRequest = useSimulationRequestsStore((state) => state.addRequest);
   const [form, setForm] = useState<QuickForm>(initialForm);
   const [result, setResult] = useState<Result | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isSavingSimulation, setIsSavingSimulation] = useState(false);
   const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [cepMessage, setCepMessage] = useState("");
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
+  const [savedSimulationId, setSavedSimulationId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showResultDetails, setShowResultDetails] = useState(false);
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -721,46 +841,58 @@ export function SimpleFinancingSimulator() {
     }));
   }
 
+  async function saveSimulation(currentResult: Result) {
+    setIsSavingSimulation(true);
+    setSaveError(null);
+    setSavedSimulationId(null);
+
+    try {
+      const saved = await createSimulation(
+        buildSimulationInput({
+          form,
+          result: currentResult,
+          terrainId: catalogIds.terrainId,
+          projectId: catalogIds.projectId,
+          terrainPrice,
+          projectPrice,
+          buildCost
+        })
+      );
+
+      setSavedSimulationId(saved.id);
+      setRequestMessage(`Simulacao ${saved.id} salva no banco e disponivel no admin.`);
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Nao foi possivel salvar a simulacao no banco.");
+      setSaveError(message);
+      setRequestMessage(message);
+    } finally {
+      setIsSavingSimulation(false);
+    }
+  }
+
   function simulate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsCalculating(true);
     setRequestMessage(null);
+    setSaveError(null);
+    setSavedSimulationId(null);
 
     window.setTimeout(() => {
-      setResult(calculateResult(form, terrainPrice, projectPrice, buildCost));
+      const currentResult = calculateResult(form, terrainPrice, projectPrice, buildCost);
+
+      setResult(currentResult);
+      setIsResultModalOpen(true);
       setIsCalculating(false);
+      void saveSimulation(currentResult);
     }, 900);
   }
 
   function registerRequest() {
     const currentResult = result ?? calculateResult(form, terrainPrice, projectPrice, buildCost);
-    const request = addRequest({
-      name: form.name || "Lead sem nome",
-      phone: form.phone,
-      email: form.email,
-      city: form.city,
-      state: form.state,
-      desiredPropertyValue: currentResult.desiredPackageValue,
-      terrainPrice,
-      projectPrice,
-      buildCost,
-      totalIncome: currentResult.totalIncome,
-      maxCredit: currentResult.maxCredit,
-      maxPropertyValue: currentResult.maxPropertyValue,
-      maxInstallment: currentResult.maxInstallment,
-      availableEntry: currentResult.availableEntry,
-      requestedOptionLabel: currentResult.requestedOption?.label,
-      requestedOptionValue: currentResult.requestedOption?.amount,
-      selectedOptionLabel: currentResult.selectedOption?.label,
-      selectedOptionValue: currentResult.selectedOption?.amount,
-      entryGap: currentResult.entryShortfall,
-      financingGap: Math.max(currentResult.desiredPackageValue - currentResult.maxPropertyValue, 0),
-      score: currentResult.score,
-      status: currentResult.status,
-      fitMessage: currentResult.fitMessage
-    });
 
-    setRequestMessage(`Pedido ${request.id} cadastrado no painel.`);
+    if (!savedSimulationId && !isSavingSimulation && !saveError) {
+      void saveSimulation(currentResult);
+    }
   }
 
   const message = result ? buildWhatsappMessage(form, result) : "";
@@ -1111,12 +1243,12 @@ export function SimpleFinancingSimulator() {
                   <h2 className="mt-5 text-3xl font-semibold leading-tight">
                     {isApprovedResult(result)
                       ? "Boa noticia! Este projeto e compativel com seu perfil."
-                      : "Este projeto ainda precisa de ajuste para seguir."}
+                      : "Falta um ajuste para este pacote ficar compativel."}
                   </h2>
                   <p className="mt-3 text-sm leading-6 opacity-78">
                     {isApprovedResult(result)
                       ? "O pacote esta dentro da capacidade estimada para seguir em atendimento."
-                      : "Veja a capacidade calculada e fale com um especialista para ajustar entrada, projeto ou valor."}
+                      : getAdjustmentMessage(result)}
                   </p>
                 </div>
 
@@ -1159,7 +1291,7 @@ export function SimpleFinancingSimulator() {
                   <h3 className="mt-3 text-2xl font-semibold">
                     {isApprovedResult(result)
                       ? "Seu projeto esta compativel para seguir para analise documental."
-                      : "Seu projeto pode seguir para atendimento com ajuste de valores."}
+                      : getAdjustmentMessage(result)}
                   </h3>
                   <p className="mt-3 text-sm leading-6 opacity-78">
                     Os valores apresentados sao estimativas baseadas nas regras atuais de financiamento e podem sofrer pequenas
@@ -1178,6 +1310,19 @@ export function SimpleFinancingSimulator() {
                   Receber Atendimento Agora
                 </a>
 
+                <Button className="mt-3 w-full" onClick={() => setIsResultModalOpen(true)} type="button" variant="secondary">
+                  Ver resultado completo
+                </Button>
+
+                {isSavingSimulation ? (
+                  <p className="mt-3 text-xs leading-5 text-[var(--muted)]">Salvando simulacao no banco...</p>
+                ) : null}
+                {savedSimulationId ? (
+                  <p className="mt-3 text-xs leading-5 text-emerald-700 dark:text-emerald-300">
+                    Simulacao salva no admin: {savedSimulationId}
+                  </p>
+                ) : null}
+                {saveError ? <p className="mt-3 text-xs leading-5 text-red-600">{saveError}</p> : null}
                 {requestMessage ? <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{requestMessage}</p> : null}
 
                 <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)]">
@@ -1267,6 +1412,19 @@ export function SimpleFinancingSimulator() {
           </div>
         </aside>
       </form>
+      {result ? (
+        <ResultModal
+          isSavingSimulation={isSavingSimulation}
+          message={message}
+          onClose={() => setIsResultModalOpen(false)}
+          onRequest={registerRequest}
+          open={isResultModalOpen}
+          requestMessage={requestMessage}
+          result={result}
+          saveError={saveError}
+          savedSimulationId={savedSimulationId}
+        />
+      ) : null}
     </section>
   );
 }
@@ -1300,6 +1458,174 @@ function PackageSummary({
         <span className="rounded-[8px] border border-[var(--line)] px-3 py-2">
           Obra {money(buildCost)}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function ResultModal({
+  isSavingSimulation,
+  message,
+  onClose,
+  onRequest,
+  open,
+  requestMessage,
+  result,
+  saveError,
+  savedSimulationId
+}: {
+  isSavingSimulation: boolean;
+  message: string;
+  onClose: () => void;
+  onRequest: () => void;
+  open: boolean;
+  requestMessage: string | null;
+  result: Result;
+  saveError: string | null;
+  savedSimulationId: string | null;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  const approved = isApprovedResult(result);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm sm:py-10">
+      <div
+        aria-modal="true"
+        className="relative w-full max-w-5xl rounded-[8px] border border-[var(--line)] bg-[var(--background)] shadow-2xl"
+        role="dialog"
+      >
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--line)] bg-[var(--background)] p-5">
+          <div>
+            <span
+              className={`inline-flex items-center gap-2 rounded-[8px] px-3 py-2 text-xs font-semibold uppercase ${
+                approved ? "bg-emerald-600 text-white" : "bg-amber-500 text-[#2d2103]"
+              }`}
+            >
+              {approved ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+              {approved ? "Compativel" : "Precisa ajustar"}
+            </span>
+            <h2 className="mt-4 text-3xl font-semibold leading-tight">
+              {approved ? "Boa noticia! Este projeto e compativel com seu perfil." : "Falta um ajuste para este pacote ficar compativel."}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+              {approved ? "Resultado completo da simulacao com entrada, parcela, capacidade e proximos passos." : getAdjustmentMessage(result)}
+            </p>
+          </div>
+          <button
+            aria-label="Fechar resultado"
+            className="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border border-[var(--line)]"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid gap-5 p-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
+            <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
+            <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
+            <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxCredit)} />
+          </div>
+
+          <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+              <TrendingUp size={18} />
+              Capacidade de compra
+            </div>
+            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <span className="text-[var(--muted)]">Sua capacidade com entrada informada</span>
+                <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
+              </div>
+              <div>
+                <span className="text-[var(--muted)]">Projeto escolhido</span>
+                <strong className="mt-1 block text-2xl">{money(result.desiredPackageValue)}</strong>
+              </div>
+            </div>
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
+              <div
+                className={`h-full rounded-full ${approved ? "bg-emerald-500" : "bg-amber-500"}`}
+                style={{ width: `${Math.max(getCapacityUsage(result), 4)}%` }}
+              />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">{getCapacityMessage(result)}</p>
+          </div>
+
+          <div className="rounded-[8px] border border-emerald-200 bg-emerald-50 p-5 text-[#082f24] dark:border-emerald-700/50 dark:bg-emerald-950/35 dark:text-white">
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
+              <FileCheck2 size={18} />
+              Resultado final
+            </div>
+            <h3 className="mt-3 text-2xl font-semibold">
+              {approved
+                ? "Seu projeto esta compativel para seguir para analise documental."
+                : getAdjustmentMessage(result)}
+            </h3>
+            <p className="mt-3 text-sm leading-6 opacity-78">
+              Os valores apresentados sao estimativas baseadas nas regras atuais de financiamento e podem sofrer pequenas
+              alteracoes apos analise dos documentos.
+            </p>
+          </div>
+
+          <div className="grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+            <p className="text-sm font-semibold uppercase text-[var(--muted)]">Detalhes da analise</p>
+            <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
+            <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
+            <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
+            <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
+            <TechnicalMetric label="Financiamento maximo estimado" value={money(result.maxCredit)} />
+            <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
+            <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
+            <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
+            {result.entryShortfall > 0 ? <TechnicalMetric label="Entrada que falta" value={money(result.entryShortfall)} /> : null}
+            <TechnicalMetric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
+            <TechnicalMetric label="Enquadramento" value={result.status} />
+          </div>
+
+          {result.options.length > 0 ? (
+            <div className="grid gap-2 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+              <p className="text-sm font-semibold uppercase text-[var(--muted)]">Opcoes calculadas</p>
+              {result.options.map((option) => (
+                <BaseOptionRow isRequested={result.requestedOption?.key === option.key} key={option.key} option={option} />
+              ))}
+            </div>
+          ) : null}
+
+          {result.notes.length > 0 ? (
+            <div className="grid gap-2 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
+              <p className="text-sm font-semibold uppercase text-[var(--muted)]">Observacoes tecnicas</p>
+              {result.notes.map((note) => (
+                <p className="rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-3 text-sm leading-6 text-[var(--muted)]" key={note}>
+                  {note}
+                </p>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 border-t border-[var(--line)] pt-5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="text-sm leading-6 text-[var(--muted)]">
+              {isSavingSimulation ? <p>Salvando simulacao no banco...</p> : null}
+              {savedSimulationId ? <p className="text-emerald-700 dark:text-emerald-300">Simulacao salva no admin: {savedSimulationId}</p> : null}
+              {saveError ? <p className="text-red-600">{saveError}</p> : null}
+              {requestMessage ? <p>{requestMessage}</p> : null}
+            </div>
+            <a
+              className="focus-ring inline-flex min-h-12 items-center justify-center gap-3 rounded-[8px] bg-[#25d366] px-5 py-3 text-sm font-semibold text-[#062014]"
+              href={`https://wa.me/${whatsappNumber}?text=${message}`}
+              onClick={onRequest}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Rocket size={18} />
+              Receber Atendimento Agora
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

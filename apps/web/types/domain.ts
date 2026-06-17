@@ -205,6 +205,7 @@ export type AdminSimulation = {
   monthlyPayment: number | string;
   totalAmount: number | string;
   status: SimulationStatus;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
   customer?: Pick<AdminUser, "id" | "name" | "email" | "phone"> | null;
   terrain?: Pick<Terrain, "id" | "title" | "city" | "state"> | null;
