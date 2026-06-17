@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class CreateSimulationDto {
   @ApiPropertyOptional()
@@ -185,4 +185,9 @@ export class CreateSimulationDto {
   @Max(100)
   @IsOptional()
   insuranceRate?: number;
+
+  @ApiPropertyOptional()
+  @IsObject()
+  @IsOptional()
+  metadata?: Record<string, unknown>;
 }

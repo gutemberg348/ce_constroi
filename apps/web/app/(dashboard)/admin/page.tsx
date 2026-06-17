@@ -157,6 +157,41 @@ const architectStatuses: ArchitectStatus[] = ["PENDING_REVIEW", "APPROVED", "REJ
 const terrainStatuses: TerrainStatus[] = ["DRAFT", "PENDING_REVIEW", "AVAILABLE", "RESERVED", "SOLD", "ARCHIVED"];
 const projectStatuses: ProjectStatus[] = ["DRAFT", "PENDING_REVIEW", "PUBLISHED", "ARCHIVED"];
 const simulationStatuses: SimulationStatus[] = ["DRAFT", "SENT", "CONVERTED", "EXPIRED"];
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function numberValue(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function simulationFrontendResult(simulation: AdminSimulation) {
+  return objectValue(objectValue(simulation.metadata).frontendResult);
+}
+
+function simulationCustomerFilled(simulation: AdminSimulation) {
+  return objectValue(objectValue(simulation.metadata).customerFilled);
+}
+
+function simulationDisplayNumber(simulation: AdminSimulation, key: string, fallback: number | string) {
+  return numberValue(simulationFrontendResult(simulation)[key]) ?? fallback;
+}
+
+function simulationCustomerName(simulation: AdminSimulation) {
+  const customer = simulationCustomerFilled(simulation);
+  return typeof customer.name === "string" && customer.name.trim()
+    ? customer.name.trim()
+    : simulation.customer?.name ?? "Cliente nao vinculado";
+}
+
+function simulationCustomerEmail(simulation: AdminSimulation) {
+  const customer = simulationCustomerFilled(simulation);
+  return typeof customer.email === "string" && customer.email.trim()
+    ? customer.email.trim()
+    : simulation.customer?.email ?? "Sem email";
+}
 const orderStatuses: OrderStatus[] = ["DRAFT", "PENDING_PAYMENT", "PAID", "CANCELED", "REFUNDED"];
 const newsStatuses: NewsStatus[] = ["DRAFT", "PUBLISHED"];
 
@@ -2192,20 +2227,36 @@ function SimulationsSection({
     <section className={panelClass()}>
       <SectionHeader eyebrow="Financeiro" title="Simulacoes" total={simulations.length} />
       <AdminTable columns={["Cliente", "Pacote", "Valores", "Status", "Acoes"]} empty="Nenhuma simulacao salva." isLoading={isLoading}>
-        {simulations.map((simulation) => (
+        {simulations.map((simulation) => {
+          const frontendResult = simulationFrontendResult(simulation);
+          const adjustmentMessage =
+            typeof frontendResult.adjustmentMessage === "string" ? frontendResult.adjustmentMessage : null;
+
+          return (
           <tr className="align-top" key={simulation.id}>
             <td className="px-4 py-4">
-              <strong>{simulation.customer?.name ?? "Cliente nao vinculado"}</strong>
-              <p className="mt-1 text-xs text-[var(--muted)]">{simulation.customer?.email ?? "Sem email"}</p>
+              <strong>{simulationCustomerName(simulation)}</strong>
+              <p className="mt-1 text-xs text-[var(--muted)]">{simulationCustomerEmail(simulation)}</p>
+              {simulation.customer?.name && simulation.customer.name !== simulationCustomerName(simulation) ? (
+                <p className="mt-1 text-xs text-[var(--muted)]">Conta: {simulation.customer.name}</p>
+              ) : null}
             </td>
             <td className="px-4 py-4">
               <p>{simulation.terrain?.title ?? "Terreno manual"}</p>
               <p className="mt-1 text-xs text-[var(--muted)]">{simulation.project?.title ?? "Sem projeto"}</p>
+              {adjustmentMessage ? <p className="mt-2 max-w-xs text-xs leading-5 text-[var(--muted)]">{adjustmentMessage}</p> : null}
             </td>
             <td className="px-4 py-4">
-              <p>Total {money(simulation.totalAmount)}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">Parcela {money(simulation.monthlyPayment)}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">Entrada {money(simulation.downPayment)}</p>
+              <p>Pacote {money(simulationDisplayNumber(simulation, "desiredPackageValue", simulation.totalAmount))}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Parcela {money(simulationDisplayNumber(simulation, "estimatedInstallment", simulation.monthlyPayment))}
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Entrada informada {money(simulationDisplayNumber(simulation, "availableEntry", simulation.downPayment))}
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Entrada necessaria {money(simulationDisplayNumber(simulation, "minimumRequiredEntry", simulation.downPayment))}
+              </p>
             </td>
             <td className="px-4 py-4">{statusPill(simulation.status)}</td>
             <td className="px-4 py-4">
@@ -2230,7 +2281,8 @@ function SimulationsSection({
               </div>
             </td>
           </tr>
-        ))}
+          );
+        })}
       </AdminTable>
     </section>
   );

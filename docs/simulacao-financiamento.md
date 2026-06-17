@@ -293,9 +293,19 @@ Ao clicar em `Ver resultado da simulacao`, o front:
 
 1. calcula o resultado para mostrar na tela;
 2. abre o modal com o resultado completo;
-3. envia os dados para `POST /api/v1/simulations`;
+3. envia os dados para `POST /api/v1/simulations`, incluindo `frontendInput`, `frontendResult` e `customerFilled` no `metadata`;
 4. a API salva a simulacao na tabela `simulations`;
 5. o admin consegue ver e avancar o status do atendimento.
+
+No admin, a listagem prioriza os valores de `metadata.frontendResult`, porque esses sao os valores que o cliente viu e preencheu na tela:
+
+- `desiredPackageValue`: valor do pacote simulado.
+- `availableEntry`: entrada informada pelo cliente, somando dinheiro e FGTS considerado.
+- `minimumRequiredEntry`: entrada necessaria calculada.
+- `estimatedInstallment`: parcela estimada exibida ao cliente.
+- `adjustmentMessage`: mensagem simples dizendo o que precisa ajustar.
+
+Os campos tecnicos da tabela, como `totalAmount` e `downPayment`, ficam como fallback para registros antigos.
 
 O admin usa os status:
 

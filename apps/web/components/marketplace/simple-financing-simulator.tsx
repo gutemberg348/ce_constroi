@@ -617,7 +617,52 @@ function buildSimulationInput({
     system: "SAC",
     months: 420,
     annualInterestRate: 0,
-    insuranceRate: 5
+    insuranceRate: 5,
+    metadata: {
+      source: "simple-financing-simulator",
+      customerFilled: {
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        city: form.city,
+        state: form.state,
+        zipCode: form.zipCode
+      },
+      frontendInput: {
+        packageMode: form.packageMode,
+        terrainPrice: selected.terrainPrice,
+        projectPrice: selected.projectPrice,
+        buildCost: selected.buildCost,
+        downPayment: Math.max(parseMoney(form.downPayment), 0),
+        fgtsBalance: form.useFgts === "yes" ? Math.max(parseMoney(form.fgtsValue), 0) : 0,
+        useFgts: form.useFgts,
+        totalIncome: result.totalIncome,
+        monthlyDebts:
+          Math.max(parseMoney(form.activeLoans), 0) +
+          (form.hasCurrentFinancing === "yes" ? Math.max(parseMoney(form.monthlySpending), 0) : 0)
+      },
+      frontendResult: {
+        desiredPackageValue: result.desiredPackageValue,
+        maxInstallment: result.maxInstallment,
+        maxCredit: result.maxCredit,
+        maxCreditByIncome: result.maxCreditByIncome,
+        maxCreditByQuota: result.maxCreditByQuota,
+        maxPropertyValue: result.maxPropertyValue,
+        minimumRequiredEntry: result.minimumRequiredEntry,
+        availableEntry: result.availableEntry,
+        entryShortfall: result.entryShortfall,
+        financedNeeded: result.financedNeeded,
+        estimatedInstallment: result.estimatedInstallment,
+        requestedOptionLabel: result.requestedOption?.label,
+        requestedOptionAmount: result.requestedOption?.amount,
+        requestedOptionAvailable: result.requestedOption?.isAvailable ?? false,
+        selectedOptionLabel: result.selectedOption?.label,
+        selectedOptionAmount: result.selectedOption?.amount,
+        status: result.status,
+        fitMessage: result.fitMessage,
+        adjustmentMessage: getAdjustmentMessage(result)
+      }
+    }
   };
 }
 
@@ -1497,7 +1542,7 @@ function ResultModal({
         className="relative w-full max-w-5xl rounded-[8px] border border-[var(--line)] bg-[var(--background)] shadow-2xl"
         role="dialog"
       >
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--line)] bg-[var(--background)] p-5">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] bg-[var(--background)] p-5">
           <div>
             <span
               className={`inline-flex items-center gap-2 rounded-[8px] px-3 py-2 text-xs font-semibold uppercase ${

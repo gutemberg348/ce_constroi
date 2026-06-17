@@ -38,6 +38,7 @@ export type SimulationInput = {
   months?: number;
   annualInterestRate?: number;
   insuranceRate?: number;
+  metadata?: Record<string, unknown>;
 };
 
 export type CaixaSimulationResult = {

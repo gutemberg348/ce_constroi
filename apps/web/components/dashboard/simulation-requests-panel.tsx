@@ -51,6 +51,37 @@ function metadataResult(simulation: AdminSimulation) {
   return result && typeof result === "object" ? (result as Record<string, unknown>) : null;
 }
 
+function metadataObject(simulation: AdminSimulation, key: string) {
+  const metadata = simulation.metadata;
+
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  const value = metadata[key];
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function numberValue(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function displayNumber(simulation: AdminSimulation, key: string, fallback: number | string) {
+  return numberValue(metadataObject(simulation, "frontendResult")?.[key]) ?? fallback;
+}
+
+function filledCustomer(simulation: AdminSimulation) {
+  return metadataObject(simulation, "customerFilled");
+}
+
+function displayCustomerName(simulation: AdminSimulation) {
+  const customer = filledCustomer(simulation);
+  return typeof customer?.name === "string" && customer.name.trim()
+    ? customer.name.trim()
+    : simulation.customer?.name ?? "Cliente nao vinculado";
+}
+
 function resultText(simulation: AdminSimulation) {
   const result = metadataResult(simulation);
   const status = typeof result?.status === "string" ? result.status : null;
@@ -98,7 +129,7 @@ function AdminSimulationRequestsPanel({ compact }: { compact: boolean }) {
               <div className="grid gap-4 py-4 md:grid-cols-[1fr_auto]" key={simulation.id}>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold">{simulation.customer?.name ?? "Cliente nao vinculado"}</h3>
+                    <h3 className="font-semibold">{displayCustomerName(simulation)}</h3>
                     <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
                       {statusLabel(simulation.status)}
                     </span>
@@ -108,9 +139,10 @@ function AdminSimulationRequestsPanel({ compact }: { compact: boolean }) {
                   </div>
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{resultText(simulation)}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                    <span>Credito: {money(simulation.totalAmount)}</span>
-                    <span>Parcela: {money(simulation.monthlyPayment)}</span>
-                    <span>Entrada: {money(simulation.downPayment)}</span>
+                    <span>Pacote: {money(displayNumber(simulation, "desiredPackageValue", simulation.totalAmount))}</span>
+                    <span>Parcela: {money(displayNumber(simulation, "estimatedInstallment", simulation.monthlyPayment))}</span>
+                    <span>Entrada informada: {money(displayNumber(simulation, "availableEntry", simulation.downPayment))}</span>
+                    <span>Entrada necessaria: {money(displayNumber(simulation, "minimumRequiredEntry", simulation.downPayment))}</span>
                     <span>{simulation.terrain?.title ?? "Terreno manual"}</span>
                     <span>{simulation.project?.title ?? "Sem projeto"}</span>
                   </div>

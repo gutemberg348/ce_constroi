@@ -28,6 +28,7 @@ export class SimulationsService {
       estimatedBuildCost: project ? Number(project.estimatedBuildCost) : undefined
     });
     const { input, result, rules } = simulation;
+    const metadata = dto.metadata && typeof dto.metadata === "object" && !Array.isArray(dto.metadata) ? dto.metadata : {};
 
     return this.prisma.simulation.create({
       data: {
@@ -37,12 +38,13 @@ export class SimulationsService {
         terrainPrice: input.terrainPrice,
         projectPrice: input.projectPrice,
         estimatedBuildCost: input.buildCost,
-        downPayment: result.cashAtStart,
+        downPayment: input.ownCash + result.eligibleFgts,
         installmentCount: result.termMonths,
         monthlyPayment: result.firstPayment,
         interestRate: result.monthlyRate,
-        totalAmount: result.totalWithInitial,
+        totalAmount: result.packageValue,
         metadata: {
+          ...metadata,
           source: "caixa-parameter-table",
           rulesVersion: rules.version,
           catalogSource: terrain || project ? "catalog" : "manual",
