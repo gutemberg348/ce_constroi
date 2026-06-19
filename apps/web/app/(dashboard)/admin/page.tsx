@@ -565,6 +565,7 @@ export default function AdminPage() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [logoMessage, setLogoMessage] = useState<string | null>(null);
+  const [logoMessageTone, setLogoMessageTone] = useState<"success" | "error" | null>(null);
   const [eventsPage, setEventsPage] = useState(1);
   const [eventsSearch, setEventsSearch] = useState("");
   const [isDownloadingSimulationsTxt, setIsDownloadingSimulationsTxt] = useState(false);
@@ -1294,7 +1295,18 @@ export default function AdminPage() {
                   Salvar configurações
                 </Button>
               </form>
-              {logoMessage ? <p className="mt-3 text-sm text-[var(--muted)]">{settingsNoticeText(logoMessage)}</p> : null}
+              {logoMessage ? (
+                <p
+                  className={`mt-3 rounded-[8px] border p-3 text-sm ${
+                    settingsMutation.isError || logoMessageTone === "error"
+                      ? "border-red-500/30 bg-red-500/10 text-red-700"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+                  }`}
+                >
+                  {settingsMutation.isError ? "Nao foi possivel salvar: " : ""}
+                  {settingsNoticeText(logoMessage)}
+                </p>
+              ) : null}
             </section>
           ) : null}
         </main>
