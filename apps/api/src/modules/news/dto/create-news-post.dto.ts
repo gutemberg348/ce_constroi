@@ -5,19 +5,19 @@ import { NewsStatus } from "@/generated/prisma/enums";
 export class CreateNewsPostDto {
   @ApiProperty()
   @IsString()
-  @MinLength(3)
-  @MaxLength(180)
+  @MinLength(3, { message: "O titulo precisa ter pelo menos 3 caracteres." })
+  @MaxLength(180, { message: "O titulo deve ter no maximo 180 caracteres." })
   title!: string;
 
   @ApiProperty()
   @IsString()
-  @MinLength(3)
-  @MaxLength(420)
+  @MinLength(3, { message: "O resumo precisa ter pelo menos 3 caracteres." })
+  @MaxLength(420, { message: "O resumo deve ter no maximo 420 caracteres." })
   excerpt!: string;
 
   @ApiProperty()
   @IsString()
-  @MinLength(3)
+  @MinLength(20, { message: "O conteudo completo precisa ter pelo menos 20 caracteres." })
   content!: string;
 
   @ApiPropertyOptional()

@@ -27,7 +27,7 @@ import {
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { Children, FormEvent, useMemo, useState } from "react";
+import { Children, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { UrlObject } from "url";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ProjectTerrainFitForm } from "@/components/dashboard/project-terrain-fit-form";
@@ -83,7 +83,8 @@ import {
   createNewsPost,
   deleteNewsPost,
   getAdminNews,
-  updateNewsPost
+  updateNewsPost,
+  type NewsPostInput
 } from "@/services/news";
 import { getSiteSettings, updateSiteSettings } from "@/services/settings";
 import { useAuthStore } from "@/stores/auth-store";
@@ -391,6 +392,33 @@ function requiredFormNumber(formData: FormData, key: string, label: string) {
   }
 
   return value;
+}
+
+function assertMinText(value: string, minLength: number, label: string) {
+  if (value.trim().length < minLength) {
+    throw new Error(`${label} precisa ter pelo menos ${minLength} caracteres.`);
+  }
+}
+
+async function newsInputFromFormData(formData: FormData, fallbackImageUrl = ""): Promise<NewsPostInput> {
+  const title = formText(formData, "title");
+  const excerpt = formText(formData, "excerpt");
+  const content = formText(formData, "content");
+  const author = optionalText(formData, "author");
+  const status = formText(formData, "status") as NewsStatus;
+
+  assertMinText(title, 3, "O titulo");
+  assertMinText(excerpt, 3, "O resumo");
+  assertMinText(content, 20, "O conteudo completo");
+
+  return {
+    title,
+    excerpt,
+    content,
+    imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl") || fallbackImageUrl),
+    author,
+    status: newsStatuses.includes(status) ? status : "DRAFT"
+  };
 }
 
 function hasFormImageInput(formData: FormData) {
@@ -789,27 +817,12 @@ export default function AdminPage() {
   });
 
   const newsCreateMutation = useMutation({
-    mutationFn: async (formData: FormData) =>
-      createNewsPost({
-        title: formText(formData, "title"),
-        excerpt: formText(formData, "excerpt"),
-        content: formText(formData, "content"),
-        imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl")),
-        author: optionalText(formData, "author"),
-        status: formText(formData, "status") as NewsStatus
-      }),
+    mutationFn: async (formData: FormData) => createNewsPost(await newsInputFromFormData(formData)),
     onSuccess: invalidateAdmin
   });
   const newsUpdateMutation = useMutation({
     mutationFn: async ({ post, formData }: { post: NewsPost; formData: FormData }) =>
-      updateNewsPost(post.id, {
-        title: formText(formData, "title"),
-        excerpt: formText(formData, "excerpt"),
-        content: formText(formData, "content"),
-        imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl") || post.imageUrl || ""),
-        author: optionalText(formData, "author"),
-        status: formText(formData, "status") as NewsStatus
-      }),
+      updateNewsPost(post.id, await newsInputFromFormData(formData, post.imageUrl || "")),
     onSuccess: invalidateAdmin
   });
   const newsDeleteMutation = useMutation({
@@ -1151,6 +1164,11 @@ export default function AdminPage() {
                 }
               }}
               onUpdate={(post, formData) => newsUpdateMutation.mutate({ post, formData })}
+              deleteError={newsDeleteMutation.error}
+              deleteSuccess={newsDeleteMutation.isSuccess}
+              updateTargetId={newsUpdateMutation.variables?.post.id}
+              updateError={newsUpdateMutation.error}
+              updateSuccess={newsUpdateMutation.isSuccess}
               pending={newsCreateMutation.isPending || newsUpdateMutation.isPending || newsDeleteMutation.isPending}
             />
           ) : null}
@@ -2217,7 +2235,12 @@ function NewsSection({
   pending,
   createPending,
   createSuccess,
-  createError
+  createError,
+  updateTargetId,
+  updateError,
+  updateSuccess,
+  deleteError,
+  deleteSuccess
 }: {
   news: NewsPost[];
   isLoading: boolean;
@@ -2228,7 +2251,20 @@ function NewsSection({
   createPending: boolean;
   createSuccess: boolean;
   createError: unknown;
+  updateTargetId?: string;
+  updateError: unknown;
+  updateSuccess: boolean;
+  deleteError: unknown;
+  deleteSuccess: boolean;
 }) {
+  const createFormRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    if (createSuccess) {
+      createFormRef.current?.reset();
+    }
+  }, [createSuccess]);
+
   return (
     <section className={panelClass()}>
       <SectionHeader eyebrow="Conteudo" title="Noticias da construcao" total={news.length} />
@@ -2236,6 +2272,7 @@ function NewsSection({
       <form
         className="mb-6 grid gap-4 border-b border-[var(--line)] pb-6 md:grid-cols-2"
         noValidate
+        ref={createFormRef}
         onSubmit={(event) => {
           event.preventDefault();
           onCreate(new FormData(event.currentTarget));
@@ -2259,7 +2296,8 @@ function NewsSection({
         </label>
         <label className="md:col-span-2">
           <FieldLabel>Conteudo completo</FieldLabel>
-          <textarea className={`${textareaClass()} min-h-64`} minLength={3} name="content" required />
+          <textarea className={`${textareaClass()} min-h-64`} minLength={20} name="content" required />
+          <p className="mt-1 text-xs text-[var(--muted)]">Minimo de 20 caracteres.</p>
         </label>
         <label>
           <FieldLabel>Imagem de capa</FieldLabel>
@@ -2296,6 +2334,17 @@ function NewsSection({
           </p>
         ) : null}
       </form>
+
+      {deleteError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-700">
+          Nao foi possivel excluir a noticia: {errorMessage(deleteError)}
+        </p>
+      ) : null}
+      {deleteSuccess ? (
+        <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
+          Noticia excluida com sucesso.
+        </p>
+      ) : null}
 
       <AdminTable columns={["Capa", "Noticia", "Status", "Publicacao", "Acoes"]} empty="Nenhuma noticia cadastrada." isLoading={isLoading}>
         {news.map((post) => (
@@ -2341,7 +2390,8 @@ function NewsSection({
                     <input className={inputClass()} defaultValue={post.title} maxLength={180} minLength={3} name="title" required />
                     <input className={inputClass()} defaultValue={post.author ?? ""} maxLength={120} name="author" placeholder="Autor" />
                     <textarea className={textareaClass()} defaultValue={post.excerpt} maxLength={420} minLength={3} name="excerpt" required />
-                    <textarea className={`${textareaClass()} min-h-56`} defaultValue={post.content} minLength={3} name="content" required />
+                    <textarea className={`${textareaClass()} min-h-56`} defaultValue={post.content} minLength={20} name="content" required />
+                    <p className="text-xs text-[var(--muted)]">Minimo de 20 caracteres.</p>
                     <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
                     <input className={inputClass()} defaultValue={post.imageUrl ?? ""} name="imageUrl" placeholder="URL da imagem" />
                     <select className={inputClass()} defaultValue={post.status} name="status">
@@ -2355,6 +2405,16 @@ function NewsSection({
                       <Check size={16} />
                       Salvar noticia
                     </Button>
+                    {updateTargetId === post.id && updateError ? (
+                      <p className="rounded-[8px] bg-red-500/10 p-3 text-sm text-red-700">
+                        Nao foi possivel salvar: {errorMessage(updateError)}
+                      </p>
+                    ) : null}
+                    {updateTargetId === post.id && updateSuccess ? (
+                      <p className="rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">
+                        Noticia atualizada com sucesso.
+                      </p>
+                    ) : null}
                   </form>
                 </EditPanel>
                 <ActionButton disabled={pending} onClick={() => onDelete(post.id)} tone="danger">
