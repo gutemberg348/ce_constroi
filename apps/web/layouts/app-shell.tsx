@@ -5,13 +5,14 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Calculator, Heart, Info, LogOut, Map, Megaphone, Menu, UserRound, X } from "lucide-react";
+import { Building2, Calculator, Heart, Info, LogOut, Map, Megaphone, Menu, Share2, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CookiePreferencesButton } from "@/components/privacy/cookie-preferences-button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { trackSiteEvent } from "@/services/analytics";
 import { defaultSiteSettings, getSiteSettings } from "@/services/settings";
 import { useAuthStore } from "@/stores/auth-store";
+import type { SiteSettings } from "@/types/domain";
 
 const desktopLinks: Array<{ href: Route; label: string; icon: LucideIcon }> = [
   { href: "/terrenos", label: "Terrenos", icon: Map },
@@ -42,6 +43,20 @@ function getDashboardHref(role?: string): Route {
   return "/dashboard";
 }
 
+function socialLinks(settings: SiteSettings) {
+  return [
+    { label: "Instagram", url: settings.socialInstagramUrl },
+    { label: "Facebook", url: settings.socialFacebookUrl },
+    { label: "YouTube", url: settings.socialYoutubeUrl },
+    { label: "X", url: settings.socialXUrl },
+    { label: "TikTok", url: settings.socialTiktokUrl },
+    { label: "LinkedIn", url: settings.socialLinkedinUrl },
+    { label: "WhatsApp", url: settings.socialWhatsappUrl }
+  ]
+    .map((item) => ({ label: item.label, url: item.url?.trim() ?? "" }))
+    .filter((item): item is { label: string; url: string } => Boolean(item.url));
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -60,6 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const logoDarkUrl = loadedSettings?.logoDarkUrl || loadedSettings?.logoUrl || logoLightUrl;
   const hasLogo = Boolean(logoLightUrl || logoDarkUrl);
   const isLoadingSettings = !loadedSettings && settingsQuery.isPending;
+  const configuredSocialLinks = socialLinks(settings);
+  const primarySocialLink = configuredSocialLinks[0];
 
   useEffect(() => {
     void trackSiteEvent({
@@ -204,6 +221,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Info size={17} />
                 Quem somos
               </Link>
+              {primarySocialLink ? (
+                <a
+                  className="focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white"
+                  href={primarySocialLink.url}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <Share2 size={17} />
+                  Redes sociais
+                </a>
+              ) : null}
               {isLoggedIn ? (
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <Link
@@ -252,7 +281,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[var(--line)] bg-[var(--panel)]">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <p>{settings.brandName} - privacidade por padrao.</p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {configuredSocialLinks.length ? (
+              <div className="flex flex-wrap gap-2">
+                {configuredSocialLinks.map((item) => (
+                  <a
+                    className="focus-ring inline-flex h-9 items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 text-xs font-semibold hover:text-[var(--foreground)]"
+                    href={item.url}
+                    key={item.label}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <Share2 size={14} />
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            ) : null}
             <Link className="font-semibold hover:text-[var(--foreground)]" href="/termos">
               Termos
             </Link>

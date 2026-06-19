@@ -192,6 +192,102 @@ function simulationCustomerEmail(simulation: AdminSimulation) {
     ? customer.email.trim()
     : simulation.customer?.email ?? "Sem email";
 }
+
+function simulationTextValue(value: unknown, fallback = "Nao informado") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function simulationMoneyValue(simulation: AdminSimulation, key: string, fallback: number | string) {
+  return money(simulationDisplayNumber(simulation, key, fallback));
+}
+
+function buildSimulationTxt(simulation: AdminSimulation) {
+  const metadata = objectValue(simulation.metadata);
+  const frontendInput = objectValue(metadata.frontendInput);
+  const frontendResult = simulationFrontendResult(simulation);
+  const customer = simulationCustomerFilled(simulation);
+  const adjustmentMessage = simulationTextValue(frontendResult.adjustmentMessage, "");
+  const statusMessage = simulationTextValue(frontendResult.status, "Simulacao registrada");
+  const fitMessage = simulationTextValue(frontendResult.fitMessage, "");
+
+  const lines = [
+    "PROPOSTA / SIMULACAO - CE CONSTROI",
+    `Codigo: ${simulation.id}`,
+    `Data: ${dateTime(simulation.createdAt)}`,
+    `Status administrativo: ${statusLabel(simulation.status)}`,
+    "",
+    "CLIENTE",
+    `Nome: ${simulationCustomerName(simulation)}`,
+    `Email: ${simulationCustomerEmail(simulation)}`,
+    `Telefone: ${simulationTextValue(customer.phone ?? simulation.customer?.phone)}`,
+    `Cidade: ${simulationTextValue(customer.city)}`,
+    `Estado: ${simulationTextValue(customer.state)}`,
+    `CEP: ${simulationTextValue(customer.zipCode)}`,
+    "",
+    "PACOTE",
+    `Terreno: ${simulation.terrain?.title ?? "Terreno manual"}`,
+    `Projeto: ${simulation.project?.title ?? "Sem projeto"}`,
+    `Modo escolhido: ${simulationTextValue(frontendInput.packageMode)}`,
+    `Valor do terreno: ${money(numberValue(frontendInput.terrainPrice) ?? simulation.terrainPrice)}`,
+    `Valor do projeto: ${money(numberValue(frontendInput.projectPrice) ?? simulation.projectPrice)}`,
+    `Custo de obra: ${money(numberValue(frontendInput.buildCost) ?? simulation.estimatedBuildCost)}`,
+    "",
+    "RESULTADO",
+    `Valor total do pacote: ${simulationMoneyValue(simulation, "desiredPackageValue", simulation.totalAmount)}`,
+    `Entrada informada: ${simulationMoneyValue(simulation, "availableEntry", simulation.downPayment)}`,
+    `Entrada minima estimada: ${simulationMoneyValue(simulation, "minimumRequiredEntry", simulation.downPayment)}`,
+    `Falta de entrada: ${simulationMoneyValue(simulation, "entryShortfall", 0)}`,
+    `Valor financiado estimado: ${simulationMoneyValue(simulation, "financedNeeded", simulation.totalAmount)}`,
+    `Parcela estimada: ${simulationMoneyValue(simulation, "estimatedInstallment", simulation.monthlyPayment)}`,
+    `Capacidade maxima estimada: ${simulationMoneyValue(simulation, "maxPropertyValue", simulation.totalAmount)}`,
+    `Limite de credito por renda: ${simulationMoneyValue(simulation, "maxCreditByIncome", 0)}`,
+    `Limite de credito por cota: ${simulationMoneyValue(simulation, "maxCreditByQuota", 0)}`,
+    "",
+    "ANALISE",
+    statusMessage,
+    fitMessage,
+    adjustmentMessage,
+    "",
+    "OBSERVACAO",
+    "Valores estimados para atendimento. A aprovacao depende de analise documental, politica de credito e avaliacao do imovel."
+  ];
+
+  return lines.filter((line, index) => line || lines[index - 1] !== "").join("\r\n");
+}
+
+function safeTxtFilename(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+function downloadTxt(filename: string, content: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+}
+
+function downloadSimulationTxt(simulation: AdminSimulation) {
+  downloadTxt(`simulacao-${safeTxtFilename(simulationCustomerName(simulation)) || simulation.id}.txt`, buildSimulationTxt(simulation));
+}
+
+function downloadAllSimulationsTxt(simulations: AdminSimulation[]) {
+  const content = simulations.map(buildSimulationTxt).join("\r\n\r\n========================================\r\n\r\n");
+  downloadTxt(`simulacoes-${new Date().toISOString().slice(0, 10)}.txt`, content);
+}
 const orderStatuses: OrderStatus[] = ["DRAFT", "PENDING_PAYMENT", "PAID", "CANCELED", "REFUNDED"];
 const newsStatuses: NewsStatus[] = ["DRAFT", "PUBLISHED"];
 
@@ -435,6 +531,7 @@ export default function AdminPage() {
   const [logoMessage, setLogoMessage] = useState<string | null>(null);
   const [eventsPage, setEventsPage] = useState(1);
   const [eventsSearch, setEventsSearch] = useState("");
+  const [isDownloadingSimulationsTxt, setIsDownloadingSimulationsTxt] = useState(false);
 
   const isAdmin = user?.role === "ADMIN";
   const activeSection = getAdminSection(pathname ?? "/admin");
@@ -837,9 +934,38 @@ export default function AdminPage() {
         brandName: formText(formData, "brandName"),
         logoLightUrl: normalizedLightLogo,
         logoDarkUrl: normalizedDarkLogo,
-        defaultCreci: formText(formData, "defaultCreci")
+        defaultCreci: formText(formData, "defaultCreci"),
+        socialInstagramUrl: formText(formData, "socialInstagramUrl"),
+        socialFacebookUrl: formText(formData, "socialFacebookUrl"),
+        socialYoutubeUrl: formText(formData, "socialYoutubeUrl"),
+        socialXUrl: formText(formData, "socialXUrl"),
+        socialTiktokUrl: formText(formData, "socialTiktokUrl"),
+        socialLinkedinUrl: formText(formData, "socialLinkedinUrl"),
+        socialWhatsappUrl: formText(formData, "socialWhatsappUrl")
       });
     });
+  }
+
+  async function downloadAllAdminSimulations() {
+    setIsDownloadingSimulationsTxt(true);
+
+    try {
+      const firstPage = await getAdminSimulations({ page: 1, limit: 100 });
+      const remainingPages =
+        firstPage.meta.totalPages > 1
+          ? await Promise.all(
+              Array.from({ length: firstPage.meta.totalPages - 1 }, (_, index) =>
+                getAdminSimulations({ page: index + 2, limit: 100 })
+              )
+            )
+          : [];
+      const allSimulations = [firstPage, ...remainingPages].flatMap((page) => page.items);
+      downloadAllSimulationsTxt(allSimulations);
+    } catch (error) {
+      window.alert(getApiErrorMessage(error, "Nao foi possivel baixar todas as simulacoes agora."));
+    } finally {
+      setIsDownloadingSimulationsTxt(false);
+    }
   }
 
   return (
@@ -1031,8 +1157,10 @@ export default function AdminPage() {
 
           {activeSection === "simulacoes" ? (
             <SimulationsSection
+              downloadingAll={isDownloadingSimulationsTxt}
               isLoading={simulationsQuery.isLoading}
               onDelete={(id) => simulationDeleteMutation.mutate(id)}
+              onDownloadAll={downloadAllAdminSimulations}
               onStatus={(id, status) => simulationStatusMutation.mutate({ id, status })}
               pending={simulationStatusMutation.isPending || simulationDeleteMutation.isPending}
               simulations={simulations}
@@ -1102,6 +1230,38 @@ export default function AdminPage() {
                 <label>
                   <FieldLabel>Logo escura</FieldLabel>
                   <input accept="image/*" className={inputClass()} name="logoDarkFile" type="file" />
+                </label>
+                <div className="md:col-span-2">
+                  <p className="text-xs font-semibold uppercase text-[var(--muted)]">Redes sociais</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">Cadastre os links que aparecem no rodape do site e no menu mobile.</p>
+                </div>
+                <label>
+                  <FieldLabel>Instagram</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialInstagramUrl ?? ""} name="socialInstagramUrl" placeholder="https://instagram.com/suaempresa" type="url" />
+                </label>
+                <label>
+                  <FieldLabel>Facebook</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialFacebookUrl ?? ""} name="socialFacebookUrl" placeholder="https://facebook.com/suaempresa" type="url" />
+                </label>
+                <label>
+                  <FieldLabel>YouTube</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialYoutubeUrl ?? ""} name="socialYoutubeUrl" placeholder="https://youtube.com/@suaempresa" type="url" />
+                </label>
+                <label>
+                  <FieldLabel>X / Twitter</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialXUrl ?? ""} name="socialXUrl" placeholder="https://x.com/suaempresa" type="url" />
+                </label>
+                <label>
+                  <FieldLabel>TikTok</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialTiktokUrl ?? ""} name="socialTiktokUrl" placeholder="https://tiktok.com/@suaempresa" type="url" />
+                </label>
+                <label>
+                  <FieldLabel>LinkedIn</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialLinkedinUrl ?? ""} name="socialLinkedinUrl" placeholder="https://linkedin.com/company/suaempresa" type="url" />
+                </label>
+                <label>
+                  <FieldLabel>WhatsApp</FieldLabel>
+                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialWhatsappUrl ?? ""} name="socialWhatsappUrl" placeholder="https://wa.me/5583999999999" type="url" />
                 </label>
                 <Button className="md:col-span-2" disabled={settingsMutation.isPending} type="submit" variant="secondary">
                   <Check size={18} />
@@ -2213,19 +2373,37 @@ function NewsSection({
 function SimulationsSection({
   simulations,
   isLoading,
+  downloadingAll,
   pending,
   onStatus,
-  onDelete
+  onDelete,
+  onDownloadAll
 }: {
   simulations: AdminSimulation[];
   isLoading: boolean;
+  downloadingAll: boolean;
   pending: boolean;
   onStatus: (id: string, status: SimulationStatus) => void;
   onDelete: (id: string) => void;
+  onDownloadAll: () => void;
 }) {
   return (
     <section className={panelClass()}>
-      <SectionHeader eyebrow="Financeiro" title="Simulacoes" total={simulations.length} />
+      <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div>
+          <p className="text-sm uppercase text-[var(--muted)]">Financeiro</p>
+          <h3 className="mt-1 text-2xl font-semibold">Propostas e simulacoes</h3>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ActionButton disabled={!simulations.length || isLoading || downloadingAll} onClick={onDownloadAll}>
+            <FileText size={14} />
+            {downloadingAll ? "Preparando..." : "Baixar todas"}
+          </ActionButton>
+          <span className="inline-flex w-fit rounded-[8px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-3 py-2 text-sm font-semibold text-[var(--accent)]">
+            {simulations.length}
+          </span>
+        </div>
+      </div>
       <AdminTable columns={["Cliente", "Pacote", "Valores", "Status", "Acoes"]} empty="Nenhuma simulacao salva." isLoading={isLoading}>
         {simulations.map((simulation) => {
           const frontendResult = simulationFrontendResult(simulation);
@@ -2261,6 +2439,10 @@ function SimulationsSection({
             <td className="px-4 py-4">{statusPill(simulation.status)}</td>
             <td className="px-4 py-4">
               <div className="flex min-w-[310px] flex-wrap gap-2">
+                <ActionButton disabled={pending} onClick={() => downloadSimulationTxt(simulation)}>
+                  <FileText size={14} />
+                  TXT
+                </ActionButton>
                 {simulationStatuses.map((status) => (
                   <ActionButton disabled={pending} key={status} onClick={() => onStatus(simulation.id, status)}>
                     {statusLabel(status)}

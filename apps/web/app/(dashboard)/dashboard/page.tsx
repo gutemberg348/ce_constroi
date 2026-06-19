@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, Building2, CreditCard, Heart, Map, ShieldAlert, TrendingUp, UserRound } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { SimulationRequestsPanel } from "@/components/dashboard/simulation-requests-panel";
 import { Button } from "@/components/ui/button";
 import { area, money } from "@/lib/format";
 import { getApiErrorMessage } from "@/services/api";
@@ -71,7 +70,7 @@ export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
 
   const dashboardQuery = useQuery({
-    queryKey: ["dashboard", "me"],
+    queryKey: ["dashboard", "me", user?.id],
     queryFn: getMyDashboard,
     enabled: Boolean(accessToken)
   });
@@ -347,10 +346,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-8">
-        <SimulationRequestsPanel compact />
       </div>
     </section>
   );

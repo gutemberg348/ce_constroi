@@ -19,6 +19,13 @@ export type SiteSettings = {
   logoLightUrl: string | null;
   logoDarkUrl: string | null;
   defaultCreci: string;
+  socialInstagramUrl?: string | null;
+  socialFacebookUrl?: string | null;
+  socialYoutubeUrl?: string | null;
+  socialXUrl?: string | null;
+  socialTiktokUrl?: string | null;
+  socialLinkedinUrl?: string | null;
+  socialWhatsappUrl?: string | null;
 };
 
 export type Paginated<T> = {

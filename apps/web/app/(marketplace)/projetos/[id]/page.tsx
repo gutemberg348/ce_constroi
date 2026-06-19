@@ -11,6 +11,7 @@ import type { Project, Terrain } from "@/types/domain";
 
 function buildSimulationHref(project: Project, terrain: Terrain) {
   const params = new URLSearchParams({
+    mode: "TERRAIN_PROJECT",
     terrainId: terrain.id,
     projectId: project.id,
     terrainTitle: terrain.title,

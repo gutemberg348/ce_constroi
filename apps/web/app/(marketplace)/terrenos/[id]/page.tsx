@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Home, MapPin, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AuthenticatedSimulationLink } from "@/components/marketplace/authenticated-simulation-link";
 import { FavoriteButton } from "@/components/marketplace/favorite-button";
 import { MediaGallery } from "@/components/marketplace/media-gallery";
 import { TerrainCreciBadge } from "@/components/marketplace/terrain-creci-badge";
 import { TerrainProjectSelector } from "@/components/marketplace/terrain-project-selector";
-import { area, money } from "@/lib/format";
+import { area, money, toNumber } from "@/lib/format";
 import { getTerrainPhoto } from "@/lib/terrain-images";
 import { getTerrainDevelopmentType, getTerrainPropertyDetails, terrainDevelopmentLabel } from "@/lib/terrain-metadata";
 import { getTerrain } from "@/services/terrains";
@@ -16,6 +17,12 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
   const fallbackImage = getTerrainPhoto(terrain);
   const developmentType = getTerrainDevelopmentType(terrain.metadata);
   const propertyDetails = getTerrainPropertyDetails(terrain.metadata);
+  const terrainSimulationParams = new URLSearchParams({
+    mode: "TERRAIN",
+    terrainId: terrain.id,
+    terrainTitle: terrain.title,
+    terrainPrice: String(toNumber(terrain.price))
+  });
   const detailItems = [
     ["Tipo", propertyDetails.propertyType ?? "Terreno"],
     ["Destino", propertyDetails.destination ?? "Residencial"],
@@ -75,9 +82,9 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
             ))}
           </div>
           <div className="mt-5 grid gap-2 sm:mt-6 sm:flex sm:flex-wrap sm:gap-3">
-            <Link className="w-full sm:w-auto" href={`/checkout?type=terrain&terrainId=${terrain.id}`}>
-              <Button className="w-full sm:w-auto">Fechar somente terreno</Button>
-            </Link>
+            <AuthenticatedSimulationLink className="w-full sm:w-auto" href={`/simulacao?${terrainSimulationParams.toString()}`}>
+              Simular somente terreno
+            </AuthenticatedSimulationLink>
             <Link className="w-full sm:w-auto" href="#monte-sua-casa">
               <Button className="w-full sm:w-auto" variant="secondary">
                 <Home size={18} />

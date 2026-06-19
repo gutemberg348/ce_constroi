@@ -26,4 +26,39 @@ export class UpdateSiteSettingsDto {
   @IsString()
   @IsOptional()
   defaultCreci?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialInstagramUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialFacebookUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialYoutubeUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialXUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialTiktokUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialLinkedinUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  socialWhatsappUrl?: string;
 }

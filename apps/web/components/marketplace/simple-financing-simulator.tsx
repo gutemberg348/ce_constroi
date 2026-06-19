@@ -99,6 +99,13 @@ type Result = {
   availableEntry: number;
   financedNeeded: number;
   estimatedInstallment: number;
+  nominalAnnualRate: number;
+  effectiveAnnualRate: number;
+  monthlyRate: number;
+  termMonths: number;
+  ageAtEnd: number;
+  financingSystem: "PRICE" | "SAC";
+  productBand: string;
   requestedOption?: BaseOption;
   selectedOption?: BaseOption;
   options: BaseOption[];
@@ -147,16 +154,72 @@ const defaultForm: QuickForm = {
 };
 
 const INCOME_COMMITMENT_RATE = 0.3;
-const FINANCING_FACTOR = 0.0088;
 const MAX_FINANCING_QUOTA = 0.8;
 const MINIMUM_ENTRY_RATE = 1 - MAX_FINANCING_QUOTA;
+const MAX_TERM_MONTHS = 420;
+const MAX_AGE_MONTHS_AT_END = 80 * 12 + 6;
+const PAYMENT_FEE_RATE = 0.05;
 const MONEY_TOLERANCE = 1;
+const SIMULATION_FORM_STORAGE_KEY = "ce-constroi.simulation-form.v1";
+
+const brazilStates = [
+  ["AC", "Acre"],
+  ["AL", "Alagoas"],
+  ["AP", "Amapa"],
+  ["AM", "Amazonas"],
+  ["BA", "Bahia"],
+  ["CE", "Ceara"],
+  ["DF", "Distrito Federal"],
+  ["ES", "Espirito Santo"],
+  ["GO", "Goias"],
+  ["MA", "Maranhao"],
+  ["MT", "Mato Grosso"],
+  ["MS", "Mato Grosso do Sul"],
+  ["MG", "Minas Gerais"],
+  ["PA", "Para"],
+  ["PB", "Paraiba"],
+  ["PR", "Parana"],
+  ["PE", "Pernambuco"],
+  ["PI", "Piaui"],
+  ["RJ", "Rio de Janeiro"],
+  ["RN", "Rio Grande do Norte"],
+  ["RS", "Rio Grande do Sul"],
+  ["RO", "Rondonia"],
+  ["RR", "Roraima"],
+  ["SC", "Santa Catarina"],
+  ["SP", "Sao Paulo"],
+  ["SE", "Sergipe"],
+  ["TO", "Tocantins"]
+] as const;
+
+const northNortheastStates = new Set(["AC", "AL", "AP", "AM", "BA", "CE", "MA", "PA", "PB", "PE", "PI", "RN", "RO", "RR", "SE", "TO"]);
 
 const selectClass =
   "focus-ring h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--panel)] px-3 text-sm outline-none transition";
 
 const panelClass = "rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5";
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "5511999999999";
+
+function loadSavedSimulationForm(): Partial<QuickForm> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(SIMULATION_FORM_STORAGE_KEY) ?? "{}") as Partial<QuickForm>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSimulationForm(form: QuickForm) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(SIMULATION_FORM_STORAGE_KEY, JSON.stringify(form));
+}
 
 type ViaCepResponse = {
   cep?: string;
@@ -228,7 +291,29 @@ function getPackageAmount(mode: PackageMode, terrainPrice: number, projectPrice:
   return customValue;
 }
 
-function getInitialPackageMode(terrainPrice: number, projectPrice: number, buildCost: number): PackageMode {
+function isAvailablePackageMode(mode: PackageMode, terrainPrice: number, projectPrice: number, buildCost: number) {
+  if (mode === "TERRAIN") {
+    return terrainPrice > 0;
+  }
+
+  if (mode === "TERRAIN_PROJECT") {
+    return terrainPrice > 0 && projectPrice > 0;
+  }
+
+  if (mode === "FULL") {
+    return terrainPrice > 0 && projectPrice > 0 && buildCost > 0;
+  }
+
+  return true;
+}
+
+function getInitialPackageMode(searchParams: URLSearchParams, terrainPrice: number, projectPrice: number, buildCost: number): PackageMode {
+  const requestedMode = (searchParams.get("mode") || searchParams.get("packageMode")) as PackageMode | null;
+
+  if (requestedMode && ["TERRAIN", "TERRAIN_PROJECT", "FULL", "CUSTOM"].includes(requestedMode) && isAvailablePackageMode(requestedMode, terrainPrice, projectPrice, buildCost)) {
+    return requestedMode;
+  }
+
   if (terrainPrice > 0 && projectPrice > 0 && buildCost > 0) {
     return "FULL";
   }
@@ -248,14 +333,14 @@ function getInitialForm(searchParams: URLSearchParams): QuickForm {
   const terrainPrice = getSearchNumber(searchParams, "terrainPrice", 0);
   const projectPrice = getSearchNumber(searchParams, "projectPrice", 0);
   const buildCost = getSearchNumber(searchParams, "buildCost", 0);
-  const packageMode = getInitialPackageMode(terrainPrice, projectPrice, buildCost);
+  const packageMode = getInitialPackageMode(searchParams, terrainPrice, projectPrice, buildCost);
   const desiredPropertyValue = getPackageAmount(packageMode, terrainPrice, projectPrice, buildCost, 0);
 
   return {
     ...defaultForm,
     packageMode,
     desiredPropertyValue: desiredPropertyValue > 0 ? String(desiredPropertyValue) : "",
-    propertyType: terrainPrice > 0 ? "LAND_BUILD" : defaultForm.propertyType
+    propertyType: packageMode === "FULL" || packageMode === "TERRAIN_PROJECT" ? "LAND_BUILD" : defaultForm.propertyType
   };
 }
 
@@ -278,6 +363,27 @@ function getAge(birthDate: string) {
   }
 
   return age;
+}
+
+function getAgeMonths(birthDate: string) {
+  if (!birthDate) {
+    return 35 * 12;
+  }
+
+  const birth = new Date(birthDate);
+
+  if (Number.isNaN(birth.getTime())) {
+    return 35 * 12;
+  }
+
+  const now = new Date();
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + now.getMonth() - birth.getMonth();
+
+  if (now.getDate() < birth.getDate()) {
+    months -= 1;
+  }
+
+  return Math.max(months, 0);
 }
 
 function scoreValue(score: CreditScore) {
@@ -320,13 +426,120 @@ function getFinancedAmount(amount: number, availableEntry: number, maxCreditByIn
 
 function getMaxPropertyValue(maxCreditByIncome: number, availableEntry: number) {
   if (maxCreditByIncome <= 0 || availableEntry <= 0) {
-    return 0;
+    return maxCreditByIncome > 0 ? maxCreditByIncome / MAX_FINANCING_QUOTA : 0;
   }
 
-  const capacityByIncome = maxCreditByIncome + availableEntry;
+  const capacityByIncome = maxCreditByIncome / MAX_FINANCING_QUOTA;
   const capacityByEntry = availableEntry / MINIMUM_ENTRY_RATE;
 
   return Math.min(capacityByIncome, capacityByEntry);
+}
+
+function getTermMonthsByAge(birthDate: string) {
+  const ageMonths = getAgeMonths(birthDate);
+  const monthsByAge = Math.max(MAX_AGE_MONTHS_AT_END - ageMonths, 0);
+
+  return Math.min(MAX_TERM_MONTHS, monthsByAge);
+}
+
+function getCaixaRateByIncome(income: number, state: string, usesFgts: boolean) {
+  const isNorthNortheast = northNortheastStates.has(state.toUpperCase());
+
+  if (income <= 2160) {
+    return {
+      nominalAnnualRate: usesFgts ? (isNorthNortheast ? 4 : 4.25) : isNorthNortheast ? 4.5 : 4.75,
+      productBand: "MCMV Faixa 1"
+    };
+  }
+
+  if (income <= 2850) {
+    return {
+      nominalAnnualRate: usesFgts ? (isNorthNortheast ? 4.25 : 4.5) : isNorthNortheast ? 4.75 : 5,
+      productBand: "MCMV Faixa 1"
+    };
+  }
+
+  if (income <= 3200) {
+    return {
+      nominalAnnualRate: usesFgts ? (isNorthNortheast ? 4.5 : 4.75) : isNorthNortheast ? 5 : 5.25,
+      productBand: "MCMV Faixa 1"
+    };
+  }
+
+  if (income <= 3500) {
+    return {
+      nominalAnnualRate: usesFgts ? (isNorthNortheast ? 4.75 : 5) : isNorthNortheast ? 5.25 : 5.5,
+      productBand: "MCMV Faixa 2"
+    };
+  }
+
+  if (income <= 4000) {
+    return { nominalAnnualRate: usesFgts ? 5.5 : 6, productBand: "MCMV Faixa 2" };
+  }
+
+  if (income <= 5000) {
+    return { nominalAnnualRate: usesFgts ? 6.5 : 7, productBand: "MCMV Faixa 2" };
+  }
+
+  if (income <= 9600) {
+    return { nominalAnnualRate: usesFgts ? 7.66 : 8.16, productBand: "MCMV Faixa 3" };
+  }
+
+  if (income <= 13000) {
+    return { nominalAnnualRate: 10.5, productBand: "MCMV Classe Media" };
+  }
+
+  return { nominalAnnualRate: 10.99, productBand: "SBPE/SFH estimado" };
+}
+
+function nominalAnnualToMonthlyRate(nominalAnnualRate: number) {
+  return nominalAnnualRate / 100 / 12;
+}
+
+function nominalAnnualToEffectiveAnnualRate(nominalAnnualRate: number) {
+  return (Math.pow(1 + nominalAnnualToMonthlyRate(nominalAnnualRate), 12) - 1) * 100;
+}
+
+function pricePayment(principal: number, monthlyRate: number, months: number) {
+  if (principal <= 0 || months <= 0) {
+    return 0;
+  }
+
+  if (monthlyRate <= 0) {
+    return principal / months;
+  }
+
+  const factor = Math.pow(1 + monthlyRate, months);
+  return (principal * monthlyRate * factor) / (factor - 1);
+}
+
+function firstPaymentForPrincipal(principal: number, monthlyRate: number, months: number, system: "PRICE" | "SAC") {
+  if (principal <= 0 || months <= 0) {
+    return 0;
+  }
+
+  const basePayment =
+    system === "PRICE" ? pricePayment(principal, monthlyRate, months) : principal / months + principal * monthlyRate;
+
+  return basePayment * (1 + PAYMENT_FEE_RATE);
+}
+
+function principalByPaymentCapacity(paymentCapacity: number, monthlyRate: number, months: number, system: "PRICE" | "SAC") {
+  if (paymentCapacity <= 0 || months <= 0) {
+    return 0;
+  }
+
+  const basePaymentCapacity = paymentCapacity / (1 + PAYMENT_FEE_RATE);
+
+  if (system === "SAC") {
+    return basePaymentCapacity / (1 / months + monthlyRate);
+  }
+
+  if (monthlyRate <= 0) {
+    return basePaymentCapacity * months;
+  }
+
+  return (basePaymentCapacity * (1 - Math.pow(1 + monthlyRate, -months))) / monthlyRate;
 }
 
 function buildBaseOptions(
@@ -335,7 +548,10 @@ function buildBaseOptions(
   buildCost: number,
   maxCreditByIncome: number,
   availableEntry: number,
-  maxInstallment: number
+  maxInstallment: number,
+  monthlyRate: number,
+  termMonths: number,
+  financingSystem: "PRICE" | "SAC"
 ) {
   const rawOptions: Array<Omit<BaseOption, "installment" | "isAvailable">> = [
     {
@@ -377,8 +593,8 @@ function buildBaseOptions(
 
       return {
         ...option,
-        installment: financedValue > 0 ? financedValue * FINANCING_FACTOR : 0,
-        isAvailable: maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry
+        installment: firstPaymentForPrincipal(financedValue, monthlyRate, termMonths, financingSystem),
+        isAvailable: termMonths > 0 && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry
       };
     });
 }
@@ -397,7 +613,15 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const debtPressure =
     Math.max(parseMoney(form.activeLoans), 0) + (form.hasCurrentFinancing === "yes" ? Math.max(parseMoney(form.monthlySpending), 0) : 0);
   const maxInstallment = Math.max(totalIncome * INCOME_COMMITMENT_RATE - debtPressure, 0);
-  const maxCreditByIncome = maxInstallment > 0 ? maxInstallment / FINANCING_FACTOR : 0;
+  const age = getAge(form.birthDate);
+  const termMonths = getTermMonthsByAge(form.birthDate);
+  const financingSystem: "PRICE" | "SAC" = "PRICE";
+  const usesFgtsForRate = form.useFgts === "yes";
+  const rateInfo = getCaixaRateByIncome(totalIncome, form.state, usesFgtsForRate);
+  const nominalAnnualRate = rateInfo.nominalAnnualRate;
+  const effectiveAnnualRate = nominalAnnualToEffectiveAnnualRate(nominalAnnualRate);
+  const monthlyRate = nominalAnnualToMonthlyRate(nominalAnnualRate);
+  const maxCreditByIncome = principalByPaymentCapacity(maxInstallment, monthlyRate, termMonths, financingSystem);
   const usableFgts = form.useFgts === "yes" ? fgtsValue : 0;
   const availableEntry = Math.max(downPayment + usableFgts, 0);
   const desiredPackageValue = Math.max(
@@ -411,8 +635,18 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const rawEntryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
   const entryShortfall = rawEntryShortfall <= MONEY_TOLERANCE ? 0 : rawEntryShortfall;
   const financedNeeded = getFinancedAmount(desiredPackageValue, availableEntry, maxCreditByIncome);
-  const estimatedInstallment = financedNeeded > 0 ? financedNeeded * FINANCING_FACTOR : 0;
-  const options = buildBaseOptions(terrainPrice, projectPrice, buildCost, maxCreditByIncome, availableEntry, maxInstallment);
+  const estimatedInstallment = firstPaymentForPrincipal(financedNeeded, monthlyRate, termMonths, financingSystem);
+  const options = buildBaseOptions(
+    terrainPrice,
+    projectPrice,
+    buildCost,
+    maxCreditByIncome,
+    availableEntry,
+    maxInstallment,
+    monthlyRate,
+    termMonths,
+    financingSystem
+  );
   const requestedOption =
     form.packageMode === "CUSTOM" && desiredPackageValue > 0
       ? {
@@ -420,13 +654,12 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
           label: "Valor escolhido",
           amount: desiredPackageValue,
           installment: estimatedInstallment,
-          isAvailable: maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry,
+          isAvailable: termMonths > 0 && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry,
           description: "Valor informado manualmente pelo cliente."
         }
       : options.find((option) => option.key === form.packageMode);
   const fallbackOption = options.find((option) => option.isAvailable);
   const selectedOption = requestedOption?.isAvailable ? requestedOption : fallbackOption;
-  const age = getAge(form.birthDate);
   const notes: string[] = [];
   let score = 50 + scoreValue(form.creditScore);
 
@@ -444,8 +677,15 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     score = Math.min(score, 20);
   }
 
-  if (age + 35 > 80) {
-    notes.push("Prazo maximo pode cair porque idade + financiamento precisa ficar dentro da regra de contrato.");
+  if (!form.birthDate) {
+    notes.push("Informe a data de nascimento para calcular o prazo maximo pela idade.");
+  }
+
+  if (termMonths <= 0) {
+    notes.push("Prazo inviavel pela idade informada. A regra estimada considera idade + financiamento ate 80 anos e 6 meses.");
+    score = Math.min(score, 20);
+  } else if (termMonths < MAX_TERM_MONTHS) {
+    notes.push(`Prazo maximo ajustado para ${termMonths} meses pela idade informada.`);
     score -= 10;
   }
 
@@ -503,6 +743,13 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     availableEntry,
     financedNeeded,
     estimatedInstallment,
+    nominalAnnualRate,
+    effectiveAnnualRate,
+    monthlyRate,
+    termMonths,
+    ageAtEnd: age + termMonths / 12,
+    financingSystem,
+    productBand: rateInfo.productBand,
     requestedOption,
     selectedOption,
     options,
@@ -528,6 +775,8 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `Renda total considerada: ${money(result.totalIncome)}`,
       `Financiamento maximo estimado: ${money(result.maxCredit)}`,
       `Entrada minima estimada: ${money(result.minimumRequiredEntry)}`,
+      `Taxa efetiva estimada: ${result.effectiveAnnualRate.toFixed(2)}% a.a.`,
+      `Prazo maximo estimado: ${result.termMonths} meses`,
       `Capacidade com entrada informada: ate ${money(result.maxPropertyValue)}`,
       `Parcela base: ${money(result.maxInstallment)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
@@ -614,9 +863,9 @@ function buildSimulationInput({
     propertyType: mapPropertyTypeToCaixa(form.propertyType, form.propertyCondition),
     propertyUse: "OWN_HOME",
     program: "AUTO",
-    system: "SAC",
-    months: 420,
-    annualInterestRate: 0,
+    system: result.financingSystem,
+    months: result.termMonths,
+    annualInterestRate: result.nominalAnnualRate,
     insuranceRate: 5,
     metadata: {
       source: "simple-financing-simulator",
@@ -653,6 +902,13 @@ function buildSimulationInput({
         entryShortfall: result.entryShortfall,
         financedNeeded: result.financedNeeded,
         estimatedInstallment: result.estimatedInstallment,
+        nominalAnnualRate: result.nominalAnnualRate,
+        effectiveAnnualRate: result.effectiveAnnualRate,
+        monthlyRate: result.monthlyRate,
+        termMonths: result.termMonths,
+        ageAtEnd: result.ageAtEnd,
+        financingSystem: result.financingSystem,
+        productBand: result.productBand,
         requestedOptionLabel: result.requestedOption?.label,
         requestedOptionAmount: result.requestedOption?.amount,
         requestedOptionAvailable: result.requestedOption?.isAvailable ?? false,
@@ -791,7 +1047,22 @@ export function SimpleFinancingSimulator() {
     [buildCost, projectPrice, terrainPrice]
   );
   const hasPackage = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
-  const [form, setForm] = useState<QuickForm>(initialForm);
+  const [form, setForm] = useState<QuickForm>(() => {
+    const savedForm = loadSavedSimulationForm();
+    const hasPackageFromUrl = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
+
+    return {
+      ...initialForm,
+      ...savedForm,
+      ...(hasPackageFromUrl
+        ? {
+            packageMode: initialForm.packageMode,
+            desiredPropertyValue: initialForm.desiredPropertyValue,
+            propertyType: initialForm.propertyType
+          }
+        : {})
+    };
+  });
   const [result, setResult] = useState<Result | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSavingSimulation, setIsSavingSimulation] = useState(false);
@@ -803,6 +1074,34 @@ export function SimpleFinancingSimulator() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showResultDetails, setShowResultDetails] = useState(false);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setForm((current) => {
+        const savedForm = loadSavedSimulationForm();
+        const hasPackageFromUrl = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
+
+        return {
+          ...initialForm,
+          ...savedForm,
+          ...current,
+          ...(hasPackageFromUrl
+            ? {
+                packageMode: initialForm.packageMode,
+                desiredPropertyValue: initialForm.desiredPropertyValue,
+                propertyType: initialForm.propertyType
+              }
+            : {})
+        };
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [buildCost, initialForm, projectPrice, terrainPrice]);
+
+  useEffect(() => {
+    saveSimulationForm(form);
+  }, [form]);
 
   useEffect(() => {
     if (!user) {
@@ -882,7 +1181,7 @@ export function SimpleFinancingSimulator() {
       ...current,
       packageMode: mode,
       desiredPropertyValue: amount > 0 ? String(amount) : current.desiredPropertyValue,
-      propertyType: mode === "FULL" || mode === "TERRAIN_PROJECT" ? "LAND_BUILD" : current.propertyType
+      propertyType: mode === "FULL" || mode === "TERRAIN_PROJECT" ? "LAND_BUILD" : mode === "TERRAIN" ? defaultForm.propertyType : current.propertyType
     }));
   }
 
@@ -892,20 +1191,35 @@ export function SimpleFinancingSimulator() {
     setSavedSimulationId(null);
 
     try {
-      const saved = await createSimulation(
-        buildSimulationInput({
-          form,
-          result: currentResult,
-          terrainId: catalogIds.terrainId,
-          projectId: catalogIds.projectId,
-          terrainPrice,
-          projectPrice,
-          buildCost
-        })
-      );
+      const input = buildSimulationInput({
+        form,
+        result: currentResult,
+        terrainId: catalogIds.terrainId,
+        projectId: catalogIds.projectId,
+        terrainPrice,
+        projectPrice,
+        buildCost
+      });
+      let saved;
+
+      try {
+        saved = await createSimulation(input);
+      } catch (error) {
+        const message = getApiErrorMessage(error, "Nao foi possivel salvar a simulacao no banco.");
+
+        if (!/metadata/i.test(message)) {
+          throw error;
+        }
+
+        const { metadata: _metadata, ...inputWithoutMetadata } = input;
+        saved = await createSimulation(inputWithoutMetadata);
+        setRequestMessage(
+          `Simulacao salva sem detalhes extras porque a API publicada ainda nao aceita metadata. Atualize a API para o admin mostrar todos os dados corretamente.`
+        );
+      }
 
       setSavedSimulationId(saved.id);
-      setRequestMessage(`Simulacao ${saved.id} salva no banco e disponivel no admin.`);
+      setRequestMessage((current) => current ?? `Simulacao ${saved.id} salva no banco e disponivel no admin.`);
     } catch (error) {
       const message = getApiErrorMessage(error, "Nao foi possivel salvar a simulacao no banco.");
       setSaveError(message);
@@ -987,7 +1301,8 @@ export function SimpleFinancingSimulator() {
           ) : null}
         </div>
         <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 text-sm leading-6 text-[var(--muted)]">
-          A simulacao considera ate 30% da renda para parcela, cota maxima de 80% financiado e entrada minima de 20%.
+          A simulacao considera ate 30% da renda para parcela, cota maxima de 80% financiado, taxa por faixa de renda e prazo
+          limitado pela idade.
         </div>
       </div>
 
@@ -1019,17 +1334,24 @@ export function SimpleFinancingSimulator() {
                 <Input autoComplete="email" onChange={(event) => update("email", event.target.value)} type="email" value={form.email} />
               </label>
               <label>
+                <FieldLabel>Data de nascimento</FieldLabel>
+                <Input onChange={(event) => update("birthDate", event.target.value)} required type="date" value={form.birthDate} />
+                <HelpText>Usamos a idade para estimar o prazo maximo do financiamento.</HelpText>
+              </label>
+              <label>
                 <FieldLabel>Cidade</FieldLabel>
                 <Input autoComplete="address-level2" onChange={(event) => update("city", event.target.value)} value={form.city} />
               </label>
               <label>
                 <FieldLabel>Estado</FieldLabel>
-                <Input
-                  autoComplete="address-level1"
-                  maxLength={2}
-                  onChange={(event) => update("state", event.target.value.toUpperCase())}
-                  value={form.state}
-                />
+                <select autoComplete="address-level1" className={selectClass} onChange={(event) => update("state", event.target.value)} value={form.state}>
+                  <option value="">Selecione o estado</option>
+                  {brazilStates.map(([uf, label]) => (
+                    <option key={uf} value={uf}>
+                      {uf} - {label}
+                    </option>
+                  ))}
+                </select>
               </label>
               {showAdvanced ? (
                 <>
@@ -1042,10 +1364,6 @@ export function SimpleFinancingSimulator() {
                       placeholder="000.000.000-00"
                       value={form.cpf}
                     />
-                  </label>
-                  <label>
-                    <FieldLabel>Data de nascimento</FieldLabel>
-                    <Input onChange={(event) => update("birthDate", event.target.value)} type="date" value={form.birthDate} />
                   </label>
                   <label>
                     <FieldLabel>Estado civil</FieldLabel>
@@ -1303,6 +1621,11 @@ export function SimpleFinancingSimulator() {
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
                   <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxCredit)} />
                 </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+                  <TechnicalMetric label="Sistema" value={result.financingSystem} />
+                  <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
+                </div>
 
                 <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5">
                   <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
@@ -1388,6 +1711,12 @@ export function SimpleFinancingSimulator() {
                       <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
                       <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
                       <TechnicalMetric label="Financiamento maximo estimado" value={money(result.maxCredit)} />
+                      <TechnicalMetric label="Faixa estimada" value={result.productBand} />
+                      <TechnicalMetric label="Taxa nominal" value={`${result.nominalAnnualRate.toFixed(2)}% a.a.`} />
+                      <TechnicalMetric label="Taxa efetiva" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+                      <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
+                      <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
+                      <TechnicalMetric label="Idade estimada ao final" value={`${result.ageAtEnd.toFixed(1)} anos`} />
                       <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
                       <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
                       <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
@@ -1576,6 +1905,11 @@ function ResultModal({
             <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
             <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxCredit)} />
           </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+            <TechnicalMetric label="Sistema" value={result.financingSystem} />
+            <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
+          </div>
 
           <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
@@ -1624,6 +1958,12 @@ function ResultModal({
             <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
             <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
             <TechnicalMetric label="Financiamento maximo estimado" value={money(result.maxCredit)} />
+            <TechnicalMetric label="Faixa estimada" value={result.productBand} />
+            <TechnicalMetric label="Taxa nominal" value={`${result.nominalAnnualRate.toFixed(2)}% a.a.`} />
+            <TechnicalMetric label="Taxa efetiva" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+            <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
+            <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
+            <TechnicalMetric label="Idade estimada ao final" value={`${result.ageAtEnd.toFixed(1)} anos`} />
             <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
             <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
             <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
@@ -1701,7 +2041,7 @@ function BaseOptionRow({ option, isRequested }: { option: BaseOption; isRequeste
       </div>
       <div className="mt-3 grid gap-2 text-xs opacity-85 sm:grid-cols-2">
         <span>Valor: {money(option.amount)}</span>
-        <span>Parcela media: {money(option.installment)}</span>
+        <span>Primeira parcela: {money(option.installment)}</span>
       </div>
     </div>
   );

@@ -6,7 +6,14 @@ export const defaultSiteSettings: SiteSettings = {
   logoUrl: "/brand/ce-constroi-logo.png",
   logoLightUrl: "/brand/ce-constroi-logo.png",
   logoDarkUrl: "/brand/ce-constroi-logo.png",
-  defaultCreci: ""
+  defaultCreci: "",
+  socialInstagramUrl: "",
+  socialFacebookUrl: "",
+  socialYoutubeUrl: "",
+  socialXUrl: "",
+  socialTiktokUrl: "",
+  socialLinkedinUrl: "",
+  socialWhatsappUrl: ""
 };
 
 export async function getSiteSettings() {
