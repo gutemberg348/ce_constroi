@@ -460,6 +460,14 @@ function errorMessage(error: unknown) {
   return getApiErrorMessage(error, "Não foi possível carregar os dados agora.");
 }
 
+function settingsNoticeText(message: string) {
+  if (/social\s+(instagram|facebook|youtube|x|tiktok|linkedin|whatsapp)\s+url/i.test(message) && /n[aã]o .*permitido/i.test(message)) {
+    return `${message} A API publicada ainda esta antiga. Suba/recrie o container da API para liberar os campos de redes sociais.`;
+  }
+
+  return message;
+}
+
 function confirmAction(message: string) {
   return typeof window !== "undefined" && window.confirm(message);
 }
@@ -1286,7 +1294,7 @@ export default function AdminPage() {
                   Salvar configurações
                 </Button>
               </form>
-              {logoMessage ? <p className="mt-3 text-sm text-[var(--muted)]">{logoMessage}</p> : null}
+              {logoMessage ? <p className="mt-3 text-sm text-[var(--muted)]">{settingsNoticeText(logoMessage)}</p> : null}
             </section>
           ) : null}
         </main>
