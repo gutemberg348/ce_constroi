@@ -329,49 +329,49 @@ const socialSettingFields: Array<{
     label: "Instagram",
     placeholder: "https://instagram.com/suaempresa",
     icon: InstagramIcon,
-    className: "border-pink-500 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-amber-400 text-white"
+    className: "border-pink-500/25 bg-pink-500/10 text-[#d62976]"
   },
   {
     name: "socialFacebookUrl",
     label: "Facebook",
     placeholder: "https://facebook.com/suaempresa",
     icon: FacebookIcon,
-    className: "border-[#1877f2] bg-[#1877f2] text-white"
+    className: "border-blue-500/25 bg-blue-500/10 text-[#1877f2]"
   },
   {
     name: "socialYoutubeUrl",
     label: "YouTube",
     placeholder: "https://youtube.com/@suaempresa",
     icon: YoutubeIcon,
-    className: "border-[#ff0033] bg-[#ff0033] text-white"
+    className: "border-red-500/25 bg-red-500/10 text-[#ff0033]"
   },
   {
     name: "socialXUrl",
     label: "X / Twitter",
     placeholder: "https://x.com/suaempresa",
     icon: XSocialIcon,
-    className: "border-slate-950 bg-slate-950 text-white"
+    className: "border-slate-500/25 bg-slate-500/10 text-slate-950 dark:text-white"
   },
   {
     name: "socialTiktokUrl",
     label: "TikTok",
     placeholder: "https://tiktok.com/@suaempresa",
     icon: TiktokIcon,
-    className: "border-slate-950 bg-slate-950 text-white"
+    className: "border-cyan-500/25 bg-cyan-500/10 text-slate-950 dark:text-white"
   },
   {
     name: "socialLinkedinUrl",
     label: "LinkedIn",
     placeholder: "https://linkedin.com/company/suaempresa",
     icon: LinkedinIcon,
-    className: "border-[#0a66c2] bg-[#0a66c2] text-white"
+    className: "border-sky-600/25 bg-sky-600/10 text-[#0a66c2]"
   },
   {
     name: "socialWhatsappUrl",
     label: "WhatsApp",
     placeholder: "https://wa.me/5583999999999",
     icon: WhatsappIcon,
-    className: "border-[#25d366] bg-[#25d366] text-white"
+    className: "border-emerald-500/25 bg-emerald-500/10 text-[#1fa855]"
   }
 ];
 

@@ -78,43 +78,50 @@ function socialLinks(settings: SiteSettings): SocialLink[] {
       label: "Instagram",
       url: settings.socialInstagramUrl,
       icon: InstagramIcon,
-      className: "border-pink-500 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-amber-400 text-white shadow-pink-500/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-[#d62976] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-pink-500/35 hover:bg-pink-500/10 dark:bg-white/5 dark:hover:bg-pink-500/15"
     },
     {
       label: "Facebook",
       url: settings.socialFacebookUrl,
       icon: FacebookIcon,
-      className: "border-[#1877f2] bg-[#1877f2] text-white shadow-blue-600/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-[#1877f2] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-blue-500/35 hover:bg-blue-500/10 dark:bg-white/5 dark:hover:bg-blue-500/15"
     },
     {
       label: "YouTube",
       url: settings.socialYoutubeUrl,
       icon: YoutubeIcon,
-      className: "border-[#ff0033] bg-[#ff0033] text-white shadow-red-600/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-[#ff0033] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-red-500/35 hover:bg-red-500/10 dark:bg-white/5 dark:hover:bg-red-500/15"
     },
     {
       label: "X",
       url: settings.socialXUrl,
       icon: XSocialIcon,
-      className: "border-slate-950 bg-slate-950 text-white shadow-slate-900/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-slate-950 shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-slate-500/35 hover:bg-slate-500/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
     },
     {
       label: "TikTok",
       url: settings.socialTiktokUrl,
       icon: TiktokIcon,
-      className: "border-slate-950 bg-slate-950 text-white shadow-cyan-500/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-slate-950 shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-cyan-500/35 hover:bg-cyan-500/10 dark:bg-white/5 dark:text-white dark:hover:bg-cyan-500/15"
     },
     {
       label: "LinkedIn",
       url: settings.socialLinkedinUrl,
       icon: LinkedinIcon,
-      className: "border-[#0a66c2] bg-[#0a66c2] text-white shadow-sky-700/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-[#0a66c2] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-sky-600/35 hover:bg-sky-600/10 dark:bg-white/5 dark:hover:bg-sky-600/15"
     },
     {
       label: "WhatsApp",
       url: settings.socialWhatsappUrl,
       icon: WhatsappIcon,
-      className: "border-[#25d366] bg-[#25d366] text-white shadow-emerald-500/25 hover:shadow-lg"
+      className:
+        "border-[var(--line)] bg-[var(--panel)] text-[#1fa855] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-emerald-500/35 hover:bg-emerald-500/10 dark:bg-white/5 dark:hover:bg-emerald-500/15"
     }
   ];
 
@@ -296,14 +303,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {configuredSocialLinks.length ? (
                 <div className="grid gap-2 pt-2">
                   <p className="px-3 text-xs font-semibold uppercase text-white/50">Redes sociais</p>
-                  <div className="flex flex-wrap gap-2 px-3">
+                  <div className="mx-3 flex w-fit flex-wrap gap-1.5 rounded-[8px] border border-white/10 bg-white/[0.04] p-1.5">
                     {configuredSocialLinks.map((item) => {
                       const Icon = item.icon;
 
                       return (
                         <a
                           aria-label={item.label}
-                          className={`focus-ring inline-flex h-11 w-11 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
+                          className={`focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
                           href={item.url}
                           key={item.label}
                           onClick={() => setIsMobileMenuOpen(false)}
@@ -368,21 +375,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <p>{settings.brandName} - privacidade por padrao.</p>
           <div className="flex flex-wrap items-center gap-3">
             {configuredSocialLinks.length ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-1 shadow-sm">
                 {configuredSocialLinks.map((item) => {
                   const Icon = item.icon;
 
                   return (
                     <a
                       aria-label={item.label}
-                      className={`focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
+                      className={`focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
                       href={item.url}
                       key={item.label}
                       rel="noreferrer"
                       target="_blank"
                       title={item.label}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-[18px] w-[18px]" />
                     </a>
                   );
                 })}
