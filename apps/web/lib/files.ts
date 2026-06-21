@@ -16,7 +16,76 @@ export function readFileAsDataUrl(file: File) {
   });
 }
 
-export async function formDataImageValue(formData: FormData, key: string, fallback = "") {
+type ImageDataUrlOptions = {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+  outputType?: "image/jpeg" | "image/png" | "image/webp";
+};
+
+async function readOptimizedImageAsDataUrl(file: File, options: ImageDataUrlOptions) {
+  const originalDataUrl = await readFileAsDataUrl(file);
+
+  if (
+    typeof window === "undefined" ||
+    typeof document === "undefined" ||
+    !file.type.startsWith("image/") ||
+    file.type === "image/svg+xml" ||
+    file.type === "image/gif"
+  ) {
+    return originalDataUrl;
+  }
+
+  return new Promise<string>((resolve) => {
+    const image = new window.Image();
+
+    image.onload = () => {
+      try {
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
+
+        if (!width || !height) {
+          resolve(originalDataUrl);
+          return;
+        }
+
+        const maxWidth = options.maxWidth ?? width;
+        const maxHeight = options.maxHeight ?? height;
+        const scale = Math.min(1, maxWidth / width, maxHeight / height);
+        const outputWidth = Math.max(1, Math.round(width * scale));
+        const outputHeight = Math.max(1, Math.round(height * scale));
+        const output = document.createElement("canvas");
+
+        output.width = outputWidth;
+        output.height = outputHeight;
+
+        const outputContext = output.getContext("2d");
+
+        if (!outputContext) {
+          resolve(originalDataUrl);
+          return;
+        }
+
+        if ((options.outputType ?? "image/jpeg") === "image/jpeg") {
+          outputContext.fillStyle = "#ffffff";
+          outputContext.fillRect(0, 0, outputWidth, outputHeight);
+        }
+
+        outputContext.drawImage(image, 0, 0, outputWidth, outputHeight);
+
+        const optimizedDataUrl = output.toDataURL(options.outputType ?? "image/jpeg", options.quality ?? 0.82);
+        resolve(optimizedDataUrl.length < originalDataUrl.length ? optimizedDataUrl : originalDataUrl);
+      } catch {
+        resolve(originalDataUrl);
+      }
+    };
+
+    image.onerror = () => resolve(originalDataUrl);
+    image.src = originalDataUrl;
+  });
+}
+
+export async function formDataImageValue(formData: FormData, key: string, fallback = "", options?: ImageDataUrlOptions) {
   const value = formData.get(key);
 
   if (!value) {
@@ -30,6 +99,10 @@ export async function formDataImageValue(formData: FormData, key: string, fallba
 
   if (value.size === 0) {
     return fallback;
+  }
+
+  if (options) {
+    return readOptimizedImageAsDataUrl(value, options);
   }
 
   return readFileAsDataUrl(value);

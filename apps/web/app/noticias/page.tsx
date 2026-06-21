@@ -13,17 +13,17 @@ export default async function NewsPage() {
   const news = await getNews({ limit: 12 });
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="max-w-3xl">
+    <section className="mx-auto max-w-7xl overflow-x-hidden px-4 py-10 sm:px-6 lg:px-8">
+      <div className="max-w-3xl min-w-0">
         <p className="text-sm font-semibold uppercase text-[var(--accent)]">Conteudo</p>
-        <h1 className="mt-2 text-4xl font-semibold sm:text-5xl">Noticias da construcao</h1>
-        <p className="mt-4 text-lg leading-8 text-[var(--muted)]">
+        <h1 className="mt-2 break-words text-4xl font-semibold [overflow-wrap:anywhere] sm:text-5xl">Noticias da construcao</h1>
+        <p className="mt-4 break-words text-lg leading-8 text-[var(--muted)] [overflow-wrap:anywhere]">
           Informacoes sobre terrenos, projetos, construcao, documentacao e financiamento para ajudar voce a decidir melhor.
         </p>
       </div>
 
       {news.items.length ? (
-        <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-8 grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {news.items.map((post) => (
             <NewsCard key={post.id} post={post} />
           ))}

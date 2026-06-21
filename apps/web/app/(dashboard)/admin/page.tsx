@@ -8,6 +8,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  CircleCheck,
+  CircleX,
   ClipboardList,
   CreditCard,
   FileText,
@@ -28,6 +30,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Children, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentType, SVGProps } from "react";
 import type { UrlObject } from "url";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ProjectTerrainFitForm } from "@/components/dashboard/project-terrain-fit-form";
@@ -35,6 +38,15 @@ import { SimulationRequestsPanel } from "@/components/dashboard/simulation-reque
 import { PrivacyImage } from "@/components/privacy/privacy-image";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import {
+  FacebookIcon,
+  InstagramIcon,
+  LinkedinIcon,
+  TiktokIcon,
+  WhatsappIcon,
+  XSocialIcon,
+  YoutubeIcon
+} from "@/components/ui/social-brand-icons";
 import { formDataImageValue, formDataLogoImageValue } from "@/lib/files";
 import { area, money } from "@/lib/format";
 import {
@@ -100,6 +112,7 @@ import {
   NewsStatus,
   Project,
   ProjectStatus,
+  SiteSettings,
   SimulationStatus,
   Terrain,
   TerrainStatus,
@@ -291,6 +304,76 @@ function downloadAllSimulationsTxt(simulations: AdminSimulation[]) {
 }
 const orderStatuses: OrderStatus[] = ["DRAFT", "PENDING_PAYMENT", "PAID", "CANCELED", "REFUNDED"];
 const newsStatuses: NewsStatus[] = ["DRAFT", "PUBLISHED"];
+const downloadedSimulationsStorageKey = "ce-constroi.admin.downloaded-simulations.v1";
+
+type SocialSettingKey = keyof Pick<
+  SiteSettings,
+  | "socialInstagramUrl"
+  | "socialFacebookUrl"
+  | "socialYoutubeUrl"
+  | "socialXUrl"
+  | "socialTiktokUrl"
+  | "socialLinkedinUrl"
+  | "socialWhatsappUrl"
+>;
+
+const socialSettingFields: Array<{
+  name: SocialSettingKey;
+  label: string;
+  placeholder: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  className: string;
+}> = [
+  {
+    name: "socialInstagramUrl",
+    label: "Instagram",
+    placeholder: "https://instagram.com/suaempresa",
+    icon: InstagramIcon,
+    className: "border-pink-500 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-amber-400 text-white"
+  },
+  {
+    name: "socialFacebookUrl",
+    label: "Facebook",
+    placeholder: "https://facebook.com/suaempresa",
+    icon: FacebookIcon,
+    className: "border-[#1877f2] bg-[#1877f2] text-white"
+  },
+  {
+    name: "socialYoutubeUrl",
+    label: "YouTube",
+    placeholder: "https://youtube.com/@suaempresa",
+    icon: YoutubeIcon,
+    className: "border-[#ff0033] bg-[#ff0033] text-white"
+  },
+  {
+    name: "socialXUrl",
+    label: "X / Twitter",
+    placeholder: "https://x.com/suaempresa",
+    icon: XSocialIcon,
+    className: "border-slate-950 bg-slate-950 text-white"
+  },
+  {
+    name: "socialTiktokUrl",
+    label: "TikTok",
+    placeholder: "https://tiktok.com/@suaempresa",
+    icon: TiktokIcon,
+    className: "border-slate-950 bg-slate-950 text-white"
+  },
+  {
+    name: "socialLinkedinUrl",
+    label: "LinkedIn",
+    placeholder: "https://linkedin.com/company/suaempresa",
+    icon: LinkedinIcon,
+    className: "border-[#0a66c2] bg-[#0a66c2] text-white"
+  },
+  {
+    name: "socialWhatsappUrl",
+    label: "WhatsApp",
+    placeholder: "https://wa.me/5583999999999",
+    icon: WhatsappIcon,
+    className: "border-[#25d366] bg-[#25d366] text-white"
+  }
+];
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
@@ -415,7 +498,12 @@ async function newsInputFromFormData(formData: FormData, fallbackImageUrl = ""):
     title,
     excerpt,
     content,
-    imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl") || fallbackImageUrl),
+    imageUrl: await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl") || fallbackImageUrl, {
+      maxWidth: 1800,
+      maxHeight: 1200,
+      outputType: "image/jpeg",
+      quality: 0.84
+    }),
     author,
     status: newsStatuses.includes(status) ? status : "DRAFT"
   };
@@ -851,10 +939,14 @@ export default function AdminPage() {
   const settingsMutation = useMutation({
     mutationFn: updateSiteSettings,
     onSuccess: async () => {
+      setLogoMessageTone("success");
       setLogoMessage("Marca atualizada com sucesso.");
       await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
     },
-    onError: (error) => setLogoMessage(getApiErrorMessage(error, "Não foi possível salvar as configurações."))
+    onError: (error) => {
+      setLogoMessageTone("error");
+      setLogoMessage(getApiErrorMessage(error, "Nao foi possivel salvar as configuracoes."));
+    }
   });
 
   const failedQuery = [
@@ -938,6 +1030,8 @@ export default function AdminPage() {
 
   function submitLogo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setLogoMessage(null);
+    setLogoMessageTone(null);
     const formData = new FormData(event.currentTarget);
     const currentLogo = settingsQuery.data?.logoUrl ?? "";
     const currentLightLogo = settingsQuery.data?.logoLightUrl ?? currentLogo;
@@ -1262,50 +1356,50 @@ export default function AdminPage() {
                   <p className="text-xs font-semibold uppercase text-[var(--muted)]">Redes sociais</p>
                   <p className="mt-1 text-sm text-[var(--muted)]">Cadastre os links que aparecem no rodape do site e no menu mobile.</p>
                 </div>
-                <label>
-                  <FieldLabel>Instagram</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialInstagramUrl ?? ""} name="socialInstagramUrl" placeholder="https://instagram.com/suaempresa" type="url" />
-                </label>
-                <label>
-                  <FieldLabel>Facebook</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialFacebookUrl ?? ""} name="socialFacebookUrl" placeholder="https://facebook.com/suaempresa" type="url" />
-                </label>
-                <label>
-                  <FieldLabel>YouTube</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialYoutubeUrl ?? ""} name="socialYoutubeUrl" placeholder="https://youtube.com/@suaempresa" type="url" />
-                </label>
-                <label>
-                  <FieldLabel>X / Twitter</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialXUrl ?? ""} name="socialXUrl" placeholder="https://x.com/suaempresa" type="url" />
-                </label>
-                <label>
-                  <FieldLabel>TikTok</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialTiktokUrl ?? ""} name="socialTiktokUrl" placeholder="https://tiktok.com/@suaempresa" type="url" />
-                </label>
-                <label>
-                  <FieldLabel>LinkedIn</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialLinkedinUrl ?? ""} name="socialLinkedinUrl" placeholder="https://linkedin.com/company/suaempresa" type="url" />
-                </label>
-                <label>
-                  <FieldLabel>WhatsApp</FieldLabel>
-                  <input className={inputClass()} defaultValue={settingsQuery.data?.socialWhatsappUrl ?? ""} name="socialWhatsappUrl" placeholder="https://wa.me/5583999999999" type="url" />
-                </label>
+                {socialSettingFields.map((field) => {
+                  const Icon = field.icon;
+
+                  return (
+                    <label key={field.name}>
+                      <span className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-[var(--muted)]">
+                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-[8px] border ${field.className}`}>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        {field.label}
+                      </span>
+                      <input
+                        className={inputClass()}
+                        defaultValue={settingsQuery.data?.[field.name] ?? ""}
+                        name={field.name}
+                        placeholder={field.placeholder}
+                        type="url"
+                      />
+                    </label>
+                  );
+                })}
                 <Button className="md:col-span-2" disabled={settingsMutation.isPending} type="submit" variant="secondary">
                   <Check size={18} />
                   Salvar configurações
                 </Button>
               </form>
               {logoMessage ? (
-                <p
-                  className={`mt-3 rounded-[8px] border p-3 text-sm ${
+                <div
+                  className={`mt-3 flex items-start gap-3 rounded-[8px] border p-4 text-sm font-medium ${
                     settingsMutation.isError || logoMessageTone === "error"
                       ? "border-red-500/30 bg-red-500/10 text-red-700"
                       : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
                   }`}
                 >
-                  {settingsMutation.isError ? "Nao foi possivel salvar: " : ""}
-                  {settingsNoticeText(logoMessage)}
-                </p>
+                  {settingsMutation.isError || logoMessageTone === "error" ? (
+                    <CircleX className="mt-0.5 shrink-0" size={18} />
+                  ) : (
+                    <CircleCheck className="mt-0.5 shrink-0" size={18} />
+                  )}
+                  <p>
+                    {settingsMutation.isError || logoMessageTone === "error" ? "Nao foi possivel salvar: " : ""}
+                    {settingsNoticeText(logoMessage)}
+                  </p>
+                </div>
               ) : null}
             </section>
           ) : null}
@@ -2465,8 +2559,48 @@ function SimulationsSection({
   pending: boolean;
   onStatus: (id: string, status: SimulationStatus) => void;
   onDelete: (id: string) => void;
-  onDownloadAll: () => void;
+  onDownloadAll: () => void | Promise<void>;
 }) {
+  const [downloadedSimulationIds, setDownloadedSimulationIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem(downloadedSimulationsStorageKey) ?? "[]");
+        setDownloadedSimulationIds(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+      } catch {
+        setDownloadedSimulationIds([]);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  function markSimulationsAsDownloaded(ids: string[]) {
+    setDownloadedSimulationIds((current) => {
+      const next = Array.from(new Set([...current, ...ids]));
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(downloadedSimulationsStorageKey, JSON.stringify(next));
+      }
+
+      return next;
+    });
+  }
+
+  function handleDownloadSimulation(simulation: AdminSimulation) {
+    downloadSimulationTxt(simulation);
+    markSimulationsAsDownloaded([simulation.id]);
+  }
+
+  function handleDownloadAll() {
+    void Promise.resolve(onDownloadAll()).then(() => markSimulationsAsDownloaded(simulations.map((simulation) => simulation.id)));
+  }
+
   return (
     <section className={panelClass()}>
       <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
@@ -2475,7 +2609,7 @@ function SimulationsSection({
           <h3 className="mt-1 text-2xl font-semibold">Propostas e simulacoes</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ActionButton disabled={!simulations.length || isLoading || downloadingAll} onClick={onDownloadAll}>
+          <ActionButton disabled={!simulations.length || isLoading || downloadingAll} onClick={handleDownloadAll}>
             <FileText size={14} />
             {downloadingAll ? "Preparando..." : "Baixar todas"}
           </ActionButton>
@@ -2489,6 +2623,7 @@ function SimulationsSection({
           const frontendResult = simulationFrontendResult(simulation);
           const adjustmentMessage =
             typeof frontendResult.adjustmentMessage === "string" ? frontendResult.adjustmentMessage : null;
+          const wasDownloaded = downloadedSimulationIds.includes(simulation.id);
 
           return (
           <tr className="align-top" key={simulation.id}>
@@ -2516,12 +2651,28 @@ function SimulationsSection({
                 Entrada necessaria {money(simulationDisplayNumber(simulation, "minimumRequiredEntry", simulation.downPayment))}
               </p>
             </td>
-            <td className="px-4 py-4">{statusPill(simulation.status)}</td>
+            <td className="px-4 py-4">
+              {statusPill(simulation.status)}
+              <span
+                className={`mt-2 inline-flex w-fit items-center gap-2 rounded-[8px] border px-2 py-1 text-xs font-semibold ${
+                  wasDownloaded
+                    ? "border-slate-400/30 bg-slate-500/10 text-slate-600"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    wasDownloaded ? "bg-slate-400" : "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"
+                  }`}
+                />
+                {wasDownloaded ? "Baixada" : "Nova"}
+              </span>
+            </td>
             <td className="px-4 py-4">
               <div className="flex min-w-[310px] flex-wrap gap-2">
-                <ActionButton disabled={pending} onClick={() => downloadSimulationTxt(simulation)}>
+                <ActionButton disabled={pending} onClick={() => handleDownloadSimulation(simulation)}>
                   <FileText size={14} />
-                  TXT
+                  Baixar TXT
                 </ActionButton>
                 {simulationStatuses.map((status) => (
                   <ActionButton disabled={pending} key={status} onClick={() => onStatus(simulation.id, status)}>

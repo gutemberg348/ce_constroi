@@ -21,7 +21,7 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
   const port = config.get<number>("API_PORT", 3333);
-  const bodyLimit = config.get<string>("API_BODY_LIMIT", "25mb");
+  const bodyLimit = config.get<string>("API_BODY_LIMIT", "80mb");
 
   app.setGlobalPrefix("api/v1");
   app.enableVersioning({ type: VersioningType.URI });

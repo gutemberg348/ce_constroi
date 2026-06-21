@@ -5,10 +5,32 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Calculator, Heart, Info, LogOut, Map, Megaphone, Menu, Share2, UserRound, X } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
+import {
+  Building2,
+  Calculator,
+  Heart,
+  Info,
+  LogOut,
+  Map,
+  Megaphone,
+  Menu,
+  MessageCircle,
+  UserRound,
+  X
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CookiePreferencesButton } from "@/components/privacy/cookie-preferences-button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
+import {
+  FacebookIcon,
+  InstagramIcon,
+  LinkedinIcon,
+  TiktokIcon,
+  WhatsappIcon,
+  XSocialIcon,
+  YoutubeIcon
+} from "@/components/ui/social-brand-icons";
 import { trackSiteEvent } from "@/services/analytics";
 import { defaultSiteSettings, getSiteSettings } from "@/services/settings";
 import { useAuthStore } from "@/stores/auth-store";
@@ -43,18 +65,68 @@ function getDashboardHref(role?: string): Route {
   return "/dashboard";
 }
 
-function socialLinks(settings: SiteSettings) {
-  return [
-    { label: "Instagram", url: settings.socialInstagramUrl },
-    { label: "Facebook", url: settings.socialFacebookUrl },
-    { label: "YouTube", url: settings.socialYoutubeUrl },
-    { label: "X", url: settings.socialXUrl },
-    { label: "TikTok", url: settings.socialTiktokUrl },
-    { label: "LinkedIn", url: settings.socialLinkedinUrl },
-    { label: "WhatsApp", url: settings.socialWhatsappUrl }
-  ]
-    .map((item) => ({ label: item.label, url: item.url?.trim() ?? "" }))
-    .filter((item): item is { label: string; url: string } => Boolean(item.url));
+type SocialLink = {
+  label: string;
+  url: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  className: string;
+};
+
+function socialLinks(settings: SiteSettings): SocialLink[] {
+  const links: Array<Omit<SocialLink, "url"> & { url?: string | null }> = [
+    {
+      label: "Instagram",
+      url: settings.socialInstagramUrl,
+      icon: InstagramIcon,
+      className: "border-pink-500 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-amber-400 text-white shadow-pink-500/25 hover:shadow-lg"
+    },
+    {
+      label: "Facebook",
+      url: settings.socialFacebookUrl,
+      icon: FacebookIcon,
+      className: "border-[#1877f2] bg-[#1877f2] text-white shadow-blue-600/25 hover:shadow-lg"
+    },
+    {
+      label: "YouTube",
+      url: settings.socialYoutubeUrl,
+      icon: YoutubeIcon,
+      className: "border-[#ff0033] bg-[#ff0033] text-white shadow-red-600/25 hover:shadow-lg"
+    },
+    {
+      label: "X",
+      url: settings.socialXUrl,
+      icon: XSocialIcon,
+      className: "border-slate-950 bg-slate-950 text-white shadow-slate-900/25 hover:shadow-lg"
+    },
+    {
+      label: "TikTok",
+      url: settings.socialTiktokUrl,
+      icon: TiktokIcon,
+      className: "border-slate-950 bg-slate-950 text-white shadow-cyan-500/25 hover:shadow-lg"
+    },
+    {
+      label: "LinkedIn",
+      url: settings.socialLinkedinUrl,
+      icon: LinkedinIcon,
+      className: "border-[#0a66c2] bg-[#0a66c2] text-white shadow-sky-700/25 hover:shadow-lg"
+    },
+    {
+      label: "WhatsApp",
+      url: settings.socialWhatsappUrl,
+      icon: WhatsappIcon,
+      className: "border-[#25d366] bg-[#25d366] text-white shadow-emerald-500/25 hover:shadow-lg"
+    }
+  ];
+
+  return links.reduce<SocialLink[]>((items, item) => {
+    const url = item.url?.trim() ?? "";
+
+    if (url) {
+      items.push({ ...item, url });
+    }
+
+    return items;
+  }, []);
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -76,7 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hasLogo = Boolean(logoLightUrl || logoDarkUrl);
   const isLoadingSettings = !loadedSettings && settingsQuery.isPending;
   const configuredSocialLinks = socialLinks(settings);
-  const primarySocialLink = configuredSocialLinks[0];
+  const whatsappLink = configuredSocialLinks.find((item) => item.label === "WhatsApp");
 
   useEffect(() => {
     void trackSiteEvent({
@@ -221,17 +293,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Info size={17} />
                 Quem somos
               </Link>
-              {primarySocialLink ? (
-                <a
-                  className="focus-ring inline-flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-semibold text-white/74 hover:bg-white/10 hover:text-white"
-                  href={primarySocialLink.url}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <Share2 size={17} />
-                  Redes sociais
-                </a>
+              {configuredSocialLinks.length ? (
+                <div className="grid gap-2 pt-2">
+                  <p className="px-3 text-xs font-semibold uppercase text-white/50">Redes sociais</p>
+                  <div className="flex flex-wrap gap-2 px-3">
+                    {configuredSocialLinks.map((item) => {
+                      const Icon = item.icon;
+
+                      return (
+                        <a
+                          aria-label={item.label}
+                          className={`focus-ring inline-flex h-11 w-11 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
+                          href={item.url}
+                          key={item.label}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          rel="noreferrer"
+                          target="_blank"
+                          title={item.label}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : null}
               {isLoggedIn ? (
                 <div className="grid grid-cols-2 gap-2 pt-2">
@@ -284,18 +369,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex flex-wrap items-center gap-3">
             {configuredSocialLinks.length ? (
               <div className="flex flex-wrap gap-2">
-                {configuredSocialLinks.map((item) => (
-                  <a
-                    className="focus-ring inline-flex h-9 items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 text-xs font-semibold hover:text-[var(--foreground)]"
-                    href={item.url}
-                    key={item.label}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <Share2 size={14} />
-                    {item.label}
-                  </a>
-                ))}
+                {configuredSocialLinks.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <a
+                      aria-label={item.label}
+                      className={`focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
+                      href={item.url}
+                      key={item.label}
+                      rel="noreferrer"
+                      target="_blank"
+                      title={item.label}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </a>
+                  );
+                })}
               </div>
             ) : null}
             <Link className="font-semibold hover:text-[var(--foreground)]" href="/termos">
@@ -314,6 +404,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
+      {whatsappLink ? (
+        <a
+          aria-label="Falar no WhatsApp"
+          className="focus-ring fixed bottom-5 right-5 z-40 inline-flex h-14 items-center gap-3 rounded-full bg-[#25d366] px-4 text-sm font-bold text-white shadow-[0_18px_45px_rgba(37,211,102,0.38)] transition hover:-translate-y-0.5 hover:bg-[#1ebe5d]"
+          href={whatsappLink.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <MessageCircle size={22} />
+          <span className="hidden sm:inline">Falar no WhatsApp</span>
+        </a>
+      ) : null}
     </div>
   );
 }
