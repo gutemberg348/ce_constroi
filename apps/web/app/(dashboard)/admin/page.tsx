@@ -170,7 +170,7 @@ const userStatuses: UserStatus[] = ["ACTIVE", "INACTIVE", "SUSPENDED"];
 const architectStatuses: ArchitectStatus[] = ["PENDING_REVIEW", "APPROVED", "REJECTED", "SUSPENDED"];
 const terrainStatuses: TerrainStatus[] = ["DRAFT", "PENDING_REVIEW", "AVAILABLE", "RESERVED", "SOLD", "ARCHIVED"];
 const projectStatuses: ProjectStatus[] = ["DRAFT", "PENDING_REVIEW", "PUBLISHED", "ARCHIVED"];
-const simulationStatuses: SimulationStatus[] = ["DRAFT", "SENT", "CONVERTED", "EXPIRED"];
+const simulationStatuses: SimulationStatus[] = ["DRAFT", "SENT", "CONVERTED"];
 
 function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -425,6 +425,45 @@ function statusPill(status?: string) {
           : "border-[var(--line)] text-[var(--muted)]";
 
   return <span className={`inline-flex whitespace-nowrap rounded-[8px] border px-2 py-1 text-xs font-semibold ${tone}`}>{statusLabel(normalized)}</span>;
+}
+
+function simulationStatusLabel(status?: string) {
+  const labels: Record<string, string> = {
+    DRAFT: "Sem atendimento",
+    SENT: "Em atendimento",
+    CONVERTED: "Convertido",
+    EXPIRED: "Arquivado"
+  };
+
+  return status ? (labels[status] ?? status) : "-";
+}
+
+function simulationStatusPill(status?: string) {
+  const normalized = status ?? "-";
+  const tone =
+    normalized === "CONVERTED"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+      : normalized === "SENT"
+        ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
+        : normalized === "DRAFT"
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
+          : normalized === "EXPIRED"
+            ? "border-slate-400/30 bg-slate-500/10 text-slate-600"
+            : "border-[var(--line)] text-[var(--muted)]";
+
+  return (
+    <span className={`inline-flex whitespace-nowrap rounded-[8px] border px-2 py-1 text-xs font-semibold ${tone}`}>
+      {simulationStatusLabel(normalized)}
+    </span>
+  );
+}
+
+function newLeadBadge(status?: string) {
+  return status === "DRAFT" ? (
+    <span className="inline-flex whitespace-nowrap rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700">
+      Novo lead
+    </span>
+  ) : null;
 }
 
 function inputClass() {
@@ -705,6 +744,11 @@ export default function AdminPage() {
     queryFn: () => getAdminSimulations({ limit: 100 }),
     enabled: Boolean(accessToken && isAdmin && activeSection === "simulacoes")
   });
+  const convertedSimulationsQuery = useQuery({
+    queryKey: ["admin", "simulations", "converted"],
+    queryFn: () => getAdminSimulations({ limit: 100, status: "CONVERTED" }),
+    enabled: Boolean(accessToken && isAdmin && activeSection === "pedidos")
+  });
   const ordersQuery = useQuery({
     queryKey: ["admin", "orders"],
     queryFn: () => getAdminOrders({ limit: 100 }),
@@ -958,6 +1002,7 @@ export default function AdminPage() {
     projectsQuery,
     newsQuery,
     simulationsQuery,
+    convertedSimulationsQuery,
     ordersQuery,
     eventsQuery,
     settingsQuery
@@ -971,6 +1016,7 @@ export default function AdminPage() {
   const projects = projectsQuery.data?.items ?? [];
   const news = newsQuery.data?.items ?? [];
   const simulations = simulationsQuery.data?.items ?? [];
+  const convertedSimulations = convertedSimulationsQuery.data?.items ?? [];
   const orders = ordersQuery.data?.items ?? [];
   const events = eventsQuery.data?.items ?? [];
   const eventsMeta = eventsQuery.data?.meta ?? { page: eventsPage, limit: 20, total: 0, totalPages: 1 };
