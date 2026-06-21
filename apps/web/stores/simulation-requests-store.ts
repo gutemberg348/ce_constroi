@@ -29,7 +29,7 @@ export type SimulationRequest = {
   score: number;
   status: string;
   fitMessage: string;
-  stage: "Novo" | "Em atendimento" | "Finalizado";
+  stage: "Novo" | "Em atendimento" | "Convertido" | "Finalizado";
 };
 
 type SimulationRequestsState = {

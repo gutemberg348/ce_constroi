@@ -19,25 +19,34 @@ function whatsappHref(phone: string | undefined, id: string) {
 
 function statusLabel(status: SimulationStatus) {
   const labels: Record<SimulationStatus, string> = {
-    DRAFT: "Novo",
+    DRAFT: "Sem atendimento",
     SENT: "Em atendimento",
-    CONVERTED: "Finalizado",
-    EXPIRED: "Expirado"
+    CONVERTED: "Convertido",
+    EXPIRED: "Rascunho"
   };
 
   return labels[status] ?? status;
 }
 
-function nextStatus(status: SimulationStatus): SimulationStatus {
-  if (status === "DRAFT") {
-    return "SENT";
-  }
+function statusPill(status: SimulationStatus) {
+  const tone =
+    status === "CONVERTED"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+      : status === "SENT"
+        ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
+        : status === "DRAFT"
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
+          : "border-slate-400/30 bg-slate-500/10 text-slate-600";
 
-  if (status === "SENT") {
-    return "CONVERTED";
-  }
+  return <span className={`rounded-[8px] border px-2 py-1 text-xs font-semibold ${tone}`}>{statusLabel(status)}</span>;
+}
 
-  return status;
+function newLeadBadge(status: SimulationStatus) {
+  return status === "DRAFT" ? (
+    <span className="rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700">
+      Novo lead
+    </span>
+  ) : null;
 }
 
 function metadataResult(simulation: AdminSimulation) {
@@ -82,6 +91,10 @@ function displayCustomerName(simulation: AdminSimulation) {
     : simulation.customer?.name ?? "Cliente nao vinculado";
 }
 
+function localStageLabel(stage: string) {
+  return stage === "Finalizado" ? "Convertido" : stage;
+}
+
 function resultText(simulation: AdminSimulation) {
   const result = metadataResult(simulation);
   const status = typeof result?.status === "string" ? result.status : null;
@@ -121,18 +134,13 @@ function AdminSimulationRequestsPanel({ compact }: { compact: boolean }) {
         ) : simulations.length === 0 ? (
           <div className="py-8 text-sm text-[var(--muted)]">Nenhuma simulacao salva no banco ainda.</div>
         ) : (
-          simulations.map((simulation) => {
-            const canAdvance = simulation.status === "DRAFT" || simulation.status === "SENT";
-            const targetStatus = nextStatus(simulation.status);
-
-            return (
+          simulations.map((simulation) => (
               <div className="grid gap-4 py-4 md:grid-cols-[1fr_auto]" key={simulation.id}>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{displayCustomerName(simulation)}</h3>
-                    <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                      {statusLabel(simulation.status)}
-                    </span>
+                    {statusPill(simulation.status)}
+                    {newLeadBadge(simulation.status)}
                     <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
                       {simulation.id}
                     </span>
@@ -157,18 +165,49 @@ function AdminSimulationRequestsPanel({ compact }: { compact: boolean }) {
                     <MessageCircle size={16} />
                     WhatsApp
                   </a>
-                  <button
-                    className="focus-ring h-10 rounded-[8px] border border-[var(--line)] px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
-                    disabled={!canAdvance || advanceMutation.isPending}
-                    onClick={() => advanceMutation.mutate({ id: simulation.id, status: targetStatus })}
-                    type="button"
-                  >
-                    {canAdvance ? "Avancar" : "Finalizado"}
-                  </button>
+                  {simulation.status === "DRAFT" || simulation.status === "EXPIRED" ? (
+                    <button
+                      className="focus-ring h-10 rounded-[8px] border border-blue-500/30 px-3 text-sm font-semibold text-blue-700 disabled:cursor-not-allowed disabled:opacity-55"
+                      disabled={advanceMutation.isPending}
+                      onClick={() => advanceMutation.mutate({ id: simulation.id, status: "SENT" })}
+                      type="button"
+                    >
+                      Iniciar atendimento
+                    </button>
+                  ) : null}
+                  {simulation.status === "SENT" ? (
+                    <>
+                      <button
+                        className="focus-ring h-10 rounded-[8px] border border-emerald-500/30 px-3 text-sm font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-55"
+                        disabled={advanceMutation.isPending}
+                        onClick={() => advanceMutation.mutate({ id: simulation.id, status: "CONVERTED" })}
+                        type="button"
+                      >
+                        Marcar convertido
+                      </button>
+                      <button
+                        className="focus-ring h-10 rounded-[8px] border border-[var(--line)] px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
+                        disabled={advanceMutation.isPending}
+                        onClick={() => advanceMutation.mutate({ id: simulation.id, status: "DRAFT" })}
+                        type="button"
+                      >
+                        Sem atendimento
+                      </button>
+                    </>
+                  ) : null}
+                  {simulation.status === "CONVERTED" ? (
+                    <button
+                      className="focus-ring h-10 rounded-[8px] border border-[var(--line)] px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
+                      disabled={advanceMutation.isPending}
+                      onClick={() => advanceMutation.mutate({ id: simulation.id, status: "SENT" })}
+                      type="button"
+                    >
+                      Voltar atendimento
+                    </button>
+                  ) : null}
                 </div>
               </div>
-            );
-          })
+            ))
         )}
       </div>
 
@@ -207,8 +246,13 @@ function LocalSimulationRequestsPanel({ compact }: { compact: boolean }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold">{request.name}</h3>
                   <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                    {request.stage}
+                    {localStageLabel(request.stage)}
                   </span>
+                  {request.stage === "Novo" ? (
+                    <span className="rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700">
+                      Novo lead
+                    </span>
+                  ) : null}
                   <span className="rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
                     {request.id}
                   </span>
@@ -230,13 +274,33 @@ function LocalSimulationRequestsPanel({ compact }: { compact: boolean }) {
                   <MessageCircle size={16} />
                   WhatsApp
                 </a>
-                <button
-                  className="focus-ring h-10 rounded-[8px] border border-[var(--line)] px-3 text-sm font-semibold"
-                  onClick={() => updateStage(request.id, request.stage === "Novo" ? "Em atendimento" : "Finalizado")}
-                  type="button"
-                >
-                  Avancar
-                </button>
+                {request.stage === "Novo" ? (
+                  <button
+                    className="focus-ring h-10 rounded-[8px] border border-blue-500/30 px-3 text-sm font-semibold text-blue-700"
+                    onClick={() => updateStage(request.id, "Em atendimento")}
+                    type="button"
+                  >
+                    Iniciar atendimento
+                  </button>
+                ) : null}
+                {request.stage === "Em atendimento" ? (
+                  <>
+                    <button
+                      className="focus-ring h-10 rounded-[8px] border border-emerald-500/30 px-3 text-sm font-semibold text-emerald-700"
+                      onClick={() => updateStage(request.id, "Convertido")}
+                      type="button"
+                    >
+                      Marcar convertido
+                    </button>
+                    <button
+                      className="focus-ring h-10 rounded-[8px] border border-[var(--line)] px-3 text-sm font-semibold"
+                      onClick={() => updateStage(request.id, "Novo")}
+                      type="button"
+                    >
+                      Sem atendimento
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
           ))

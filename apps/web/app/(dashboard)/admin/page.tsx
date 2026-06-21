@@ -228,7 +228,7 @@ function buildSimulationTxt(simulation: AdminSimulation) {
     "PROPOSTA / SIMULACAO - CE CONSTROI",
     `Codigo: ${simulation.id}`,
     `Data: ${dateTime(simulation.createdAt)}`,
-    `Status administrativo: ${statusLabel(simulation.status)}`,
+    `Status administrativo: ${simulationStatusLabel(simulation.status)}`,
     "",
     "CLIENTE",
     `Nome: ${simulationCustomerName(simulation)}`,
@@ -395,9 +395,9 @@ const statusLabels: Record<string, string> = {
   SOLD: "Vendido",
   ARCHIVED: "Arquivado",
   PUBLISHED: "Publicado",
-  SENT: "Enviado",
+  SENT: "Em atendimento",
   CONVERTED: "Convertido",
-  EXPIRED: "Expirado",
+  EXPIRED: "Rascunho",
   PENDING_PAYMENT: "Aguardando pagamento",
   PAID: "Pago",
   CANCELED: "Cancelado",
@@ -432,7 +432,7 @@ function simulationStatusLabel(status?: string) {
     DRAFT: "Sem atendimento",
     SENT: "Em atendimento",
     CONVERTED: "Convertido",
-    EXPIRED: "Arquivado"
+    EXPIRED: "Rascunho"
   };
 
   return status ? (labels[status] ?? status) : "-";
@@ -1336,10 +1336,13 @@ export default function AdminPage() {
 
           {activeSection === "pedidos" ? (
             <OrdersSection
-              isLoading={ordersQuery.isLoading}
+              convertedSimulations={convertedSimulations}
+              isLoading={ordersQuery.isLoading || convertedSimulationsQuery.isLoading}
               onStatus={(id, status) => orderStatusMutation.mutate({ id, status })}
+              onSimulationDelete={(id) => simulationDeleteMutation.mutate(id)}
+              onSimulationStatus={(id, status) => simulationStatusMutation.mutate({ id, status })}
               orders={orders}
-              pending={orderStatusMutation.isPending}
+              pending={orderStatusMutation.isPending || simulationStatusMutation.isPending || simulationDeleteMutation.isPending}
             />
           ) : null}
 
@@ -2698,7 +2701,10 @@ function SimulationsSection({
               </p>
             </td>
             <td className="px-4 py-4">
-              {statusPill(simulation.status)}
+              <div className="flex flex-col items-start gap-2">
+                {simulationStatusPill(simulation.status)}
+                {newLeadBadge(simulation.status)}
+              </div>
               <span
                 className={`mt-2 inline-flex w-fit items-center gap-2 rounded-[8px] border px-2 py-1 text-xs font-semibold ${
                   wasDownloaded
@@ -2722,7 +2728,7 @@ function SimulationsSection({
                 </ActionButton>
                 {simulationStatuses.map((status) => (
                   <ActionButton disabled={pending} key={status} onClick={() => onStatus(simulation.id, status)}>
-                    {statusLabel(status)}
+                    {simulationStatusLabel(status)}
                   </ActionButton>
                 ))}
                 <ActionButton
@@ -2749,41 +2755,107 @@ function SimulationsSection({
 
 function OrdersSection({
   orders,
+  convertedSimulations,
   isLoading,
   pending,
-  onStatus
+  onStatus,
+  onSimulationStatus,
+  onSimulationDelete
 }: {
   orders: AdminOrder[];
+  convertedSimulations: AdminSimulation[];
   isLoading: boolean;
   pending: boolean;
   onStatus: (id: string, status: OrderStatus) => void;
+  onSimulationStatus: (id: string, status: SimulationStatus) => void;
+  onSimulationDelete: (id: string) => void;
 }) {
   return (
-    <section className={panelClass()}>
-      <SectionHeader eyebrow="Comercial" title="Pedidos" total={orders.length} />
-      <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum pedido cadastrado." isLoading={isLoading}>
-        {orders.map((order) => (
-          <tr className="align-top" key={order.id}>
-            <td className="px-4 py-4">
-              <strong>{order.customer.name}</strong>
-              <p className="mt-1 text-xs text-[var(--muted)]">{order.customer.email}</p>
-            </td>
-            <td className="px-4 py-4">{order.terrain?.title ?? order.project?.title ?? "Pedido sem item"}</td>
-            <td className="px-4 py-4">{money(order.total)}</td>
-            <td className="px-4 py-4">{statusPill(order.status)}</td>
-            <td className="px-4 py-4">
-              <div className="flex min-w-[310px] flex-wrap gap-2">
-                {orderStatuses.map((status) => (
-                  <ActionButton disabled={pending} key={status} onClick={() => onStatus(order.id, status)}>
-                    {statusLabel(status)}
+    <div className="space-y-5">
+      <section className={panelClass()}>
+        <SectionHeader eyebrow="Comercial" title="Leads convertidos" total={convertedSimulations.length} />
+        <AdminTable
+          columns={["Cliente", "Pacote", "Valores", "Status", "Acoes"]}
+          empty="Nenhuma simulacao convertida ainda."
+          isLoading={isLoading}
+        >
+          {convertedSimulations.map((simulation) => (
+            <tr className="align-top" key={simulation.id}>
+              <td className="px-4 py-4">
+                <strong>{simulationCustomerName(simulation)}</strong>
+                <p className="mt-1 text-xs text-[var(--muted)]">{simulationCustomerEmail(simulation)}</p>
+              </td>
+              <td className="px-4 py-4">
+                <p>{simulation.terrain?.title ?? "Terreno manual"}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">{simulation.project?.title ?? "Sem projeto"}</p>
+              </td>
+              <td className="px-4 py-4">
+                <p>Pacote {money(simulationDisplayNumber(simulation, "desiredPackageValue", simulation.totalAmount))}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Parcela {money(simulationDisplayNumber(simulation, "estimatedInstallment", simulation.monthlyPayment))}
+                </p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Entrada {money(simulationDisplayNumber(simulation, "availableEntry", simulation.downPayment))}
+                </p>
+              </td>
+              <td className="px-4 py-4">{simulationStatusPill(simulation.status)}</td>
+              <td className="px-4 py-4">
+                <div className="flex min-w-[310px] flex-wrap gap-2">
+                  <ActionButton disabled={pending} onClick={() => downloadSimulationTxt(simulation)}>
+                    <FileText size={14} />
+                    Baixar TXT
                   </ActionButton>
-                ))}
-              </div>
-            </td>
-          </tr>
-        ))}
-      </AdminTable>
-    </section>
+                  <ActionButton disabled={pending} onClick={() => onSimulationStatus(simulation.id, "SENT")}>
+                    Em atendimento
+                  </ActionButton>
+                  <ActionButton disabled={pending} onClick={() => onSimulationStatus(simulation.id, "DRAFT")}>
+                    Sem atendimento
+                  </ActionButton>
+                  <ActionButton
+                    disabled={pending}
+                    onClick={() => {
+                      if (confirmAction("Excluir este lead convertido da listagem?")) {
+                        onSimulationDelete(simulation.id);
+                      }
+                    }}
+                    tone="danger"
+                  >
+                    <Trash2 size={14} />
+                    Excluir
+                  </ActionButton>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </AdminTable>
+      </section>
+
+      <section className={panelClass()}>
+        <SectionHeader eyebrow="Comercial" title="Pedidos fechados" total={orders.length} />
+        <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum pedido cadastrado." isLoading={isLoading}>
+          {orders.map((order) => (
+            <tr className="align-top" key={order.id}>
+              <td className="px-4 py-4">
+                <strong>{order.customer.name}</strong>
+                <p className="mt-1 text-xs text-[var(--muted)]">{order.customer.email}</p>
+              </td>
+              <td className="px-4 py-4">{order.terrain?.title ?? order.project?.title ?? "Pedido sem item"}</td>
+              <td className="px-4 py-4">{money(order.total)}</td>
+              <td className="px-4 py-4">{statusPill(order.status)}</td>
+              <td className="px-4 py-4">
+                <div className="flex min-w-[310px] flex-wrap gap-2">
+                  {orderStatuses.map((status) => (
+                    <ActionButton disabled={pending} key={status} onClick={() => onStatus(order.id, status)}>
+                      {statusLabel(status)}
+                    </ActionButton>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </AdminTable>
+      </section>
+    </div>
   );
 }
 
