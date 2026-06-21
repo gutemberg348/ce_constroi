@@ -765,7 +765,8 @@ export class AdminService {
       include: {
         customer: { select: { id: true, name: true, email: true, phone: true } },
         terrain: { select: { id: true, title: true, city: true, state: true } },
-        project: { select: { id: true, title: true } }
+        project: { select: { id: true, title: true } },
+        orders: { where: { deletedAt: null }, take: 3 }
       }
     });
   }

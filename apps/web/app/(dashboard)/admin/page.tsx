@@ -302,7 +302,7 @@ function downloadAllSimulationsTxt(simulations: AdminSimulation[]) {
   const content = simulations.map(buildSimulationTxt).join("\r\n\r\n========================================\r\n\r\n");
   downloadTxt(`simulacoes-${new Date().toISOString().slice(0, 10)}.txt`, content);
 }
-const orderStatuses: OrderStatus[] = ["DRAFT", "PENDING_PAYMENT", "PAID", "CANCELED", "REFUNDED"];
+const orderStatuses: OrderStatus[] = ["PENDING_PAYMENT", "PAID", "CANCELED"];
 const newsStatuses: NewsStatus[] = ["DRAFT", "PUBLISHED"];
 const downloadedSimulationsStorageKey = "ce-constroi.admin.downloaded-simulations.v1";
 
@@ -744,11 +744,6 @@ export default function AdminPage() {
     queryFn: () => getAdminSimulations({ limit: 100 }),
     enabled: Boolean(accessToken && isAdmin && activeSection === "simulacoes")
   });
-  const convertedSimulationsQuery = useQuery({
-    queryKey: ["admin", "simulations", "converted"],
-    queryFn: () => getAdminSimulations({ limit: 100, status: "CONVERTED" }),
-    enabled: Boolean(accessToken && isAdmin && activeSection === "pedidos")
-  });
   const ordersQuery = useQuery({
     queryKey: ["admin", "orders"],
     queryFn: () => getAdminOrders({ limit: 100 }),
@@ -1002,7 +997,6 @@ export default function AdminPage() {
     projectsQuery,
     newsQuery,
     simulationsQuery,
-    convertedSimulationsQuery,
     ordersQuery,
     eventsQuery,
     settingsQuery
@@ -1016,7 +1010,6 @@ export default function AdminPage() {
   const projects = projectsQuery.data?.items ?? [];
   const news = newsQuery.data?.items ?? [];
   const simulations = simulationsQuery.data?.items ?? [];
-  const convertedSimulations = convertedSimulationsQuery.data?.items ?? [];
   const orders = ordersQuery.data?.items ?? [];
   const events = eventsQuery.data?.items ?? [];
   const eventsMeta = eventsQuery.data?.meta ?? { page: eventsPage, limit: 20, total: 0, totalPages: 1 };
@@ -1336,13 +1329,10 @@ export default function AdminPage() {
 
           {activeSection === "pedidos" ? (
             <OrdersSection
-              convertedSimulations={convertedSimulations}
-              isLoading={ordersQuery.isLoading || convertedSimulationsQuery.isLoading}
+              isLoading={ordersQuery.isLoading}
               onStatus={(id, status) => orderStatusMutation.mutate({ id, status })}
-              onSimulationDelete={(id) => simulationDeleteMutation.mutate(id)}
-              onSimulationStatus={(id, status) => simulationStatusMutation.mutate({ id, status })}
               orders={orders}
-              pending={orderStatusMutation.isPending || simulationStatusMutation.isPending || simulationDeleteMutation.isPending}
+              pending={orderStatusMutation.isPending}
             />
           ) : null}
 
@@ -2755,107 +2745,47 @@ function SimulationsSection({
 
 function OrdersSection({
   orders,
-  convertedSimulations,
   isLoading,
   pending,
-  onStatus,
-  onSimulationStatus,
-  onSimulationDelete
+  onStatus
 }: {
   orders: AdminOrder[];
-  convertedSimulations: AdminSimulation[];
   isLoading: boolean;
   pending: boolean;
   onStatus: (id: string, status: OrderStatus) => void;
-  onSimulationStatus: (id: string, status: SimulationStatus) => void;
-  onSimulationDelete: (id: string) => void;
 }) {
   return (
-    <div className="space-y-5">
-      <section className={panelClass()}>
-        <SectionHeader eyebrow="Comercial" title="Leads convertidos" total={convertedSimulations.length} />
-        <AdminTable
-          columns={["Cliente", "Pacote", "Valores", "Status", "Acoes"]}
-          empty="Nenhuma simulacao convertida ainda."
-          isLoading={isLoading}
-        >
-          {convertedSimulations.map((simulation) => (
-            <tr className="align-top" key={simulation.id}>
-              <td className="px-4 py-4">
-                <strong>{simulationCustomerName(simulation)}</strong>
-                <p className="mt-1 text-xs text-[var(--muted)]">{simulationCustomerEmail(simulation)}</p>
-              </td>
-              <td className="px-4 py-4">
-                <p>{simulation.terrain?.title ?? "Terreno manual"}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">{simulation.project?.title ?? "Sem projeto"}</p>
-              </td>
-              <td className="px-4 py-4">
-                <p>Pacote {money(simulationDisplayNumber(simulation, "desiredPackageValue", simulation.totalAmount))}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  Parcela {money(simulationDisplayNumber(simulation, "estimatedInstallment", simulation.monthlyPayment))}
-                </p>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  Entrada {money(simulationDisplayNumber(simulation, "availableEntry", simulation.downPayment))}
-                </p>
-              </td>
-              <td className="px-4 py-4">{simulationStatusPill(simulation.status)}</td>
-              <td className="px-4 py-4">
-                <div className="flex min-w-[310px] flex-wrap gap-2">
-                  <ActionButton disabled={pending} onClick={() => downloadSimulationTxt(simulation)}>
-                    <FileText size={14} />
-                    Baixar TXT
+    <section className={panelClass()}>
+      <SectionHeader eyebrow="Comercial" title="Pedidos" total={orders.length} />
+      <p className="-mt-2 mb-5 text-sm text-[var(--muted)]">
+        Toda simulacao marcada como convertida vira um pedido aqui, inicialmente como aguardando pagamento.
+      </p>
+      <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum pedido cadastrado." isLoading={isLoading}>
+        {orders.map((order) => (
+          <tr className="align-top" key={order.id}>
+            <td className="px-4 py-4">
+              <strong>{order.customer.name}</strong>
+              <p className="mt-1 text-xs text-[var(--muted)]">{order.customer.email}</p>
+            </td>
+            <td className="px-4 py-4">
+              <p>{order.terrain?.title ?? order.project?.title ?? "Pedido sem item"}</p>
+              {order.simulation?.id ? <p className="mt-1 text-xs text-[var(--muted)]">Origem: simulacao convertida</p> : null}
+            </td>
+            <td className="px-4 py-4">{money(order.total)}</td>
+            <td className="px-4 py-4">{statusPill(order.status)}</td>
+            <td className="px-4 py-4">
+              <div className="flex min-w-[260px] flex-wrap gap-2">
+                {orderStatuses.map((status) => (
+                  <ActionButton disabled={pending} key={status} onClick={() => onStatus(order.id, status)}>
+                    {statusLabel(status)}
                   </ActionButton>
-                  <ActionButton disabled={pending} onClick={() => onSimulationStatus(simulation.id, "SENT")}>
-                    Em atendimento
-                  </ActionButton>
-                  <ActionButton disabled={pending} onClick={() => onSimulationStatus(simulation.id, "DRAFT")}>
-                    Sem atendimento
-                  </ActionButton>
-                  <ActionButton
-                    disabled={pending}
-                    onClick={() => {
-                      if (confirmAction("Excluir este lead convertido da listagem?")) {
-                        onSimulationDelete(simulation.id);
-                      }
-                    }}
-                    tone="danger"
-                  >
-                    <Trash2 size={14} />
-                    Excluir
-                  </ActionButton>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </AdminTable>
-      </section>
-
-      <section className={panelClass()}>
-        <SectionHeader eyebrow="Comercial" title="Pedidos fechados" total={orders.length} />
-        <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum pedido cadastrado." isLoading={isLoading}>
-          {orders.map((order) => (
-            <tr className="align-top" key={order.id}>
-              <td className="px-4 py-4">
-                <strong>{order.customer.name}</strong>
-                <p className="mt-1 text-xs text-[var(--muted)]">{order.customer.email}</p>
-              </td>
-              <td className="px-4 py-4">{order.terrain?.title ?? order.project?.title ?? "Pedido sem item"}</td>
-              <td className="px-4 py-4">{money(order.total)}</td>
-              <td className="px-4 py-4">{statusPill(order.status)}</td>
-              <td className="px-4 py-4">
-                <div className="flex min-w-[310px] flex-wrap gap-2">
-                  {orderStatuses.map((status) => (
-                    <ActionButton disabled={pending} key={status} onClick={() => onStatus(order.id, status)}>
-                      {statusLabel(status)}
-                    </ActionButton>
-                  ))}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </AdminTable>
-      </section>
-    </div>
+                ))}
+              </div>
+            </td>
+          </tr>
+        ))}
+      </AdminTable>
+    </section>
   );
 }
 
