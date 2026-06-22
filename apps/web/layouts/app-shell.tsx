@@ -153,6 +153,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const logoLightUrl = loadedSettings?.logoLightUrl || loadedSettings?.logoUrl || loadedSettings?.logoDarkUrl || null;
   const logoDarkUrl = loadedSettings?.logoDarkUrl || loadedSettings?.logoUrl || logoLightUrl;
   const hasLogo = Boolean(logoLightUrl || logoDarkUrl);
+  const footerLogoUrl = logoLightUrl || logoDarkUrl;
   const isLoadingSettings = !loadedSettings && settingsQuery.isPending;
   const configuredSocialLinks = socialLinks(settings);
   const whatsappLink = configuredSocialLinks.find((item) => item.label === "WhatsApp");
@@ -370,44 +371,115 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ) : null}
       </header>
       <main>{children}</main>
-      <footer className="border-t border-[var(--line)] bg-[var(--panel)]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <p>{settings.brandName} - privacidade por padrao.</p>
-          <div className="flex flex-wrap items-center gap-3">
-            {configuredSocialLinks.length ? (
-              <div className="flex flex-wrap gap-1.5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-1 shadow-sm">
-                {configuredSocialLinks.map((item) => {
-                  const Icon = item.icon;
+      <footer className="border-t border-white/10 bg-[#0b1d38] text-white">
+        <div className="mx-auto max-w-[1500px] px-4 py-10 sm:px-6 lg:px-8">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.25fr_0.75fr_0.75fr_1fr]">
+            <div className="max-w-md">
+              <Link className="inline-flex items-center" href="/">
+                {footerLogoUrl ? (
+                  <img
+                    alt={settings.brandName}
+                    className="h-12 w-auto max-w-[220px] object-contain"
+                    decoding="async"
+                    src={footerLogoUrl}
+                  />
+                ) : (
+                  <span className="text-xl font-semibold">{settings.brandName}</span>
+                )}
+              </Link>
+              <p className="mt-4 text-sm leading-6 text-white/72">
+                Da escolha do terreno a simulacao do financiamento, uma plataforma para planejar sua casa com mais clareza e seguranca.
+              </p>
 
-                  return (
-                    <a
-                      aria-label={item.label}
-                      className={`focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
-                      href={item.url}
-                      key={item.label}
-                      rel="noreferrer"
-                      target="_blank"
-                      title={item.label}
-                    >
-                      <Icon className="h-[18px] w-[18px]" />
-                    </a>
-                  );
-                })}
-              </div>
-            ) : null}
-            <Link className="font-semibold hover:text-[var(--foreground)]" href="/termos">
-              Termos
-            </Link>
-            <Link className="font-semibold hover:text-[var(--foreground)]" href="/privacidade">
-              Privacidade
-            </Link>
-            <Link className="font-semibold hover:text-[var(--foreground)]" href="/cookies">
-              Cookies
-            </Link>
-            <Link className="font-semibold hover:text-[var(--foreground)]" href="/quem-somos">
-              Quem somos
-            </Link>
-            <CookiePreferencesButton />
+              {configuredSocialLinks.length ? (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {configuredSocialLinks.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <a
+                        aria-label={item.label}
+                        className={`focus-ring inline-flex h-10 w-10 items-center justify-center rounded-[8px] border transition hover:-translate-y-0.5 ${item.className}`}
+                        href={item.url}
+                        key={item.label}
+                        rel="noreferrer"
+                        target="_blank"
+                        title={item.label}
+                      >
+                        <Icon className="h-[19px] w-[19px]" />
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Plataforma</h2>
+              <nav className="mt-4 grid gap-3 text-sm text-white/72">
+                <Link className="transition hover:text-white" href="/terrenos">
+                  Terrenos
+                </Link>
+                <Link className="transition hover:text-white" href="/projetos">
+                  Projetos
+                </Link>
+                <Link className="transition hover:text-white" href="/simulacao">
+                  Simulacao
+                </Link>
+                <Link className="transition hover:text-white" href="/anunciar-terreno">
+                  Anunciar terreno
+                </Link>
+              </nav>
+            </div>
+
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Empresa</h2>
+              <nav className="mt-4 grid gap-3 text-sm text-white/72">
+                <Link className="transition hover:text-white" href="/quem-somos">
+                  Quem somos
+                </Link>
+                <Link className="transition hover:text-white" href="/termos">
+                  Termos de uso
+                </Link>
+                <Link className="transition hover:text-white" href="/privacidade">
+                  Privacidade
+                </Link>
+                <Link className="transition hover:text-white" href="/cookies">
+                  Cookies
+                </Link>
+                <CookiePreferencesButton className="justify-start p-0 text-white/72 hover:text-white" />
+              </nav>
+            </div>
+
+            <div className="rounded-[8px] border border-white/10 bg-white/[0.04] p-5">
+              <h2 className="text-sm font-semibold">Atendimento especializado</h2>
+              <p className="mt-2 text-sm leading-6 text-white/70">
+                Fale com a equipe para tirar duvidas sobre terreno, projeto e viabilidade.
+              </p>
+              {whatsappLink ? (
+                <a
+                  className="focus-ring mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#0d6efd] px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#0b5ed7]"
+                  href={whatsappLink.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <MessageCircle size={18} />
+                  Falar no WhatsApp
+                </a>
+              ) : (
+                <Link
+                  className="focus-ring mt-4 inline-flex w-full items-center justify-center rounded-[8px] bg-[#0d6efd] px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#0b5ed7]"
+                  href="/register"
+                >
+                  Criar conta
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-9 flex flex-col gap-3 border-t border-white/10 pt-5 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+            <p>{settings.brandName} - {new Date().getFullYear()}. Todos os direitos reservados.</p>
+            <p>Construcao planejada, dados protegidos e atendimento claro.</p>
           </div>
         </div>
       </footer>

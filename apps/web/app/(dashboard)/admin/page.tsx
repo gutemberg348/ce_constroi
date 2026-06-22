@@ -1129,7 +1129,6 @@ export default function AdminPage() {
         <aside className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5 xl:sticky xl:top-24">
           <p className="text-sm font-semibold uppercase text-[var(--accent)]">Administracao</p>
           <h1 className="mt-2 text-3xl font-semibold">Central do Admin</h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Cada area em uma pagina. Sem mistura, sem rolagem infinita.</p>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <SmallStat label="Clientes" value={metrics?.customers} />
@@ -2757,9 +2756,6 @@ function OrdersSection({
   return (
     <section className={panelClass()}>
       <SectionHeader eyebrow="Comercial" title="Pedidos - leads convertidos" total={orders.length} />
-      <p className="-mt-2 mb-5 text-sm text-[var(--muted)]">
-        Aqui aparecem somente simulacoes marcadas como convertido. Pedidos de checkout ficam fora deste painel por enquanto.
-      </p>
       <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum lead convertido cadastrado." isLoading={isLoading}>
         {orders.map((order) => (
           <tr className="align-top" key={order.id}>
