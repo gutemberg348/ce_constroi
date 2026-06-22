@@ -58,10 +58,10 @@ export class AdminService {
         this.prisma.project.count({ where: { deletedAt: null } }),
         this.prisma.project.count({ where: { status: ProjectStatus.PENDING_REVIEW, deletedAt: null } }),
         this.prisma.simulation.count({ where: { deletedAt: null } }),
-        this.prisma.order.count({ where: { deletedAt: null } }),
-        this.prisma.order.count({ where: { status: "PAID", deletedAt: null } }),
+        this.prisma.order.count({ where: this.convertedLeadOrderWhere() }),
+        this.prisma.order.count({ where: this.convertedLeadOrderWhere({ status: OrderStatus.PAID }) }),
         this.prisma.order.aggregate({
-          where: { status: "PAID", deletedAt: null },
+          where: this.convertedLeadOrderWhere({ status: OrderStatus.PAID }),
           _sum: { total: true }
         }),
         this.prisma.siteEvent.count()
@@ -115,13 +115,14 @@ export class AdminService {
           }
         }),
         this.prisma.order.findMany({
-          where: { deletedAt: null },
+          where: this.convertedLeadOrderWhere(),
           take: 6,
           orderBy: { createdAt: "desc" },
           include: {
             customer: { select: { id: true, name: true, email: true, phone: true } },
             terrain: { select: { id: true, title: true } },
-            project: { select: { id: true, title: true } }
+            project: { select: { id: true, title: true } },
+            simulation: { select: { id: true, status: true } }
           }
         }),
         this.prisma.user.findMany({
@@ -757,17 +758,46 @@ export class AdminService {
 
   async updateSimulationStatus(simulationId: string, statusInput: string) {
     const status = this.enumValue(SimulationStatus, statusInput, "status");
-    await this.findSimulationOrFail(simulationId);
+    const simulation = await this.findSimulationOrFail(simulationId);
 
-    return this.prisma.simulation.update({
-      where: { id: simulationId },
-      data: { status },
-      include: {
-        customer: { select: { id: true, name: true, email: true, phone: true } },
-        terrain: { select: { id: true, title: true, city: true, state: true } },
-        project: { select: { id: true, title: true } },
-        orders: { where: { deletedAt: null }, take: 3 }
+    if (status === SimulationStatus.CONVERTED && !simulation.customerId) {
+      throw new BadRequestException("A simulacao precisa ter cliente vinculado para virar pedido.");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedSimulation = await tx.simulation.update({
+        where: { id: simulationId },
+        data: { status },
+        include: {
+          customer: { select: { id: true, name: true, email: true, phone: true } },
+          terrain: { select: { id: true, title: true, city: true, state: true } },
+          project: { select: { id: true, title: true } },
+          orders: { where: { deletedAt: null }, take: 3 }
+        }
+      });
+
+      if (status === SimulationStatus.CONVERTED) {
+        const existingOrder = await tx.order.findFirst({
+          where: { simulationId, deletedAt: null }
+        });
+
+        if (!existingOrder) {
+          await tx.order.create({
+            data: {
+              customerId: simulation.customerId as string,
+              terrainId: simulation.terrainId,
+              projectId: simulation.projectId,
+              simulationId,
+              subtotal: simulation.totalAmount,
+              fees: 0,
+              total: simulation.totalAmount,
+              status: OrderStatus.PENDING_PAYMENT
+            }
+          });
+        }
       }
+
+      return updatedSimulation;
     });
   }
 
@@ -788,8 +818,7 @@ export class AdminService {
   async listOrders(query: ListAdminResourcesDto) {
     const pagination = getPagination(query);
     const status = query.status ? this.enumValue(OrderStatus, query.status, "status") : undefined;
-    const where = {
-      deletedAt: null,
+    const where = this.convertedLeadOrderWhere({
       ...(status ? { status } : {}),
       ...(query.search
         ? {
@@ -801,7 +830,7 @@ export class AdminService {
             ]
           }
         : {})
-    };
+    });
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
@@ -1249,6 +1278,18 @@ export class AdminService {
     }
 
     return order;
+  }
+
+  private convertedLeadOrderWhere(extra: Prisma.OrderWhereInput = {}): Prisma.OrderWhereInput {
+    return {
+      deletedAt: null,
+      simulationId: { not: null },
+      simulation: {
+        status: SimulationStatus.CONVERTED,
+        deletedAt: null
+      },
+      ...extra
+    };
   }
 
   private enumValue<TEnum extends Record<string, string>>(enumObject: TEnum, value: string, field: string) {

@@ -153,7 +153,7 @@ const adminSections: AdminNavItem[] = [
   { id: "projetos", href: { pathname: "/admin/projetos" }, path: "/admin/projetos", label: "Projetos", description: "Casas e modelos", icon: ClipboardList },
   { id: "noticias", href: { pathname: "/admin/noticias" }, path: "/admin/noticias", label: "Noticias", description: "Conteudos e novidades", icon: Newspaper },
   { id: "simulacoes", href: { pathname: "/admin/simulacoes" }, path: "/admin/simulacoes", label: "Simulacoes", description: "Resultados financeiros", icon: CreditCard },
-  { id: "pedidos", href: { pathname: "/admin/pedidos" }, path: "/admin/pedidos", label: "Pedidos", description: "Vendas e contratos", icon: FileText },
+  { id: "pedidos", href: { pathname: "/admin/pedidos" }, path: "/admin/pedidos", label: "Pedidos", description: "Leads convertidos", icon: FileText },
   { id: "anuncios", href: { pathname: "/admin/anuncios" }, path: "/admin/anuncios", label: "Anuncios", description: "Fila de terrenos", icon: ShieldAlert },
   { id: "acessos", href: { pathname: "/admin/acessos" }, path: "/admin/acessos", label: "Acessos", description: "Eventos do site", icon: Activity },
   {
@@ -1505,8 +1505,8 @@ function DashboardSection({
         </section>
 
         <section className={panelClass()}>
-          <h3 className="text-xl font-semibold">Pedidos recentes</h3>
-          <p className="mt-1 text-sm text-[var(--muted)]">Ultimas movimentacoes comerciais.</p>
+          <h3 className="text-xl font-semibold">Leads convertidos recentes</h3>
+          <p className="mt-1 text-sm text-[var(--muted)]">Simulacoes convertidas que entraram no acompanhamento comercial.</p>
           <div className="mt-5 divide-y divide-[var(--line)]">
             {isLoading ? (
               <p className="py-5 text-sm text-[var(--muted)]">Carregando...</p>
@@ -1515,13 +1515,13 @@ function DashboardSection({
                 <div className="flex items-center justify-between gap-4 py-3" key={order.id}>
                   <div>
                     <strong>{order.customer.name}</strong>
-                    <p className="text-sm text-[var(--muted)]">{order.terrain?.title ?? order.project?.title ?? "Pedido sem item"}</p>
+                    <p className="text-sm text-[var(--muted)]">{order.terrain?.title ?? order.project?.title ?? "Lead sem item"}</p>
                   </div>
                   <strong>{money(order.total)}</strong>
                 </div>
               ))
             ) : (
-              <p className="py-5 text-sm text-[var(--muted)]">Sem pedidos recentes.</p>
+              <p className="py-5 text-sm text-[var(--muted)]">Sem leads convertidos recentes.</p>
             )}
           </div>
         </section>
@@ -2756,11 +2756,11 @@ function OrdersSection({
 }) {
   return (
     <section className={panelClass()}>
-      <SectionHeader eyebrow="Comercial" title="Pedidos" total={orders.length} />
+      <SectionHeader eyebrow="Comercial" title="Pedidos - leads convertidos" total={orders.length} />
       <p className="-mt-2 mb-5 text-sm text-[var(--muted)]">
-        Toda simulacao marcada como convertida vira um pedido aqui, inicialmente como aguardando pagamento.
+        Aqui aparecem somente simulacoes marcadas como convertido. Pedidos de checkout ficam fora deste painel por enquanto.
       </p>
-      <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum pedido cadastrado." isLoading={isLoading}>
+      <AdminTable columns={["Cliente", "Item", "Valor", "Status", "Acoes"]} empty="Nenhum lead convertido cadastrado." isLoading={isLoading}>
         {orders.map((order) => (
           <tr className="align-top" key={order.id}>
             <td className="px-4 py-4">
@@ -2768,7 +2768,7 @@ function OrdersSection({
               <p className="mt-1 text-xs text-[var(--muted)]">{order.customer.email}</p>
             </td>
             <td className="px-4 py-4">
-              <p>{order.terrain?.title ?? order.project?.title ?? "Pedido sem item"}</p>
+              <p>{order.terrain?.title ?? order.project?.title ?? "Lead sem item"}</p>
               {order.simulation?.id ? <p className="mt-1 text-xs text-[var(--muted)]">Origem: simulacao convertida</p> : null}
             </td>
             <td className="px-4 py-4">{money(order.total)}</td>
