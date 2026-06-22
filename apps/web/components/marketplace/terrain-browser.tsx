@@ -28,10 +28,12 @@ export function TerrainBrowser() {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <div className="mb-5 flex flex-col justify-between gap-4 md:mb-6 md:flex-row md:items-end">
-        <div>
+      <div className="mb-5 flex min-w-0 flex-col justify-between gap-4 md:mb-6 md:flex-row md:items-end">
+        <div className="min-w-0">
           <p className="text-sm uppercase text-[var(--muted)]">Terrenos</p>
-          <h1 className="text-2xl font-semibold sm:text-4xl">Terrenos selecionados para transformar seu projeto em realidade.</h1>
+          <h1 className="max-w-4xl break-words text-2xl font-semibold sm:text-4xl">
+            Terrenos selecionados para transformar seu projeto em realidade.
+          </h1>
         </div>
         <div className="grid w-full gap-2 md:max-w-2xl md:grid-cols-[1.4fr_1fr_80px_1fr]">
           <label className="relative">
@@ -49,7 +51,7 @@ export function TerrainBrowser() {
         </div>
       </div>
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
           {[1, 2, 3].map((item) => (
             <div className="h-72 animate-pulse rounded-[8px] bg-black/5 dark:bg-white/10 md:h-80" key={item} />
           ))}
@@ -76,7 +78,7 @@ export function TerrainBrowser() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
           {terrains.map((terrain) => <TerrainCard key={terrain.id} terrain={terrain} />)}
         </div>
       )}

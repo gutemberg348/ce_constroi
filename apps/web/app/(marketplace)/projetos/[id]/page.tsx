@@ -57,41 +57,41 @@ export default async function ProjectDetailPage({
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <MediaGallery items={gallery} title={project.title} />
-        <aside className="self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6">
-          <p className="text-sm uppercase text-[var(--muted)]">
+        <aside className="min-w-0 self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-6">
+          <p className="break-words text-sm uppercase text-[var(--muted)]">
             {project.style ?? "Projeto"} · {project.architect?.user?.name ?? "Studio parceiro"}
           </p>
-          <h1 className="mt-3 text-4xl font-semibold">{project.title}</h1>
-          <p className="mt-4 leading-7 text-[var(--muted)]">{project.description}</p>
-          <div className="mt-6 grid grid-cols-3 gap-3">
-            <div className="rounded-[8px] border border-[var(--line)] p-4">
+          <h1 className="mt-3 break-words text-3xl font-semibold sm:text-4xl">{project.title}</h1>
+          <p className="mt-4 break-words leading-7 text-[var(--muted)]">{project.description}</p>
+          <div className="mt-6 grid min-w-0 grid-cols-3 gap-3">
+            <div className="min-w-0 rounded-[8px] border border-[var(--line)] p-4">
               <BedDouble size={18} />
               <strong className="mt-2 block text-xl">{project.bedrooms}</strong>
             </div>
-            <div className="rounded-[8px] border border-[var(--line)] p-4">
+            <div className="min-w-0 rounded-[8px] border border-[var(--line)] p-4">
               <Bath size={18} />
               <strong className="mt-2 block text-xl">{project.bathrooms}</strong>
             </div>
-            <div className="rounded-[8px] border border-[var(--line)] p-4">
+            <div className="min-w-0 rounded-[8px] border border-[var(--line)] p-4">
               <Ruler size={18} />
-              <strong className="mt-2 block text-xl">{area(project.areaM2)}</strong>
+              <strong className="mt-2 block truncate text-xl">{area(project.areaM2)}</strong>
             </div>
           </div>
-          <div className="mt-6 rounded-[8px] border border-[var(--line)] p-4">
+          <div className="mt-6 min-w-0 rounded-[8px] border border-[var(--line)] p-4">
             <p className="text-sm text-[var(--muted)]">Projeto</p>
-            <strong className="text-2xl">{money(project.price)}</strong>
-            <p className="mt-2 text-sm text-[var(--muted)]">Obra estimada: {money(project.estimatedBuildCost)}</p>
+            <strong className="break-words text-2xl">{money(project.price)}</strong>
+            <p className="mt-2 break-words text-sm text-[var(--muted)]">Obra estimada: {money(project.estimatedBuildCost)}</p>
           </div>
           {selectedTerrain ? (
-            <div className="mt-4 rounded-[8px] border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-                <MapPin size={16} />
+            <div className="mt-4 min-w-0 rounded-[8px] border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] p-4">
+              <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+                <MapPin className="shrink-0" size={16} />
                 Terreno escolhido
               </p>
-              <h2 className="mt-2 text-lg font-semibold">{selectedTerrain.title}</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">
+              <h2 className="mt-2 break-words text-lg font-semibold">{selectedTerrain.title}</h2>
+              <p className="mt-1 break-words text-sm text-[var(--muted)]">
                 {[selectedTerrain.neighborhood, selectedTerrain.city, selectedTerrain.state].filter(Boolean).join(", ")}
               </p>
               <div className="mt-3 grid gap-2 text-sm">
@@ -140,16 +140,16 @@ export default async function ProjectDetailPage({
           </div>
         </aside>
       </div>
-      <div className="mt-10">
-        <div className="mb-5 flex items-center gap-3">
-          <Sparkles className="text-[var(--accent)]" size={22} />
-          <div>
+      <div className="mt-10 min-w-0">
+        <div className="mb-5 flex min-w-0 items-center gap-3">
+          <Sparkles className="shrink-0 text-[var(--accent)]" size={22} />
+          <div className="min-w-0">
             <p className="text-sm uppercase text-[var(--muted)]">Implantacao</p>
-            <h2 className="text-2xl font-semibold">Terrenos disponíveis para este projeto</h2>
+            <h2 className="break-words text-2xl font-semibold">Terrenos disponíveis para este projeto</h2>
           </div>
         </div>
         {project.compatibilities?.length ? (
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid min-w-0 gap-5 md:grid-cols-2">
             {project.compatibilities.map((compatibility) => (
               <div key={compatibility.id}>
                 <TerrainCard terrain={compatibility.terrain} />

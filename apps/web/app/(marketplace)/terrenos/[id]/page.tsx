@@ -43,12 +43,12 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
+      <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-8">
         <MediaGallery items={gallery} title={terrain.title} />
-        <aside className="self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 sm:p-5 lg:p-6">
-          <div className="flex items-center gap-2 text-xs uppercase text-[var(--muted)] sm:text-sm sm:normal-case">
-            <MapPin size={16} />
-            {[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}
+        <aside className="min-w-0 self-start rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 sm:p-5 lg:p-6">
+          <div className="flex min-w-0 items-center gap-2 text-xs uppercase text-[var(--muted)] sm:text-sm sm:normal-case">
+            <MapPin className="shrink-0" size={16} />
+            <span className="min-w-0 truncate">{[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}</span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {developmentType ? (
@@ -58,8 +58,8 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
             ) : null}
             <TerrainCreciBadge metadata={terrain.metadata} />
           </div>
-          <h1 className="mt-2 text-2xl font-semibold sm:mt-3 sm:text-3xl lg:text-4xl">{terrain.title}</h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:mt-4 sm:text-base sm:leading-7">{terrain.description}</p>
+          <h1 className="mt-2 break-words text-2xl font-semibold sm:mt-3 sm:text-3xl lg:text-4xl">{terrain.title}</h1>
+          <p className="mt-3 break-words text-sm leading-6 text-[var(--muted)] sm:mt-4 sm:text-base sm:leading-7">{terrain.description}</p>
           <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
             <div className="rounded-[8px] border border-[var(--line)] p-3 sm:p-4">
               <p className="text-xs uppercase text-[var(--muted)] sm:text-sm sm:normal-case">Valor</p>

@@ -18,10 +18,12 @@ export function ProjectBrowser() {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div>
+      <div className="mb-6 flex min-w-0 flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div className="min-w-0">
           <p className="text-sm uppercase text-[var(--muted)]">Projetos</p>
-          <h1 className="text-3xl font-semibold sm:text-4xl">Escolha o projeto. Nos conectamos terreno, construcao e financiamento.</h1>
+          <h1 className="max-w-4xl break-words text-3xl font-semibold sm:text-4xl">
+            Escolha o projeto. Nos conectamos terreno, construcao e financiamento.
+          </h1>
         </div>
         <label className="relative w-full md:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
@@ -29,7 +31,7 @@ export function ProjectBrowser() {
         </label>
       </div>
       {isLoading ? (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((item) => (
             <div className="h-80 animate-pulse rounded-[8px] bg-black/5 dark:bg-white/10" key={item} />
           ))}
@@ -46,7 +48,7 @@ export function ProjectBrowser() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => <ProjectCard key={project.id} project={project} />)}
         </div>
       )}
