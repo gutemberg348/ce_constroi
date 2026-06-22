@@ -79,49 +79,49 @@ function socialLinks(settings: SiteSettings): SocialLink[] {
       url: settings.socialInstagramUrl,
       icon: InstagramIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-[#d62976] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-pink-500/35 hover:bg-pink-500/10 dark:bg-white/5 dark:hover:bg-pink-500/15"
+        "border-white/15 bg-gradient-to-br from-pink-500 via-rose-500 to-indigo-500 text-white shadow-[0_14px_30px_rgba(214,41,118,0.28)] hover:shadow-[0_18px_36px_rgba(214,41,118,0.38)]"
     },
     {
       label: "Facebook",
       url: settings.socialFacebookUrl,
       icon: FacebookIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-[#1877f2] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-blue-500/35 hover:bg-blue-500/10 dark:bg-white/5 dark:hover:bg-blue-500/15"
+        "border-white/15 bg-[#1877f2] text-white shadow-[0_14px_30px_rgba(24,119,242,0.24)] hover:bg-[#0f67dc] hover:shadow-[0_18px_36px_rgba(24,119,242,0.34)]"
     },
     {
       label: "YouTube",
       url: settings.socialYoutubeUrl,
       icon: YoutubeIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-[#ff0033] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-red-500/35 hover:bg-red-500/10 dark:bg-white/5 dark:hover:bg-red-500/15"
+        "border-white/15 bg-[#ff0033] text-white shadow-[0_14px_30px_rgba(255,0,51,0.24)] hover:bg-[#e6002e] hover:shadow-[0_18px_36px_rgba(255,0,51,0.34)]"
     },
     {
       label: "X",
       url: settings.socialXUrl,
       icon: XSocialIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-slate-950 shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-slate-500/35 hover:bg-slate-500/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+        "border-white/15 bg-slate-950 text-white shadow-[0_14px_30px_rgba(0,0,0,0.28)] hover:bg-black hover:shadow-[0_18px_36px_rgba(0,0,0,0.38)]"
     },
     {
       label: "TikTok",
       url: settings.socialTiktokUrl,
       icon: TiktokIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-slate-950 shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-cyan-500/35 hover:bg-cyan-500/10 dark:bg-white/5 dark:text-white dark:hover:bg-cyan-500/15"
+        "border-white/15 bg-slate-950 text-white shadow-[0_14px_30px_rgba(0,242,234,0.18)] hover:bg-black hover:shadow-[0_18px_36px_rgba(254,44,85,0.26)]"
     },
     {
       label: "LinkedIn",
       url: settings.socialLinkedinUrl,
       icon: LinkedinIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-[#0a66c2] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-sky-600/35 hover:bg-sky-600/10 dark:bg-white/5 dark:hover:bg-sky-600/15"
+        "border-white/15 bg-[#0a66c2] text-white shadow-[0_14px_30px_rgba(10,102,194,0.24)] hover:bg-[#0859aa] hover:shadow-[0_18px_36px_rgba(10,102,194,0.34)]"
     },
     {
       label: "WhatsApp",
       url: settings.socialWhatsappUrl,
       icon: WhatsappIcon,
       className:
-        "border-[var(--line)] bg-[var(--panel)] text-[#1fa855] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:border-emerald-500/35 hover:bg-emerald-500/10 dark:bg-white/5 dark:hover:bg-emerald-500/15"
+        "border-white/15 bg-[#25d366] text-white shadow-[0_14px_30px_rgba(37,211,102,0.24)] hover:bg-[#1ebe5d] hover:shadow-[0_18px_36px_rgba(37,211,102,0.34)]"
     }
   ];
 
