@@ -255,8 +255,9 @@ O melhor caminho para evitar risco e mostrar poucos numeros principais:
 
 - valor do pacote;
 - valor do financiamento estimado;
-- entrada que falta;
+- valor da entrada;
 - parcela estimada;
+- taxa estimada;
 - capacidade de compra;
 - proximo passo com atendimento.
 

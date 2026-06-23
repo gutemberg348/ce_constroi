@@ -810,6 +810,7 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `Imovel: ${propertyTypeLabel(form.propertyType)} de ${money(result.desiredPackageValue)}`,
       `Renda total considerada: ${money(result.totalIncome)}`,
       `Valor do financiamento: ${money(result.financedNeeded)}`,
+      `Valor da entrada: ${money(result.minimumRequiredEntry)}`,
       `Entrada que falta: ${money(result.entryShortfall)}`,
       `Financiamento + entrada informada: ${money(result.maxPropertyValue)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
@@ -956,10 +957,6 @@ function isApprovedResult(result: Result) {
   return Boolean(result.isAgeEligible && result.requestedOption?.isAvailable);
 }
 
-function getEntryNeeded(result: Result) {
-  return result.entryShortfall;
-}
-
 function formatTermMonths(result: Result) {
   if (!result.hasBirthDate) {
     return "Informe nascimento";
@@ -970,6 +967,10 @@ function formatTermMonths(result: Result) {
   }
 
   return `${result.termMonths} meses`;
+}
+
+function formatAnnualRate(rate: number) {
+  return `${rate.toLocaleString("pt-BR", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}% a.a.`;
 }
 
 function getCapacityUsage(result: Result) {
@@ -1660,12 +1661,13 @@ export function SimpleFinancingSimulator() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
                   <ResultMetricCard icon={WalletCards} label="Valor do financiamento" value={money(result.financedNeeded)} />
-                  <ResultMetricCard icon={KeyRound} label="Entrada que falta" value={money(getEntryNeeded(result))} />
+                  <ResultMetricCard icon={KeyRound} label="Valor da entrada" value={money(result.minimumRequiredEntry)} />
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
                 </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <TechnicalMetric label="Sistema" value={result.financingSystem} />
                   <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
+                  <TechnicalMetric label="Taxa efetiva estimada" value={formatAnnualRate(result.effectiveAnnualRate)} />
                 </div>
 
                 <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5">
@@ -1673,10 +1675,14 @@ export function SimpleFinancingSimulator() {
                     <TrendingUp size={18} />
                     Capacidade de compra
                   </div>
-                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                     <div>
-                      <span className="text-[var(--muted)]">Financiamento + entrada informada</span>
-                      <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
+                      <span className="text-[var(--muted)]">Valor do financiamento</span>
+                      <strong className="mt-1 block text-2xl">{money(result.financedNeeded)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[var(--muted)]">Entrada informada</span>
+                      <strong className="mt-1 block text-2xl">{money(result.availableEntry)}</strong>
                     </div>
                     <div>
                       <span className="text-[var(--muted)]">Projeto escolhido</span>
@@ -1741,8 +1747,10 @@ export function SimpleFinancingSimulator() {
                     <div className="grid gap-3 border-t border-[var(--line)] p-4">
                       <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
                       <TechnicalMetric label="Valor do financiamento" value={money(result.financedNeeded)} />
+                      <TechnicalMetric label="Valor da entrada" value={money(result.minimumRequiredEntry)} />
                       <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
                       <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
+                      <TechnicalMetric label="Taxa efetiva estimada" value={formatAnnualRate(result.effectiveAnnualRate)} />
                       <TechnicalMetric label="Entrada informada" value={money(result.availableEntry)} />
                       {result.entryShortfall > 0 ? <TechnicalMetric label="Entrada que falta" value={money(result.entryShortfall)} /> : null}
 
@@ -1918,12 +1926,13 @@ function ResultModal({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
             <ResultMetricCard icon={WalletCards} label="Valor do financiamento" value={money(result.financedNeeded)} />
-            <ResultMetricCard icon={KeyRound} label="Entrada que falta" value={money(getEntryNeeded(result))} />
+            <ResultMetricCard icon={KeyRound} label="Valor da entrada" value={money(result.minimumRequiredEntry)} />
             <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <TechnicalMetric label="Sistema" value={result.financingSystem} />
             <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
+            <TechnicalMetric label="Taxa efetiva estimada" value={formatAnnualRate(result.effectiveAnnualRate)} />
           </div>
 
           <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
@@ -1931,10 +1940,14 @@ function ResultModal({
               <TrendingUp size={18} />
               Capacidade de compra
             </div>
-            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
               <div>
-                <span className="text-[var(--muted)]">Financiamento + entrada informada</span>
-                <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
+                <span className="text-[var(--muted)]">Valor do financiamento</span>
+                <strong className="mt-1 block text-2xl">{money(result.financedNeeded)}</strong>
+              </div>
+              <div>
+                <span className="text-[var(--muted)]">Entrada informada</span>
+                <strong className="mt-1 block text-2xl">{money(result.availableEntry)}</strong>
               </div>
               <div>
                 <span className="text-[var(--muted)]">Projeto escolhido</span>
@@ -1970,8 +1983,10 @@ function ResultModal({
             <p className="text-sm font-semibold uppercase text-[var(--muted)]">Detalhes da analise</p>
             <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
             <TechnicalMetric label="Valor do financiamento" value={money(result.financedNeeded)} />
+            <TechnicalMetric label="Valor da entrada" value={money(result.minimumRequiredEntry)} />
             <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
             <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
+            <TechnicalMetric label="Taxa efetiva estimada" value={formatAnnualRate(result.effectiveAnnualRate)} />
             <TechnicalMetric label="Entrada informada" value={money(result.availableEntry)} />
             {result.entryShortfall > 0 ? <TechnicalMetric label="Entrada que falta" value={money(result.entryShortfall)} /> : null}
           </div>

@@ -284,7 +284,7 @@ financiamento + entrada = R$ 236.200
 entrada que falta = R$ 27.800
 ```
 
-Essa barra nao deve derrubar a capacidade para `entrada / 20%`. Ela deve deixar claro quanto ja esta coberto e quanto falta para completar o projeto escolhido.
+Essa barra nao deve derrubar a capacidade para `entrada / 20%`. Ela deve mostrar o valor do financiamento e a entrada informada separados, deixando claro quanto ja esta coberto e quanto falta para completar o projeto escolhido.
 
 ## Quando fica compativel
 
@@ -312,10 +312,11 @@ A area principal mostra:
 
 - `Valor do Projeto`;
 - `Valor do financiamento`;
-- `Entrada que falta`;
+- `Valor da entrada`;
 - `Parcela Estimada`;
 - `Sistema`;
 - `Prazo maximo`;
+- `Taxa efetiva estimada`;
 - barra de `Capacidade de compra`;
 - resultado final;
 - botao de atendimento.
@@ -326,7 +327,6 @@ Nao deve mostrar na area principal:
 - financiamento por renda;
 - faixa de renda;
 - taxa nominal;
-- taxa efetiva;
 - idade ao final;
 - enquadramento tecnico;
 - mensagens de salvamento no banco.
@@ -337,8 +337,10 @@ O accordion de detalhes fica simples. Ele mostra somente:
 
 - renda considerada;
 - valor do financiamento;
+- valor da entrada;
 - sistema de amortizacao;
 - prazo maximo;
+- taxa efetiva estimada;
 - entrada informada;
 - entrada que falta, quando houver.
 
