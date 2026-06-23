@@ -449,15 +449,8 @@ function getPaymentFeeRate(age: number) {
   return BASE_PAYMENT_FEE_RATE;
 }
 
-function getMaxPropertyValue(maxCreditByIncome: number, availableEntry: number) {
-  if (maxCreditByIncome <= 0 || availableEntry <= 0) {
-    return maxCreditByIncome > 0 ? maxCreditByIncome / MAX_FINANCING_QUOTA : 0;
-  }
-
-  const capacityByIncome = maxCreditByIncome / MAX_FINANCING_QUOTA;
-  const capacityByEntry = availableEntry / MINIMUM_ENTRY_RATE;
-
-  return Math.min(capacityByIncome, capacityByEntry);
+function getCoveredPackageValue(financedAmount: number, availableEntry: number) {
+  return Math.max(financedAmount + availableEntry, 0);
 }
 
 function getTermMonthsByAge(birthDate: string) {
@@ -665,11 +658,11 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   );
   const maxCreditByQuota = desiredPackageValue > 0 ? desiredPackageValue * MAX_FINANCING_QUOTA : maxCreditByIncome;
   const maxCredit = Math.min(maxCreditByIncome, maxCreditByQuota);
-  const maxPropertyValue = getMaxPropertyValue(maxCreditByIncome, availableEntry);
   const minimumRequiredEntry = getMinimumRequiredEntry(desiredPackageValue, maxCreditByIncome);
   const rawEntryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
   const entryShortfall = rawEntryShortfall <= MONEY_TOLERANCE ? 0 : rawEntryShortfall;
   const financedNeeded = getEstimatedFinancedAmount(desiredPackageValue, availableEntry, minimumRequiredEntry);
+  const maxPropertyValue = getCoveredPackageValue(financedNeeded, availableEntry);
   const estimatedInstallment = firstPaymentForPrincipal(financedNeeded, monthlyRate, termMonths, financingSystem, paymentFeeRate);
   const options = buildBaseOptions(
     terrainPrice,
@@ -818,7 +811,7 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `Renda total considerada: ${money(result.totalIncome)}`,
       `Valor do financiamento: ${money(result.financedNeeded)}`,
       `Entrada que falta: ${money(result.entryShortfall)}`,
-      `Capacidade com entrada informada: ate ${money(result.maxPropertyValue)}`,
+      `Financiamento + entrada informada: ${money(result.maxPropertyValue)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
       `Resultado do pacote: ${result.requestedOption?.isAvailable ? "Dentro da base" : "Acima da base"}`,
       `Ajuste indicado: ${getAdjustmentMessage(result)}`
@@ -980,18 +973,18 @@ function formatTermMonths(result: Result) {
 }
 
 function getCapacityUsage(result: Result) {
-  if (result.maxPropertyValue <= 0) {
+  if (result.desiredPackageValue <= 0 || result.maxPropertyValue <= 0) {
     return 0;
   }
 
-  return Math.max(0, Math.min(100, Math.round((result.desiredPackageValue / result.maxPropertyValue) * 100)));
+  return Math.max(0, Math.min(100, Math.round((result.maxPropertyValue / result.desiredPackageValue) * 100)));
 }
 
 function getCapacityMessage(result: Result) {
   const margin = result.maxPropertyValue - result.desiredPackageValue;
 
   if (result.entryShortfall > MONEY_TOLERANCE) {
-    return `Para este projeto, falta aproximadamente ${money(result.entryShortfall)} de entrada para respeitar a cota de 80% financiado e 20% de entrada.`;
+    return `Com o financiamento estimado de ${money(result.financedNeeded)} e a entrada informada de ${money(result.availableEntry)}, voce cobre ${money(result.maxPropertyValue)}. Falta aproximadamente ${money(result.entryShortfall)} de entrada para completar este projeto.`;
   }
 
   if (margin > 5000) {
@@ -1682,7 +1675,7 @@ export function SimpleFinancingSimulator() {
                   </div>
                   <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                     <div>
-                      <span className="text-[var(--muted)]">Sua capacidade com entrada informada</span>
+                      <span className="text-[var(--muted)]">Financiamento + entrada informada</span>
                       <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
                     </div>
                     <div>
@@ -1940,7 +1933,7 @@ function ResultModal({
             </div>
             <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <span className="text-[var(--muted)]">Sua capacidade com entrada informada</span>
+                <span className="text-[var(--muted)]">Financiamento + entrada informada</span>
                 <strong className="mt-1 block text-2xl">{money(result.maxPropertyValue)}</strong>
               </div>
               <div>

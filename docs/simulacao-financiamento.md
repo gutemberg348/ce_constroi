@@ -261,27 +261,30 @@ Essa parcela pode ser menor ou maior que a parcela maxima interna. Se for maior,
 
 ## Capacidade de compra
 
-A barra de capacidade usa dois limites:
-
-1. limite pela renda:
+A barra de capacidade mostra quanto do pacote ja esta coberto pela soma:
 
 ```text
-capacityByIncome = maxCreditByIncome / 0.80
+valor financiado estimado + entrada informada
 ```
 
-2. limite pela entrada informada:
+No codigo, esse valor continua salvo como `maxPropertyValue` para compatibilidade com registros antigos, mas a leitura correta na tela e:
 
 ```text
-capacityByEntry = availableEntry / 0.20
+maxPropertyValue = financedNeeded + availableEntry
 ```
 
-Resultado:
+Exemplo:
 
 ```text
-maxPropertyValue = min(capacityByIncome, capacityByEntry)
+valor do projeto = R$ 264.000
+valor do financiamento = R$ 211.200
+entrada informada = R$ 25.000
+
+financiamento + entrada = R$ 236.200
+entrada que falta = R$ 27.800
 ```
 
-Essa barra mostra se o valor escolhido esta dentro da capacidade estimada com a entrada informada.
+Essa barra nao deve derrubar a capacidade para `entrada / 20%`. Ela deve deixar claro quanto ja esta coberto e quanto falta para completar o projeto escolhido.
 
 ## Quando fica compativel
 
