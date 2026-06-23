@@ -1648,7 +1648,7 @@ export function SimpleFinancingSimulator() {
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
                   <ResultMetricCard icon={WalletCards} label="Financiamento Maximo (80%)" value={money(result.maxCreditByQuota)} />
                 </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid gap-3 lg:grid-cols-3">
                   <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
                   <TechnicalMetric label="Sistema" value={result.financingSystem} />
                   <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
@@ -1931,7 +1931,7 @@ function ResultModal({
             <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
             <ResultMetricCard icon={WalletCards} label="Financiamento Maximo (80%)" value={money(result.maxCreditByQuota)} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 lg:grid-cols-3">
             <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
             <TechnicalMetric label="Sistema" value={result.financingSystem} />
             <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
@@ -2086,9 +2086,9 @@ function ResultMetricCard({ icon: Icon, label, value }: { icon: LucideIcon; labe
 
 function TechnicalMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1 rounded-[8px] border border-[var(--line)] p-3 text-sm sm:grid-cols-[10rem_1fr] sm:items-center">
-      <span className="text-[var(--muted)]">{label}</span>
-      <strong className="sm:text-right">{value}</strong>
+    <div className="min-w-0 rounded-[8px] border border-[var(--line)] p-3 text-sm">
+      <span className="block break-words text-[var(--muted)]">{label}</span>
+      <strong className="mt-2 block break-words text-lg leading-tight">{value}</strong>
     </div>
   );
 }
