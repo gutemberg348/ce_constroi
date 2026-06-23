@@ -11,7 +11,6 @@ import {
   FileCheck2,
   Home,
   KeyRound,
-  Landmark,
   Loader2,
   Lock,
   MessageCircle,
@@ -104,6 +103,8 @@ type Result = {
   monthlyRate: number;
   termMonths: number;
   ageAtEnd: number;
+  hasBirthDate: boolean;
+  isAgeEligible: boolean;
   financingSystem: "PRICE" | "SAC";
   productBand: string;
   requestedOption?: BaseOption;
@@ -551,7 +552,8 @@ function buildBaseOptions(
   maxInstallment: number,
   monthlyRate: number,
   termMonths: number,
-  financingSystem: "PRICE" | "SAC"
+  financingSystem: "PRICE" | "SAC",
+  isAgeEligible: boolean
 ) {
   const rawOptions: Array<Omit<BaseOption, "installment" | "isAvailable">> = [
     {
@@ -594,7 +596,7 @@ function buildBaseOptions(
       return {
         ...option,
         installment: firstPaymentForPrincipal(financedValue, monthlyRate, termMonths, financingSystem),
-        isAvailable: termMonths > 0 && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry
+        isAvailable: isAgeEligible && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry
       };
     });
 }
@@ -615,7 +617,9 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const maxInstallment = Math.max(totalIncome * INCOME_COMMITMENT_RATE - debtPressure, 0);
   const age = getAge(form.birthDate);
   const termMonths = getTermMonthsByAge(form.birthDate);
-  const financingSystem: "PRICE" | "SAC" = "PRICE";
+  const hasBirthDate = Boolean(form.birthDate);
+  const isAgeEligible = hasBirthDate && age >= 18 && termMonths > 0;
+  const financingSystem: "PRICE" | "SAC" = "SAC";
   const usesFgtsForRate = form.useFgts === "yes";
   const rateInfo = getCaixaRateByIncome(totalIncome, form.state, usesFgtsForRate);
   const nominalAnnualRate = rateInfo.nominalAnnualRate;
@@ -645,7 +649,8 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     maxInstallment,
     monthlyRate,
     termMonths,
-    financingSystem
+    financingSystem,
+    isAgeEligible
   );
   const requestedOption =
     form.packageMode === "CUSTOM" && desiredPackageValue > 0
@@ -654,7 +659,7 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
           label: "Valor escolhido",
           amount: desiredPackageValue,
           installment: estimatedInstallment,
-          isAvailable: termMonths > 0 && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry,
+          isAvailable: isAgeEligible && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry,
           description: "Valor informado manualmente pelo cliente."
         }
       : options.find((option) => option.key === form.packageMode);
@@ -748,6 +753,8 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     monthlyRate,
     termMonths,
     ageAtEnd: age + termMonths / 12,
+    hasBirthDate,
+    isAgeEligible,
     financingSystem,
     productBand: rateInfo.productBand,
     requestedOption,
@@ -773,10 +780,10 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `CEP: ${form.zipCode || "-"}`,
       `Imovel: ${propertyTypeLabel(form.propertyType)} de ${money(result.desiredPackageValue)}`,
       `Renda total considerada: ${money(result.totalIncome)}`,
-      `Financiamento maximo estimado: ${money(result.maxCredit)}`,
+      `Financiamento maximo 80%: ${money(result.maxCreditByQuota)}`,
       `Entrada minima estimada: ${money(result.minimumRequiredEntry)}`,
       `Taxa efetiva estimada: ${result.effectiveAnnualRate.toFixed(2)}% a.a.`,
-      `Prazo maximo estimado: ${result.termMonths} meses`,
+      `Prazo maximo estimado: ${formatTermMonths(result)}`,
       `Capacidade com entrada informada: ate ${money(result.maxPropertyValue)}`,
       `Parcela base: ${money(result.maxInstallment)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
@@ -923,11 +930,23 @@ function buildSimulationInput({
 }
 
 function isApprovedResult(result: Result) {
-  return Boolean(result.requestedOption?.isAvailable);
+  return Boolean(result.isAgeEligible && result.requestedOption?.isAvailable);
 }
 
 function getEntryNeeded(result: Result) {
   return result.minimumRequiredEntry;
+}
+
+function formatTermMonths(result: Result) {
+  if (!result.hasBirthDate) {
+    return "Informe nascimento";
+  }
+
+  if (result.termMonths <= 0) {
+    return "Prazo inviavel";
+  }
+
+  return `${result.termMonths} meses`;
 }
 
 function getCapacityUsage(result: Result) {
@@ -959,6 +978,14 @@ function getCapacityMessage(result: Result) {
 function getAdjustmentMessage(result: Result) {
   if (isApprovedResult(result)) {
     return "Seu projeto esta dentro da capacidade estimada. O proximo passo e conferir documentos com atendimento.";
+  }
+
+  if (!result.hasBirthDate) {
+    return "Informe a data de nascimento para calcular o prazo permitido pela idade.";
+  }
+
+  if (!result.isAgeEligible) {
+    return "A idade informada nao permite este prazo de financiamento. O atendimento precisa ajustar prazo, entrada ou composicao.";
   }
 
   if (result.desiredPackageValue <= 0) {
@@ -1619,12 +1646,12 @@ export function SimpleFinancingSimulator() {
                   <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
                   <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
-                  <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxCredit)} />
+                  <ResultMetricCard icon={WalletCards} label="Financiamento Maximo (80%)" value={money(result.maxCreditByQuota)} />
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
                   <TechnicalMetric label="Sistema" value={result.financingSystem} />
-                  <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
+                  <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
                 </div>
 
                 <div className="mt-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-5">
@@ -1710,13 +1737,12 @@ export function SimpleFinancingSimulator() {
                       <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
                       <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
                       <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
-                      <TechnicalMetric label="Financiamento maximo estimado" value={money(result.maxCredit)} />
                       <TechnicalMetric label="Faixa estimada" value={result.productBand} />
                       <TechnicalMetric label="Taxa nominal" value={`${result.nominalAnnualRate.toFixed(2)}% a.a.`} />
                       <TechnicalMetric label="Taxa efetiva" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
                       <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
-                      <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
-                      <TechnicalMetric label="Idade estimada ao final" value={`${result.ageAtEnd.toFixed(1)} anos`} />
+                      <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
+                      <TechnicalMetric label="Idade estimada ao final" value={result.hasBirthDate ? `${result.ageAtEnd.toFixed(1)} anos` : "Informe a data"} />
                       <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
                       <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
                       <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
@@ -1903,12 +1929,12 @@ function ResultModal({
             <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
             <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
             <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
-            <ResultMetricCard icon={Landmark} label="Valor Maximo que Voce Pode Financiar" value={money(result.maxCredit)} />
+            <ResultMetricCard icon={WalletCards} label="Financiamento Maximo (80%)" value={money(result.maxCreditByQuota)} />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
             <TechnicalMetric label="Sistema" value={result.financingSystem} />
-            <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
+            <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
           </div>
 
           <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
@@ -1957,13 +1983,12 @@ function ResultModal({
             <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
             <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
             <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
-            <TechnicalMetric label="Financiamento maximo estimado" value={money(result.maxCredit)} />
             <TechnicalMetric label="Faixa estimada" value={result.productBand} />
             <TechnicalMetric label="Taxa nominal" value={`${result.nominalAnnualRate.toFixed(2)}% a.a.`} />
             <TechnicalMetric label="Taxa efetiva" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
             <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
-            <TechnicalMetric label="Prazo maximo" value={`${result.termMonths} meses`} />
-            <TechnicalMetric label="Idade estimada ao final" value={`${result.ageAtEnd.toFixed(1)} anos`} />
+            <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
+            <TechnicalMetric label="Idade estimada ao final" value={result.hasBirthDate ? `${result.ageAtEnd.toFixed(1)} anos` : "Informe a data"} />
             <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
             <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
             <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
