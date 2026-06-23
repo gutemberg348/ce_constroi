@@ -239,9 +239,11 @@ A tela deve ser uma pre-analise, com linguagem comercial:
 - "FGTS pode depender de regra";
 - "Fale com atendente para fechar com a CAIXA".
 
-A tela nao deve mostrar a parcela como valor oficial.
+A tela pode mostrar `Parcela Estimada`, mas nunca como parcela oficial aprovada.
 
-Se mostrar algum numero, deve ser rotulado como:
+Essa parcela deve ser tratada como referencia comercial calculada pelo valor financiado estimado, prazo pela idade e taxa de referencia. Ela nao deve ser simplesmente a parcela maxima da renda.
+
+Se mostrar algum numero, o contexto precisa deixar claro:
 
 ```txt
 estimativa interna
@@ -249,11 +251,18 @@ referencia comercial
 nao substitui simulacao oficial CAIXA
 ```
 
-O melhor caminho para evitar risco e mostrar faixas e alertas, nao parcela exata.
+O melhor caminho para evitar risco e mostrar poucos numeros principais:
+
+- valor do pacote;
+- valor do financiamento estimado;
+- entrada que falta;
+- parcela estimada;
+- capacidade de compra;
+- proximo passo com atendimento.
 
 ## Resultado sugerido da pre-analise
 
-Em vez de calcular parcela, o sistema pode classificar:
+Mesmo calculando uma parcela estimada, o sistema deve classificar:
 
 ```txt
 VERDE

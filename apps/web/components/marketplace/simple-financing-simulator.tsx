@@ -159,7 +159,7 @@ const MAX_FINANCING_QUOTA = 0.8;
 const MINIMUM_ENTRY_RATE = 1 - MAX_FINANCING_QUOTA;
 const MAX_TERM_MONTHS = 420;
 const MAX_AGE_MONTHS_AT_END = 80 * 12 + 6;
-const PAYMENT_FEE_RATE = 0.05;
+const BASE_PAYMENT_FEE_RATE = 0.05;
 const MONEY_TOLERANCE = 1;
 const SIMULATION_FORM_STORAGE_KEY = "ce-constroi.simulation-form.v1";
 
@@ -420,13 +420,33 @@ function getMinimumRequiredEntry(amount: number, maxCreditByIncome: number) {
   return Math.max(minimumEntryByQuota, minimumEntryByIncome);
 }
 
-function getEstimatedFinancedAmount(amount: number, availableEntry: number) {
+function getEstimatedFinancedAmount(amount: number, availableEntry: number, minimumRequiredEntry: number) {
   if (amount <= 0) {
     return 0;
   }
 
-  const entryForScenario = Math.max(availableEntry, amount * MINIMUM_ENTRY_RATE);
+  const entryForScenario = Math.max(availableEntry, minimumRequiredEntry);
   return Math.max(amount - entryForScenario, 0);
+}
+
+function getPaymentFeeRate(age: number) {
+  if (age >= 55) {
+    return 0.14;
+  }
+
+  if (age >= 50) {
+    return 0.12;
+  }
+
+  if (age >= 45) {
+    return 0.1;
+  }
+
+  if (age >= 35) {
+    return 0.07;
+  }
+
+  return BASE_PAYMENT_FEE_RATE;
 }
 
 function getMaxPropertyValue(maxCreditByIncome: number, availableEntry: number) {
@@ -518,7 +538,7 @@ function pricePayment(principal: number, monthlyRate: number, months: number) {
   return (principal * monthlyRate * factor) / (factor - 1);
 }
 
-function firstPaymentForPrincipal(principal: number, monthlyRate: number, months: number, system: "PRICE" | "SAC") {
+function firstPaymentForPrincipal(principal: number, monthlyRate: number, months: number, system: "PRICE" | "SAC", paymentFeeRate: number) {
   if (principal <= 0 || months <= 0) {
     return 0;
   }
@@ -526,15 +546,15 @@ function firstPaymentForPrincipal(principal: number, monthlyRate: number, months
   const basePayment =
     system === "PRICE" ? pricePayment(principal, monthlyRate, months) : principal / months + principal * monthlyRate;
 
-  return basePayment * (1 + PAYMENT_FEE_RATE);
+  return basePayment * (1 + paymentFeeRate);
 }
 
-function principalByPaymentCapacity(paymentCapacity: number, monthlyRate: number, months: number, system: "PRICE" | "SAC") {
+function principalByPaymentCapacity(paymentCapacity: number, monthlyRate: number, months: number, system: "PRICE" | "SAC", paymentFeeRate: number) {
   if (paymentCapacity <= 0 || months <= 0) {
     return 0;
   }
 
-  const basePaymentCapacity = paymentCapacity / (1 + PAYMENT_FEE_RATE);
+  const basePaymentCapacity = paymentCapacity / (1 + paymentFeeRate);
 
   if (system === "SAC") {
     return basePaymentCapacity / (1 / months + monthlyRate);
@@ -557,6 +577,7 @@ function buildBaseOptions(
   monthlyRate: number,
   termMonths: number,
   financingSystem: "PRICE" | "SAC",
+  paymentFeeRate: number,
   isAgeEligible: boolean
 ) {
   const rawOptions: Array<Omit<BaseOption, "installment" | "isAvailable">> = [
@@ -595,8 +616,8 @@ function buildBaseOptions(
     })
     .map((option) => {
       const minimumRequiredEntry = getMinimumRequiredEntry(option.amount, maxCreditByIncome);
-      const financedValue = getEstimatedFinancedAmount(option.amount, availableEntry);
-      const installment = firstPaymentForPrincipal(financedValue, monthlyRate, termMonths, financingSystem);
+      const financedValue = getEstimatedFinancedAmount(option.amount, availableEntry, minimumRequiredEntry);
+      const installment = firstPaymentForPrincipal(financedValue, monthlyRate, termMonths, financingSystem, paymentFeeRate);
 
       return {
         ...option,
@@ -629,12 +650,13 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const hasBirthDate = Boolean(form.birthDate);
   const isAgeEligible = hasBirthDate && age >= 18 && termMonths > 0;
   const financingSystem: "PRICE" | "SAC" = "PRICE";
+  const paymentFeeRate = getPaymentFeeRate(age);
   const usesFgtsForRate = form.useFgts === "yes";
   const rateInfo = getCaixaRateByIncome(totalIncome, form.state, usesFgtsForRate);
   const nominalAnnualRate = rateInfo.nominalAnnualRate;
   const effectiveAnnualRate = nominalAnnualToEffectiveAnnualRate(nominalAnnualRate);
   const monthlyRate = nominalAnnualToMonthlyRate(nominalAnnualRate);
-  const maxCreditByIncome = principalByPaymentCapacity(maxInstallment, monthlyRate, termMonths, financingSystem);
+  const maxCreditByIncome = principalByPaymentCapacity(maxInstallment, monthlyRate, termMonths, financingSystem, paymentFeeRate);
   const usableFgts = form.useFgts === "yes" ? fgtsValue : 0;
   const availableEntry = Math.max(downPayment + usableFgts, 0);
   const desiredPackageValue = Math.max(
@@ -647,8 +669,8 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const minimumRequiredEntry = getMinimumRequiredEntry(desiredPackageValue, maxCreditByIncome);
   const rawEntryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
   const entryShortfall = rawEntryShortfall <= MONEY_TOLERANCE ? 0 : rawEntryShortfall;
-  const financedNeeded = getEstimatedFinancedAmount(desiredPackageValue, availableEntry);
-  const estimatedInstallment = firstPaymentForPrincipal(financedNeeded, monthlyRate, termMonths, financingSystem);
+  const financedNeeded = getEstimatedFinancedAmount(desiredPackageValue, availableEntry, minimumRequiredEntry);
+  const estimatedInstallment = firstPaymentForPrincipal(financedNeeded, monthlyRate, termMonths, financingSystem, paymentFeeRate);
   const options = buildBaseOptions(
     terrainPrice,
     projectPrice,
@@ -659,6 +681,7 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
     monthlyRate,
     termMonths,
     financingSystem,
+    paymentFeeRate,
     isAgeEligible
   );
   const requestedOption =
@@ -793,7 +816,7 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `CEP: ${form.zipCode || "-"}`,
       `Imovel: ${propertyTypeLabel(form.propertyType)} de ${money(result.desiredPackageValue)}`,
       `Renda total considerada: ${money(result.totalIncome)}`,
-      `Valor financiado estimado: ${money(result.financedNeeded)}`,
+      `Valor do financiamento: ${money(result.financedNeeded)}`,
       `Entrada que falta: ${money(result.entryShortfall)}`,
       `Capacidade com entrada informada: ate ${money(result.maxPropertyValue)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
@@ -1641,8 +1664,9 @@ export function SimpleFinancingSimulator() {
                   </p>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
+                  <ResultMetricCard icon={WalletCards} label="Valor do financiamento" value={money(result.financedNeeded)} />
                   <ResultMetricCard icon={KeyRound} label="Entrada que falta" value={money(getEntryNeeded(result))} />
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
                 </div>
@@ -1723,7 +1747,7 @@ export function SimpleFinancingSimulator() {
                   {showResultDetails ? (
                     <div className="grid gap-3 border-t border-[var(--line)] p-4">
                       <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
-                      <TechnicalMetric label="Valor financiado estimado" value={money(result.financedNeeded)} />
+                      <TechnicalMetric label="Valor do financiamento" value={money(result.financedNeeded)} />
                       <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
                       <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
                       <TechnicalMetric label="Entrada informada" value={money(result.availableEntry)} />
@@ -1898,8 +1922,9 @@ function ResultModal({
         </div>
 
         <div className="grid gap-5 p-5">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
+            <ResultMetricCard icon={WalletCards} label="Valor do financiamento" value={money(result.financedNeeded)} />
             <ResultMetricCard icon={KeyRound} label="Entrada que falta" value={money(getEntryNeeded(result))} />
             <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
           </div>
@@ -1951,7 +1976,7 @@ function ResultModal({
           <div className="grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
             <p className="text-sm font-semibold uppercase text-[var(--muted)]">Detalhes da analise</p>
             <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
-            <TechnicalMetric label="Valor financiado estimado" value={money(result.financedNeeded)} />
+            <TechnicalMetric label="Valor do financiamento" value={money(result.financedNeeded)} />
             <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
             <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
             <TechnicalMetric label="Entrada informada" value={money(result.availableEntry)} />

@@ -1,35 +1,40 @@
 # Simulacao de financiamento habitacional
 
-Este documento explica a logica usada na simulacao da plataforma. A simulacao e uma estimativa inicial para atendimento, nao uma aprovacao bancaria.
+Este documento explica a logica atual usada na tela `/simulacao`.
 
-## Objetivo
+A simulacao e uma triagem comercial. Ela ajuda o cliente e o atendimento a entenderem se o pacote parece caber na renda, mas nao substitui a simulacao oficial da CAIXA nem representa aprovacao bancaria.
 
-A tela responde cinco perguntas para o cliente:
+## O que a tela responde
 
-1. O pacote cabe na renda?
-2. Quanto pode financiar?
-3. Quanto precisa dar de entrada?
-4. Qual parcela estimada aparece?
-5. Qual ajuste falta, quando nao estiver compativel?
+A tela deve responder de forma simples:
 
-## Entradas principais
+1. Qual e o valor do pacote escolhido.
+2. Qual e o valor estimado do financiamento.
+3. Quanto falta de entrada, se faltar.
+4. Qual e a parcela estimada para o valor financiado.
+5. Se o pacote parece compativel para seguir ao atendimento.
+6. Qual ajuste principal precisa ser feito quando nao couber.
 
-O simulador usa estes dados:
+## Entradas usadas
 
-- Renda bruta mensal principal.
-- Outras rendas, quando informadas.
-- Renda do comprador adicional, quando houver composicao de renda.
-- Dividas mensais e financiamento atual.
-- Valor do terreno.
-- Valor do projeto.
-- Custo estimado da obra.
-- Entrada em dinheiro.
-- FGTS, quando marcado para uso.
-- Idade, restricoes e perfil basico do cliente.
+O simulador usa:
+
+- renda bruta mensal principal;
+- outras rendas, quando informadas;
+- renda do comprador adicional, quando houver composicao;
+- dividas mensais e financiamento atual;
+- data de nascimento;
+- cidade e estado;
+- valor do terreno;
+- valor do projeto;
+- custo estimado da obra;
+- entrada em dinheiro;
+- FGTS, quando marcado para uso;
+- restricoes e perfil basico.
 
 ## Valor do pacote
 
-O valor analisado depende da escolha do cliente:
+O valor analisado depende da escolha:
 
 ```text
 So terreno = valor do terreno
@@ -38,32 +43,23 @@ Terreno + projeto + obra = valor do terreno + valor do projeto + custo da obra
 Valor manual = valor informado pelo cliente
 ```
 
-No codigo, esse valor e chamado de `desiredPackageValue`.
+No codigo, esse valor e `desiredPackageValue`.
 
 ## Renda considerada
 
-A renda considerada soma:
-
 ```text
-renda considerada =
+totalIncome =
   renda bruta mensal
   + renda informal, se marcada
   + renda do comprador adicional, se marcada
 ```
 
-No codigo:
+## Limite interno de parcela
+
+O sistema calcula uma margem interna para saber se o pacote cabe. Essa margem nao aparece como card principal para o cliente.
 
 ```text
-totalIncome = monthlyIncome + informalIncome + composedIncome
-```
-
-## Parcela maxima
-
-A referencia usada e comprometimento maximo de 30% da renda bruta familiar.
-
-```text
-parcela maxima bruta = renda considerada x 30%
-parcela maxima final = parcela maxima bruta - dividas mensais
+parcela maxima interna = renda considerada x 30% - dividas mensais
 ```
 
 No codigo:
@@ -72,34 +68,102 @@ No codigo:
 maxInstallment = max(totalIncome x 0.30 - debtPressure, 0)
 ```
 
-Se o cliente informou dividas ou financiamento atual, isso reduz a margem disponivel para a parcela.
+Essa parcela maxima e apenas limite de enquadramento. A parcela exibida ao cliente nao deve ser simplesmente esse teto.
 
-## Fator de financiamento
+## Prazo por idade
 
-Para estimar o credito pela renda, a simulacao usa o fator `0,0088`.
+O prazo base e limitado a 420 meses.
+
+Tambem existe limite pela idade:
 
 ```text
-financiamento por renda = parcela maxima / 0,0088
+idade ao final <= 80 anos e 6 meses
 ```
 
 No codigo:
 
 ```text
-maxCreditByIncome = maxInstallment / 0.0088
+MAX_TERM_MONTHS = 420
+MAX_AGE_MONTHS_AT_END = 80 * 12 + 6
+termMonths = min(420, meses restantes ate 80 anos e 6 meses)
 ```
 
-Exemplo:
+Para o resultado ser compativel:
+
+- a data de nascimento precisa estar informada;
+- o cliente precisa ter pelo menos 18 anos;
+- o prazo calculado precisa ser maior que zero.
+
+## Taxa estimada
+
+O sistema escolhe uma taxa nominal anual estimada por faixa de renda e regiao.
+
+As faixas atuais do codigo seguem esta referencia operacional:
 
 ```text
-renda bruta = R$ 5.000
-parcela maxima = R$ 1.500
-financiamento por renda = 1.500 / 0,0088
-financiamento por renda = aproximadamente R$ 170.454
+ate R$ 3.200       -> MCMV Faixa 1
+R$ 3.200,01-5.000 -> MCMV Faixa 2
+R$ 5.000,01-9.600 -> MCMV Faixa 3
+R$ 9.600,01-13.000 -> MCMV Faixa 4 / Classe Media
+acima de R$ 13.000 -> SBPE/SFH ou Pro-Cotista estimado
 ```
 
-## Cota maxima de financiamento
+Observacoes:
 
-A regra configurada considera que o banco financia ate 80% do pacote.
+- estados do Norte e Nordeste podem ter taxa menor em algumas faixas;
+- uso de FGTS pode reduzir taxa em alguns cenarios;
+- a taxa final depende da instituicao financeira, perfil, relacionamento, avaliacao e modalidade.
+
+## Sistema de amortizacao usado
+
+A simulacao atual usa `PRICE` como referencia de parcela estimada.
+
+```text
+financingSystem = PRICE
+```
+
+Isso e uma estimativa comercial. A CAIXA pode apresentar sistemas e condicoes diferentes na simulacao oficial.
+
+## Conversao de taxa
+
+A taxa nominal anual e convertida para taxa mensal simples:
+
+```text
+monthlyRate = nominalAnnualRate / 100 / 12
+```
+
+A taxa efetiva anual e calculada apenas para registro interno:
+
+```text
+effectiveAnnualRate = ((1 + monthlyRate) ^ 12 - 1) x 100
+```
+
+## Capacidade de financiamento pela renda
+
+A capacidade pela renda e calculada pela formula da tabela PRICE, usando a parcela maxima interna, taxa mensal e prazo.
+
+```text
+maxCreditByIncome =
+  valor presente da parcela maxima interna no prazo calculado
+```
+
+No codigo:
+
+```text
+maxCreditByIncome = principalByPaymentCapacity(
+  maxInstallment,
+  monthlyRate,
+  termMonths,
+  "PRICE",
+  paymentFeeRate
+)
+```
+
+Esse valor nao e mostrado como card principal. Ele serve para saber se falta entrada ou se a renda nao comporta o pacote.
+
+## Cota de financiamento
+
+A regra operacional da plataforma considera cota maxima de 80%.
 
 ```text
 financiamento por cota = valor do pacote x 80%
@@ -113,175 +177,203 @@ maxCreditByQuota = desiredPackageValue x 0.80
 minimumEntryByQuota = desiredPackageValue x 0.20
 ```
 
-## Financiamento maximo estimado
-
-O valor maximo financiavel e o menor valor entre:
-
-- financiamento permitido pela renda;
-- financiamento permitido pela cota de 80%.
-
-```text
-financiamento maximo = menor(financiamento por renda, financiamento por cota)
-```
-
-No codigo:
-
-```text
-maxCredit = min(maxCreditByIncome, maxCreditByQuota)
-```
-
 ## Entrada necessaria
 
 A entrada necessaria e o maior valor entre:
 
 - 20% do pacote;
-- a diferenca entre o pacote e o financiamento permitido pela renda.
+- diferenca entre o pacote e o financiamento permitido pela renda.
 
 ```text
-entrada por cota = valor do pacote x 20%
-entrada por renda = valor do pacote - financiamento por renda
-entrada necessaria = maior(entrada por cota, entrada por renda)
-```
-
-No codigo:
-
-```text
+minimumEntryByIncome = max(valor do pacote - maxCreditByIncome, 0)
 minimumRequiredEntry = max(minimumEntryByQuota, minimumEntryByIncome)
 ```
 
-Isso permite que a tela explique exatamente o ajuste:
+## Entrada informada
+
+A entrada informada soma dinheiro e FGTS quando o cliente marcou uso do FGTS.
 
 ```text
-So precisa ajustar a entrada: falta aproximadamente R$ X para chegar na entrada necessaria de R$ Y.
+availableEntry = entrada em dinheiro + FGTS considerado
 ```
 
-## Entrada disponivel
+## Entrada que falta
 
-A entrada disponivel soma dinheiro e FGTS quando o cliente marcou uso de FGTS.
-
-```text
-entrada disponivel = entrada em dinheiro + FGTS considerado
-```
-
-No codigo:
-
-```text
-availableEntry = downPayment + usableFgts
-```
-
-## Falta de entrada
-
-Se a entrada disponivel for menor que a entrada necessaria:
-
-```text
-entrada que falta = entrada necessaria - entrada disponivel
-```
-
-No codigo:
+O card principal mostra somente o que falta, nao a entrada tecnica total.
 
 ```text
 entryShortfall = max(minimumRequiredEntry - availableEntry, 0)
 ```
 
-Existe uma tolerancia pequena de `R$ 1` para evitar reprovar por arredondamento.
-
-## Capacidade com entrada informada
-
-A capacidade total com a entrada informada considera dois limites:
-
-1. Limite pela renda:
-
-```text
-capacidade por renda = financiamento por renda + entrada disponivel
-```
-
-2. Limite pela entrada minima de 20%:
-
-```text
-capacidade por entrada = entrada disponivel / 20%
-```
-
-O limite final e o menor dos dois.
-
-```text
-capacidade com entrada informada =
-  menor(capacidade por renda, capacidade por entrada)
-```
-
-No codigo:
-
-```text
-maxPropertyValue = min(maxCreditByIncome + availableEntry, availableEntry / 0.20)
-```
+Se nao falta entrada, o card mostra `R$ 0`.
 
 ## Valor financiado usado para parcela
 
-Para estimar a parcela, o sistema considera a entrada suficiente para o enquadramento.
+A parcela estimada deve ser calculada pelo valor financiado do cenario, e nao pela parcela maxima do cliente.
+
+O valor financiado do cenario usa a maior entrada entre:
+
+- entrada informada pelo cliente;
+- entrada minima necessaria calculada pelo sistema.
 
 ```text
-entrada usada no cenario = maior(entrada disponivel, entrada necessaria)
-valor financiado = valor do pacote - entrada usada no cenario
+entryForScenario = max(availableEntry, minimumRequiredEntry)
+financedNeeded = desiredPackageValue - entryForScenario
 ```
 
-No codigo:
+Na tela, esse valor aparece como `Valor do financiamento`.
 
-```text
-financedNeeded = desiredPackageValue - max(availableEntry, minimumRequiredEntry)
-```
+Importante: se a renda exigir uma entrada maior que 20%, essa diferenca aparece como `entrada que falta`. A parcela estimada continua sendo calculada pelo valor financiado do cenario, sem forcar a parcela para bater no teto da renda.
 
 ## Parcela estimada
 
-A parcela estimada usa o mesmo fator `0,0088`.
+A parcela estimada usa tabela PRICE.
 
 ```text
-parcela estimada = valor financiado x 0,0088
+factor = (1 + monthlyRate) ^ termMonths
+basePayment = financedNeeded * monthlyRate * factor / (factor - 1)
+estimatedInstallment = basePayment x (1 + paymentFeeRate)
 ```
 
-No codigo:
+O acrescimo `paymentFeeRate` e uma folga operacional para seguros/taxas estimadas. Ele varia por idade para aproximar melhor o comportamento de simuladores bancarios, porque seguros habitacionais tendem a pesar mais quando a idade e maior.
+
+Referencia atual usada no codigo:
 
 ```text
-estimatedInstallment = financedNeeded x 0.0088
+ate 34 anos = 5%
+35 a 44 anos = 7%
+45 a 49 anos = 10%
+50 a 54 anos = 12%
+55 anos ou mais = 14%
 ```
 
-## Quando o resultado fica compativel
+Exemplo conceitual:
+
+```text
+valor financiado = R$ 211.000
+prazo = 289 meses
+taxa nominal = 10% a.a.
+
+parcela estimada = calculada sobre R$ 211.000 no prazo de 289 meses
+```
+
+Essa parcela pode ser menor ou maior que a parcela maxima interna. Se for maior, o pacote nao fica compativel e o sistema mostra ajuste de entrada/renda.
+
+## Capacidade de compra
+
+A barra de capacidade usa dois limites:
+
+1. limite pela renda:
+
+```text
+capacityByIncome = maxCreditByIncome / 0.80
+```
+
+2. limite pela entrada informada:
+
+```text
+capacityByEntry = availableEntry / 0.20
+```
+
+Resultado:
+
+```text
+maxPropertyValue = min(capacityByIncome, capacityByEntry)
+```
+
+Essa barra mostra se o valor escolhido esta dentro da capacidade estimada com a entrada informada.
+
+## Quando fica compativel
 
 O pacote fica compativel quando:
 
-- existe parcela maxima disponivel;
+- a idade permite prazo;
+- existe margem interna de parcela;
 - a entrada informada cobre a entrada necessaria;
-- a opcao escolhida pelo cliente esta marcada como disponivel.
+- a parcela estimada fica menor ou igual a parcela maxima interna;
+- a opcao escolhida existe e foi calculada.
 
 No codigo:
 
 ```text
-isApprovedResult = requestedOption.isAvailable
+isAvailable =
+  isAgeEligible
+  && maxInstallment > 0
+  && availableEntry >= minimumRequiredEntry
+  && estimatedInstallment <= maxInstallment
 ```
 
-Importante: a palavra exibida para o cliente e `Compativel`, nao `Aprovado`, porque aprovacao real depende da analise da instituicao financeira.
+## O que aparece para o cliente
+
+A area principal mostra:
+
+- `Valor do Projeto`;
+- `Valor do financiamento`;
+- `Entrada que falta`;
+- `Parcela Estimada`;
+- `Sistema`;
+- `Prazo maximo`;
+- barra de `Capacidade de compra`;
+- resultado final;
+- botao de atendimento.
+
+Nao deve mostrar na area principal:
+
+- parcela maxima;
+- financiamento por renda;
+- faixa de renda;
+- taxa nominal;
+- taxa efetiva;
+- idade ao final;
+- enquadramento tecnico;
+- mensagens de salvamento no banco.
+
+## Detalhes da analise
+
+O accordion de detalhes fica simples. Ele mostra somente:
+
+- renda considerada;
+- valor do financiamento;
+- sistema de amortizacao;
+- prazo maximo;
+- entrada informada;
+- entrada que falta, quando houver.
 
 ## Mensagens de ajuste
 
-Quando nao fica compativel, o sistema prioriza uma explicacao simples:
+Prioridade das mensagens:
 
-1. Se falta valor de entrada:
+1. Se falta nascimento:
 
 ```text
-So precisa ajustar a entrada: falta aproximadamente R$ X para chegar na entrada necessaria de R$ Y.
+Informe a data de nascimento para calcular o prazo permitido pela idade.
 ```
 
-2. Se a renda nao foi informada:
+2. Se a idade nao permite prazo:
+
+```text
+A idade informada nao permite este prazo de financiamento. O atendimento precisa ajustar prazo, entrada ou composicao.
+```
+
+3. Se falta renda:
 
 ```text
 Informe a renda bruta mensal para calcular a capacidade de financiamento.
 ```
 
-3. Se as dividas consumiram a parcela:
+4. Se as dividas consomem a margem:
 
 ```text
 As dividas informadas consumiram a margem de parcela. Ajuste as dividas ou componha renda para continuar.
 ```
 
-4. Se o pacote ficou acima da capacidade:
+5. Se falta entrada:
+
+```text
+So precisa ajustar a entrada: falta aproximadamente R$ X para chegar na entrada necessaria de R$ Y.
+```
+
+6. Se o pacote esta acima da capacidade:
 
 ```text
 O pacote ficou aproximadamente R$ X acima da capacidade atual. Ajuste o valor do pacote, aumente a entrada ou componha renda.
@@ -289,41 +381,44 @@ O pacote ficou aproximadamente R$ X acima da capacidade atual. Ajuste o valor do
 
 ## Salvamento no banco
 
-Ao clicar em `Ver resultado da simulacao`, o front:
+Ao calcular a simulacao, o front:
 
-1. calcula o resultado para mostrar na tela;
-2. abre o modal com o resultado completo;
-3. envia os dados para `POST /api/v1/simulations`, incluindo `frontendInput`, `frontendResult` e `customerFilled` no `metadata`;
+1. calcula o resultado;
+2. mostra o resultado ao cliente;
+3. envia os dados para `POST /api/v1/simulations`;
 4. a API salva a simulacao na tabela `simulations`;
-5. o admin consegue ver e avancar o status do atendimento.
+5. o admin acompanha a simulacao como lead.
 
-No admin, a listagem prioriza os valores de `metadata.frontendResult`, porque esses sao os valores que o cliente viu e preencheu na tela:
+O cliente nao deve ver mensagens tecnicas como:
 
-- `desiredPackageValue`: valor do pacote simulado.
-- `availableEntry`: entrada informada pelo cliente, somando dinheiro e FGTS considerado.
-- `minimumRequiredEntry`: entrada necessaria calculada.
-- `estimatedInstallment`: parcela estimada exibida ao cliente.
-- `adjustmentMessage`: mensagem simples dizendo o que precisa ajustar.
+- `salvando simulacao no banco`;
+- `simulacao salva no admin`;
+- ID da simulacao.
 
-Os campos tecnicos da tabela, como `totalAmount` e `downPayment`, ficam como fallback para registros antigos.
+No admin, a listagem prioriza os valores salvos em `metadata.frontendResult`, pois sao os valores vistos pelo cliente:
 
-O admin usa os status:
+- `desiredPackageValue`;
+- `availableEntry`;
+- `entryShortfall`;
+- `financedNeeded`;
+- `estimatedInstallment`;
+- `adjustmentMessage`.
+
+## Status no admin
 
 ```text
-DRAFT = Novo
+DRAFT = Sem atendimento / novo lead
 SENT = Em atendimento
-CONVERTED = Finalizado
+CONVERTED = Convertido
 EXPIRED = Expirado
 ```
 
-O botao `Avancar` no admin muda:
-
-```text
-Novo -> Em atendimento -> Finalizado
-```
+Quando uma simulacao vira `CONVERTED`, ela pode gerar um pedido comercial de lead convertido.
 
 ## Observacao importante
 
-Esta simulacao e uma estimativa operacional. Ela nao substitui a analise oficial da Caixa ou de qualquer instituicao financeira.
+Esta simulacao e uma estimativa operacional.
+
+Ela nao substitui a analise oficial da CAIXA ou de qualquer instituicao financeira.
 
 A contratacao depende de documentacao, comprovacao de renda, avaliacao do imovel, politica de credito vigente, regras de FGTS, seguros, taxa final, idade, modalidade e demais criterios aplicaveis.
