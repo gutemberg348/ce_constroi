@@ -420,8 +420,12 @@ function getMinimumRequiredEntry(amount: number, maxCreditByIncome: number) {
   return Math.max(minimumEntryByQuota, minimumEntryByIncome);
 }
 
-function getFinancedAmount(amount: number, availableEntry: number, maxCreditByIncome: number) {
-  const entryForScenario = Math.max(availableEntry, getMinimumRequiredEntry(amount, maxCreditByIncome));
+function getEstimatedFinancedAmount(amount: number, availableEntry: number) {
+  if (amount <= 0) {
+    return 0;
+  }
+
+  const entryForScenario = Math.max(availableEntry, amount * MINIMUM_ENTRY_RATE);
   return Math.max(amount - entryForScenario, 0);
 }
 
@@ -487,10 +491,10 @@ function getCaixaRateByIncome(income: number, state: string, usesFgts: boolean) 
   }
 
   if (income <= 13000) {
-    return { nominalAnnualRate: 10.5, productBand: "MCMV Classe Media" };
+    return { nominalAnnualRate: 10, productBand: "MCMV Faixa 4 - Classe Media" };
   }
 
-  return { nominalAnnualRate: 10.99, productBand: "SBPE/SFH estimado" };
+  return { nominalAnnualRate: usesFgts ? 9.99 : 11.19, productBand: usesFgts ? "Pro-Cotista/SFH estimado" : "SBPE/SFH estimado" };
 }
 
 function nominalAnnualToMonthlyRate(nominalAnnualRate: number) {
@@ -591,12 +595,17 @@ function buildBaseOptions(
     })
     .map((option) => {
       const minimumRequiredEntry = getMinimumRequiredEntry(option.amount, maxCreditByIncome);
-      const financedValue = getFinancedAmount(option.amount, availableEntry, maxCreditByIncome);
+      const financedValue = getEstimatedFinancedAmount(option.amount, availableEntry);
+      const installment = firstPaymentForPrincipal(financedValue, monthlyRate, termMonths, financingSystem);
 
       return {
         ...option,
-        installment: firstPaymentForPrincipal(financedValue, monthlyRate, termMonths, financingSystem),
-        isAvailable: isAgeEligible && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry
+        installment,
+        isAvailable:
+          isAgeEligible &&
+          maxInstallment > 0 &&
+          availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry &&
+          installment <= maxInstallment + MONEY_TOLERANCE
       };
     });
 }
@@ -619,7 +628,7 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const termMonths = getTermMonthsByAge(form.birthDate);
   const hasBirthDate = Boolean(form.birthDate);
   const isAgeEligible = hasBirthDate && age >= 18 && termMonths > 0;
-  const financingSystem: "PRICE" | "SAC" = "SAC";
+  const financingSystem: "PRICE" | "SAC" = "PRICE";
   const usesFgtsForRate = form.useFgts === "yes";
   const rateInfo = getCaixaRateByIncome(totalIncome, form.state, usesFgtsForRate);
   const nominalAnnualRate = rateInfo.nominalAnnualRate;
@@ -638,7 +647,7 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
   const minimumRequiredEntry = getMinimumRequiredEntry(desiredPackageValue, maxCreditByIncome);
   const rawEntryShortfall = Math.max(minimumRequiredEntry - availableEntry, 0);
   const entryShortfall = rawEntryShortfall <= MONEY_TOLERANCE ? 0 : rawEntryShortfall;
-  const financedNeeded = getFinancedAmount(desiredPackageValue, availableEntry, maxCreditByIncome);
+  const financedNeeded = getEstimatedFinancedAmount(desiredPackageValue, availableEntry);
   const estimatedInstallment = firstPaymentForPrincipal(financedNeeded, monthlyRate, termMonths, financingSystem);
   const options = buildBaseOptions(
     terrainPrice,
@@ -659,7 +668,11 @@ function calculateResult(form: QuickForm, terrainPrice: number, projectPrice: nu
           label: "Valor escolhido",
           amount: desiredPackageValue,
           installment: estimatedInstallment,
-          isAvailable: isAgeEligible && maxInstallment > 0 && availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry,
+          isAvailable:
+            isAgeEligible &&
+            maxInstallment > 0 &&
+            availableEntry + MONEY_TOLERANCE >= minimumRequiredEntry &&
+            estimatedInstallment <= maxInstallment + MONEY_TOLERANCE,
           description: "Valor informado manualmente pelo cliente."
         }
       : options.find((option) => option.key === form.packageMode);
@@ -780,18 +793,12 @@ function buildWhatsappMessage(form: QuickForm, result: Result) {
       `CEP: ${form.zipCode || "-"}`,
       `Imovel: ${propertyTypeLabel(form.propertyType)} de ${money(result.desiredPackageValue)}`,
       `Renda total considerada: ${money(result.totalIncome)}`,
-      `Financiamento maximo 80%: ${money(result.maxCreditByQuota)}`,
-      `Entrada minima estimada: ${money(result.minimumRequiredEntry)}`,
-      `Taxa efetiva estimada: ${result.effectiveAnnualRate.toFixed(2)}% a.a.`,
-      `Prazo maximo estimado: ${formatTermMonths(result)}`,
+      `Valor financiado estimado: ${money(result.financedNeeded)}`,
+      `Entrada que falta: ${money(result.entryShortfall)}`,
       `Capacidade com entrada informada: ate ${money(result.maxPropertyValue)}`,
-      `Parcela base: ${money(result.maxInstallment)}`,
       `Entrada/FGTS informado: ${money(result.availableEntry)}`,
-      `Pacote escolhido: ${result.requestedOption ? `${result.requestedOption.label} - ${money(result.requestedOption.amount)}` : "Valor manual"}`,
       `Resultado do pacote: ${result.requestedOption?.isAvailable ? "Dentro da base" : "Acima da base"}`,
-      `Opcao indicada agora: ${result.selectedOption ? `${result.selectedOption.label} - ${money(result.selectedOption.amount)}` : "Buscar opcao abaixo da base"}`,
-      `Ajuste indicado: ${getAdjustmentMessage(result)}`,
-      `Resumo tecnico: ${result.fitMessage}`
+      `Ajuste indicado: ${getAdjustmentMessage(result)}`
     ].join("\n")
   );
 }
@@ -934,7 +941,7 @@ function isApprovedResult(result: Result) {
 }
 
 function getEntryNeeded(result: Result) {
-  return result.minimumRequiredEntry;
+  return result.entryShortfall;
 }
 
 function formatTermMonths(result: Result) {
@@ -1240,13 +1247,9 @@ export function SimpleFinancingSimulator() {
 
         const { metadata: _metadata, ...inputWithoutMetadata } = input;
         saved = await createSimulation(inputWithoutMetadata);
-        setRequestMessage(
-          `Simulacao salva sem detalhes extras porque a API publicada ainda nao aceita metadata. Atualize a API para o admin mostrar todos os dados corretamente.`
-        );
       }
 
       setSavedSimulationId(saved.id);
-      setRequestMessage((current) => current ?? `Simulacao ${saved.id} salva no banco e disponivel no admin.`);
     } catch (error) {
       const message = getApiErrorMessage(error, "Nao foi possivel salvar a simulacao no banco.");
       setSaveError(message);
@@ -1313,7 +1316,7 @@ export function SimpleFinancingSimulator() {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-8 grid gap-5 lg:grid-cols-[1fr_0.72fr] lg:items-end">
+      <div className="mb-8">
         <div>
           <p className="text-sm uppercase text-[var(--muted)]">Simulacao rapida</p>
           <h1 className="mt-3 max-w-4xl text-4xl font-semibold">Veja se o projeto cabe na sua renda.</h1>
@@ -1326,10 +1329,6 @@ export function SimpleFinancingSimulator() {
               terrainTitle={packageTitles.terrainTitle}
             />
           ) : null}
-        </div>
-        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-4 text-sm leading-6 text-[var(--muted)]">
-          A simulacao considera ate 30% da renda para parcela, cota maxima de 80% financiado, taxa por faixa de renda e prazo
-          limitado pela idade.
         </div>
       </div>
 
@@ -1642,14 +1641,12 @@ export function SimpleFinancingSimulator() {
                   </p>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
-                  <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
+                  <ResultMetricCard icon={KeyRound} label="Entrada que falta" value={money(getEntryNeeded(result))} />
                   <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
-                  <ResultMetricCard icon={WalletCards} label="Financiamento Maximo (80%)" value={money(result.maxCreditByQuota)} />
                 </div>
-                <div className="mt-3 grid gap-3 lg:grid-cols-3">
-                  <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <TechnicalMetric label="Sistema" value={result.financingSystem} />
                   <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
                 </div>
@@ -1709,14 +1706,6 @@ export function SimpleFinancingSimulator() {
                   Ver resultado completo
                 </Button>
 
-                {isSavingSimulation ? (
-                  <p className="mt-3 text-xs leading-5 text-[var(--muted)]">Salvando simulacao no banco...</p>
-                ) : null}
-                {savedSimulationId ? (
-                  <p className="mt-3 text-xs leading-5 text-emerald-700 dark:text-emerald-300">
-                    Simulacao salva no admin: {savedSimulationId}
-                  </p>
-                ) : null}
                 {saveError ? <p className="mt-3 text-xs leading-5 text-red-600">{saveError}</p> : null}
                 {requestMessage ? <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{requestMessage}</p> : null}
 
@@ -1734,21 +1723,11 @@ export function SimpleFinancingSimulator() {
                   {showResultDetails ? (
                     <div className="grid gap-3 border-t border-[var(--line)] p-4">
                       <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
-                      <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
-                      <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
-                      <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
-                      <TechnicalMetric label="Faixa estimada" value={result.productBand} />
-                      <TechnicalMetric label="Taxa nominal" value={`${result.nominalAnnualRate.toFixed(2)}% a.a.`} />
-                      <TechnicalMetric label="Taxa efetiva" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+                      <TechnicalMetric label="Valor financiado estimado" value={money(result.financedNeeded)} />
                       <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
                       <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
-                      <TechnicalMetric label="Idade estimada ao final" value={result.hasBirthDate ? `${result.ageAtEnd.toFixed(1)} anos` : "Informe a data"} />
-                      <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
-                      <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
-                      <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
+                      <TechnicalMetric label="Entrada informada" value={money(result.availableEntry)} />
                       {result.entryShortfall > 0 ? <TechnicalMetric label="Entrada que falta" value={money(result.entryShortfall)} /> : null}
-                      <TechnicalMetric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
-                      <TechnicalMetric label="Enquadramento" value={result.status} />
 
                       {result.options.length > 0 ? (
                         <div className="mt-2 grid gap-2">
@@ -1814,7 +1793,6 @@ export function SimpleFinancingSimulator() {
       </form>
       {result ? (
         <ResultModal
-          isSavingSimulation={isSavingSimulation}
           message={message}
           onClose={() => setIsResultModalOpen(false)}
           onRequest={registerRequest}
@@ -1822,7 +1800,6 @@ export function SimpleFinancingSimulator() {
           requestMessage={requestMessage}
           result={result}
           saveError={saveError}
-          savedSimulationId={savedSimulationId}
         />
       ) : null}
     </section>
@@ -1864,17 +1841,14 @@ function PackageSummary({
 }
 
 function ResultModal({
-  isSavingSimulation,
   message,
   onClose,
   onRequest,
   open,
   requestMessage,
   result,
-  saveError,
-  savedSimulationId
+  saveError
 }: {
-  isSavingSimulation: boolean;
   message: string;
   onClose: () => void;
   onRequest: () => void;
@@ -1882,7 +1856,6 @@ function ResultModal({
   requestMessage: string | null;
   result: Result;
   saveError: string | null;
-  savedSimulationId: string | null;
 }) {
   if (!open) {
     return null;
@@ -1925,14 +1898,12 @@ function ResultModal({
         </div>
 
         <div className="grid gap-5 p-5">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <ResultMetricCard icon={Home} label="Valor do Projeto" value={money(result.desiredPackageValue)} />
-            <ResultMetricCard icon={KeyRound} label="Entrada Necessaria" value={money(getEntryNeeded(result))} />
+            <ResultMetricCard icon={KeyRound} label="Entrada que falta" value={money(getEntryNeeded(result))} />
             <ResultMetricCard icon={CalendarDays} label="Parcela Estimada" value={`${money(result.estimatedInstallment)}/mes`} />
-            <ResultMetricCard icon={WalletCards} label="Financiamento Maximo (80%)" value={money(result.maxCreditByQuota)} />
           </div>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <TechnicalMetric label="Taxa efetiva estimada" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+          <div className="grid gap-3 sm:grid-cols-2">
             <TechnicalMetric label="Sistema" value={result.financingSystem} />
             <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
           </div>
@@ -1980,21 +1951,11 @@ function ResultModal({
           <div className="grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5">
             <p className="text-sm font-semibold uppercase text-[var(--muted)]">Detalhes da analise</p>
             <TechnicalMetric label="Renda considerada" value={money(result.totalIncome)} />
-            <TechnicalMetric label="Parcela maxima" value={money(result.maxInstallment)} />
-            <TechnicalMetric label="Financiamento por renda" value={money(result.maxCreditByIncome)} />
-            <TechnicalMetric label="Financiamento por cota 80%" value={money(result.maxCreditByQuota)} />
-            <TechnicalMetric label="Faixa estimada" value={result.productBand} />
-            <TechnicalMetric label="Taxa nominal" value={`${result.nominalAnnualRate.toFixed(2)}% a.a.`} />
-            <TechnicalMetric label="Taxa efetiva" value={`${result.effectiveAnnualRate.toFixed(2)}% a.a.`} />
+            <TechnicalMetric label="Valor financiado estimado" value={money(result.financedNeeded)} />
             <TechnicalMetric label="Sistema de amortizacao" value={result.financingSystem} />
             <TechnicalMetric label="Prazo maximo" value={formatTermMonths(result)} />
-            <TechnicalMetric label="Idade estimada ao final" value={result.hasBirthDate ? `${result.ageAtEnd.toFixed(1)} anos` : "Informe a data"} />
-            <TechnicalMetric label="Entrada minima estimada" value={money(result.minimumRequiredEntry)} />
-            <TechnicalMetric label="Entrada utilizada" value={money(result.availableEntry)} />
-            <TechnicalMetric label="FGTS considerado" value={result.fgtsMessage} />
+            <TechnicalMetric label="Entrada informada" value={money(result.availableEntry)} />
             {result.entryShortfall > 0 ? <TechnicalMetric label="Entrada que falta" value={money(result.entryShortfall)} /> : null}
-            <TechnicalMetric label="Pacote escolhido" value={result.requestedOption?.label ?? "Valor manual"} />
-            <TechnicalMetric label="Enquadramento" value={result.status} />
           </div>
 
           {result.options.length > 0 ? (
@@ -2019,8 +1980,6 @@ function ResultModal({
 
           <div className="grid gap-3 border-t border-[var(--line)] pt-5 sm:grid-cols-[1fr_auto] sm:items-center">
             <div className="text-sm leading-6 text-[var(--muted)]">
-              {isSavingSimulation ? <p>Salvando simulacao no banco...</p> : null}
-              {savedSimulationId ? <p className="text-emerald-700 dark:text-emerald-300">Simulacao salva no admin: {savedSimulationId}</p> : null}
               {saveError ? <p className="text-red-600">{saveError}</p> : null}
               {requestMessage ? <p>{requestMessage}</p> : null}
             </div>
