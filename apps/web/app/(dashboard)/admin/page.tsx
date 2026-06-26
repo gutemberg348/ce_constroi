@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
+  Star,
   Trash2,
   UserPlus,
   Users,
@@ -88,6 +89,7 @@ import {
   updateAdminProjectStatus,
   updateAdminSimulationStatus,
   updateAdminTerrain,
+  updateAdminTerrainFeatured,
   updateAdminTerrainStatus,
   updateAdminUser,
   updateAdminUserStatus
@@ -766,25 +768,30 @@ function ActionButton({
   children,
   disabled,
   onClick,
+  title,
   tone = "default"
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   onClick: () => void;
-  tone?: "default" | "danger" | "success";
+  title?: string;
+  tone?: "default" | "danger" | "success" | "warning";
 }) {
   const toneClass =
     tone === "danger"
       ? "border-red-500/30 text-red-700 hover:bg-red-500/10"
       : tone === "success"
         ? "border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10"
-        : "border-[var(--line)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10";
+        : tone === "warning"
+          ? "border-amber-500/35 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15"
+          : "border-[var(--line)] text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10";
 
   return (
     <button
       className={`focus-ring inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
       disabled={disabled}
       onClick={onClick}
+      title={title}
       type="button"
     >
       {children}
@@ -884,6 +891,7 @@ export default function AdminPage() {
   const invalidateAdmin = async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin"] });
     await queryClient.invalidateQueries({ queryKey: ["terrains"] });
+    await queryClient.invalidateQueries({ queryKey: ["home", "terrains"] });
     await queryClient.invalidateQueries({ queryKey: ["condominiums"] });
     await queryClient.invalidateQueries({ queryKey: ["projects"] });
     await queryClient.invalidateQueries({ queryKey: ["news"] });
@@ -1036,6 +1044,11 @@ export default function AdminPage() {
   const terrainDeleteMutation = useMutation({ mutationFn: deleteAdminTerrain, onSuccess: invalidateAdmin });
   const approveTerrainMutation = useMutation({ mutationFn: approveTerrain, onSuccess: invalidateAdmin });
   const archiveTerrainMutation = useMutation({ mutationFn: archiveTerrain, onSuccess: invalidateAdmin });
+  const terrainFeaturedMutation = useMutation({
+    mutationFn: ({ id, isFeaturedOnHome }: { id: string; isFeaturedOnHome: boolean }) =>
+      updateAdminTerrainFeatured(id, isFeaturedOnHome),
+    onSuccess: invalidateAdmin
+  });
   const terrainImageAddMutation = useMutation({
     mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => addAdminTerrainImage(id, await formImageInput(formData)),
     onSuccess: invalidateAdmin
@@ -1177,6 +1190,7 @@ export default function AdminPage() {
   const orders = ordersQuery.data?.items ?? [];
   const events = eventsQuery.data?.items ?? [];
   const eventsMeta = eventsQuery.data?.meta ?? { page: eventsPage, limit: 20, total: 0, totalPages: 1 };
+  const condominiumsTotal = condominiumsQuery.data?.meta.total;
   const newsTotal = newsQuery.data?.meta.total;
 
   const navItems = useMemo(
@@ -1192,7 +1206,7 @@ export default function AdminPage() {
                 : item.id === "terrenos"
                   ? metrics?.terrains
                 : item.id === "condominios"
-                  ? condominiumsQuery.data?.meta.total
+                  ? condominiumsTotal
                 : item.id === "projetos"
                   ? metrics?.projects
                   : item.id === "noticias"
@@ -1209,7 +1223,7 @@ export default function AdminPage() {
 
         return { ...item, count };
       }),
-    [condominiumsQuery.data?.meta.total, metrics, newsTotal]
+    [condominiumsTotal, metrics, newsTotal]
   );
 
   if (!hasHydrated) {
@@ -1420,6 +1434,7 @@ export default function AdminPage() {
               onArchive={(id) => archiveTerrainMutation.mutate(id)}
               onCreate={(formData) => terrainCreateMutation.mutate(formData)}
               onDelete={(id) => terrainDeleteMutation.mutate(id)}
+              onToggleFeatured={(id, isFeaturedOnHome) => terrainFeaturedMutation.mutate({ id, isFeaturedOnHome })}
               onRemoveImage={(id) => terrainImageRemoveMutation.mutate(id)}
               onStatus={(id, status) => terrainStatusMutation.mutate({ id, status })}
               onUpdate={(id, formData, metadata) => terrainUpdateMutation.mutate({ id, formData, metadata })}
@@ -1428,6 +1443,7 @@ export default function AdminPage() {
                 terrainCreateMutation.isPending ||
                 terrainUpdateMutation.isPending ||
                 terrainDeleteMutation.isPending ||
+                terrainFeaturedMutation.isPending ||
                 terrainImageAddMutation.isPending ||
                 terrainImageRemoveMutation.isPending
               }
@@ -2258,16 +2274,20 @@ function CondominiumFields({ condominium }: { condominium?: Condominium }) {
   const [shouldLookupCep, setShouldLookupCep] = useState(false);
 
   useEffect(() => {
-    setAddressForm({
-      zipCode: maskCep(condominium?.zipCode ?? ""),
-      address: condominium?.address ?? "",
-      neighborhood: condominium?.neighborhood ?? "",
-      city: condominium?.city ?? "",
-      state: condominium?.state ?? ""
-    });
-    setCepMessage("");
-    setIsCepLoading(false);
-    setShouldLookupCep(false);
+    const timer = window.setTimeout(() => {
+      setAddressForm({
+        zipCode: maskCep(condominium?.zipCode ?? ""),
+        address: condominium?.address ?? "",
+        neighborhood: condominium?.neighborhood ?? "",
+        city: condominium?.city ?? "",
+        state: condominium?.state ?? ""
+      });
+      setCepMessage("");
+      setIsCepLoading(false);
+      setShouldLookupCep(false);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [condominium?.id, condominium?.zipCode, condominium?.address, condominium?.neighborhood, condominium?.city, condominium?.state]);
 
   useEffect(() => {
@@ -2381,6 +2401,7 @@ function TerrainsSection({
   onStatus,
   onUpdate,
   onDelete,
+  onToggleFeatured,
   onCreate,
   onAddImage,
   onRemoveImage
@@ -2399,6 +2420,7 @@ function TerrainsSection({
   onStatus: (id: string, status: TerrainStatus) => void;
   onUpdate: (id: string, formData: FormData, metadata?: Record<string, unknown>) => void;
   onDelete: (id: string) => void;
+  onToggleFeatured: (id: string, isFeaturedOnHome: boolean) => void;
   onCreate: (formData: FormData) => void;
   onAddImage: (id: string, formData: FormData) => void;
   onRemoveImage: (id: string) => void;
@@ -2454,6 +2476,15 @@ function TerrainsSection({
                 <td className="px-4 py-4">{statusPill(terrain.status)}</td>
                 <td className="px-4 py-4">
                   <div className="flex min-w-[360px] flex-wrap gap-2">
+                    <ActionButton
+                      disabled={pending}
+                      onClick={() => onToggleFeatured(terrain.id, !terrain.isFeaturedOnHome)}
+                      title={terrain.isFeaturedOnHome ? "Remover da home" : "Mostrar na home"}
+                      tone={terrain.isFeaturedOnHome ? "warning" : "default"}
+                    >
+                      <Star fill={terrain.isFeaturedOnHome ? "currentColor" : "none"} size={14} />
+                      {terrain.isFeaturedOnHome ? "Na home" : "Home"}
+                    </ActionButton>
                     <ActionButton disabled={pending} onClick={() => onApprove(terrain.id)} tone="success">
                       Publicar
                     </ActionButton>

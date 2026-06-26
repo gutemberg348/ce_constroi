@@ -133,7 +133,7 @@ export default function HomePage() {
 
   const terrainQuery = useQuery({
     queryKey: ["home", "terrains"],
-    queryFn: () => getTerrains({ limit: 9 })
+    queryFn: () => getTerrains({ featuredOnHome: true, limit: 9 })
   });
   const newsQuery = useQuery({
     queryKey: ["home", "news"],
@@ -428,7 +428,7 @@ export default function HomePage() {
             displayedTerrains.map((terrain) => <TerrainCard key={terrain.id} terrain={terrain} />)
           ) : (
             <div className="rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">
-              Nenhum terreno cadastrado no banco ainda.
+              Nenhum terreno selecionado para aparecer na home ainda.
             </div>
           )}
         </div>

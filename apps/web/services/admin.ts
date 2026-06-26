@@ -115,6 +115,11 @@ export async function updateAdminTerrainStatus(id: string, status: TerrainStatus
   return unwrap<Terrain>(response);
 }
 
+export async function updateAdminTerrainFeatured(id: string, isFeaturedOnHome: boolean) {
+  const response = await api.patch<Terrain>(`/admin/terrains/${id}/featured-home`, { isFeaturedOnHome });
+  return unwrap<Terrain>(response);
+}
+
 export type UpdateAdminTerrainInput = Partial<
   Pick<
     Terrain,

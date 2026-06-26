@@ -427,7 +427,7 @@ export class AdminService {
       this.prisma.terrain.count({ where })
     ]);
 
-    return this.paginated(items, total, pagination.page, pagination.limit);
+    return this.paginated(await this.withTerrainFeaturedState(items), total, pagination.page, pagination.limit);
   }
 
   async updateTerrainStatus(terrainId: string, adminId: string, statusInput: string) {
@@ -469,7 +469,7 @@ export class AdminService {
       WHERE "id" = ${terrainId} AND "deletedAt" IS NULL
     `;
 
-    return this.prisma.terrain.findFirst({
+    const terrain = await this.prisma.terrain.findFirst({
       where: { id: terrainId, deletedAt: null },
       include: {
         owner: { select: { id: true, name: true, email: true, phone: true } },
@@ -497,6 +497,8 @@ export class AdminService {
         }
       }
     });
+
+    return terrain ? { ...terrain, isFeaturedOnHome } : terrain;
   }
 
   async updateTerrain(terrainId: string, dto: UpdateTerrainDto) {
@@ -1377,6 +1379,24 @@ export class AdminService {
       },
       ...extra
     };
+  }
+
+  private async withTerrainFeaturedState<T extends { id: string }>(items: T[]) {
+    if (!items.length) {
+      return items;
+    }
+
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; isFeaturedOnHome: boolean }>>`
+      SELECT "id", "isFeaturedOnHome"
+      FROM "terrains"
+      WHERE "id" IN (${Prisma.join(items.map((item) => item.id))})
+    `;
+    const featuredById = new Map(rows.map((row) => [row.id, row.isFeaturedOnHome]));
+
+    return items.map((item) => ({
+      ...item,
+      isFeaturedOnHome: featuredById.get(item.id) ?? false
+    }));
   }
 
   private enumValue<TEnum extends Record<string, string>>(enumObject: TEnum, value: string, field: string) {

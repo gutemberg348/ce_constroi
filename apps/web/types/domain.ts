@@ -56,6 +56,7 @@ export type Terrain = {
   zoning?: string;
   status: string;
   metadata?: Record<string, unknown>;
+  isFeaturedOnHome?: boolean;
   owner?: {
     id: string;
     name: string;

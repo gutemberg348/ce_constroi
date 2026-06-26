@@ -18,12 +18,12 @@ export type CreateTerrainInput = {
   metadata?: Record<string, unknown>;
 };
 
-export async function getTerrains(params?: Record<string, string | number | undefined>) {
+export async function getTerrains(params?: Record<string, string | number | boolean | undefined>) {
   const response = await api.get<Paginated<Terrain>>("/terrains", { params });
   return unwrap<Paginated<Terrain>>(response);
 }
 
-export async function getAllTerrains(params?: Record<string, string | number | undefined>) {
+export async function getAllTerrains(params?: Record<string, string | number | boolean | undefined>) {
   const firstPage = await getTerrains({ ...params, page: 1, limit: 100 });
 
   if (firstPage.meta.totalPages <= 1) {
