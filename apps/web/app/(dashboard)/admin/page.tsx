@@ -30,7 +30,7 @@ import {
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { Children, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Children, FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import type { UrlObject } from "url";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -2421,75 +2421,79 @@ function TerrainsSection({
           const details = getTerrainPropertyDetails(terrain.metadata);
 
           return (
-          <tr className="align-top" key={terrain.id}>
-            <td className="px-4 py-4">
-              <strong>{terrain.title}</strong>
-              <p className="mt-1 text-xs text-[var(--muted)]">{terrain.owner?.name ?? "Sem proprietario"}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                {[details.propertyType, details.destination, details.situation].filter(Boolean).join(" / ") || "Tipo nao informado"}
-              </p>
-              {terrain.condominium ? (
-                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Condominio/Loteamento: {terrain.condominium.name}</p>
-              ) : null}
-            </td>
-            <td className="px-4 py-4">
-              <p>{[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">{terrain.address ?? "Endereco nao informado"}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                {terrainDevelopmentLabel(getTerrainDevelopmentType(terrain.metadata))}
-              </p>
-            </td>
-            <td className="px-4 py-4">
-              <p>{money(terrain.price)}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">{area(terrain.areaM2)}</p>
-              {details.iptuValue || details.condominiumValue ? (
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  {details.iptuValue ? `IPTU ${money(details.iptuValue)}` : ""}
-                  {details.iptuValue && details.condominiumValue ? " / " : ""}
-                  {details.condominiumValue ? `Condominio/Loteamento ${money(details.condominiumValue)}` : ""}
-                </p>
-              ) : null}
-            </td>
-            <td className="px-4 py-4">{statusPill(terrain.status)}</td>
-            <td className="px-4 py-4">
-              <div className="flex min-w-[360px] flex-wrap gap-2">
-                <ActionButton disabled={pending} onClick={() => onApprove(terrain.id)} tone="success">
-                  Publicar
-                </ActionButton>
-                <ActionButton disabled={pending} onClick={() => onStatus(terrain.id, "RESERVED")}>
-                  Reservar
-                </ActionButton>
-                <ActionButton disabled={pending} onClick={() => onArchive(terrain.id)} tone="danger">
-                  Arquivar
-                </ActionButton>
-                <ActionButton
-                  disabled={pending}
-                  onClick={() => {
-                    if (confirmAction("Excluir este terreno da listagem?")) {
-                      onDelete(terrain.id);
-                    }
-                  }}
-                  tone="danger"
-                >
-                  <Trash2 size={14} />
-                  Excluir
-                </ActionButton>
-              </div>
-              <div className="mt-3">
-                <EditPanel label="Editar terreno">
-                  <TerrainEditForm condominiums={condominiums} disabled={pending} onSubmit={onUpdate} terrain={terrain} />
-                  <AdminImageManager
-                    disabled={imagePending}
-                    emptyText="Nenhuma imagem cadastrada para este terreno."
-                    images={terrain.images}
-                    onAdd={(formData) => onAddImage(terrain.id, formData)}
-                    onRemove={onRemoveImage}
-                    title="Imagens do terreno"
-                  />
-                </EditPanel>
-              </div>
-            </td>
-          </tr>
+            <Fragment key={terrain.id}>
+              <tr className="align-top">
+                <td className="px-4 py-4">
+                  <strong>{terrain.title}</strong>
+                  <p className="mt-1 text-xs text-[var(--muted)]">{terrain.owner?.name ?? "Sem proprietario"}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {[details.propertyType, details.destination, details.situation].filter(Boolean).join(" / ") || "Tipo nao informado"}
+                  </p>
+                  {terrain.condominium ? (
+                    <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Condominio/Loteamento: {terrain.condominium.name}</p>
+                  ) : null}
+                </td>
+                <td className="px-4 py-4">
+                  <p>{[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">{terrain.address ?? "Endereco nao informado"}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {terrainDevelopmentLabel(getTerrainDevelopmentType(terrain.metadata))}
+                  </p>
+                </td>
+                <td className="px-4 py-4">
+                  <p>{money(terrain.price)}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">{area(terrain.areaM2)}</p>
+                  {details.iptuValue || details.condominiumValue ? (
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {details.iptuValue ? `IPTU ${money(details.iptuValue)}` : ""}
+                      {details.iptuValue && details.condominiumValue ? " / " : ""}
+                      {details.condominiumValue ? `Condominio/Loteamento ${money(details.condominiumValue)}` : ""}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="px-4 py-4">{statusPill(terrain.status)}</td>
+                <td className="px-4 py-4">
+                  <div className="flex min-w-[360px] flex-wrap gap-2">
+                    <ActionButton disabled={pending} onClick={() => onApprove(terrain.id)} tone="success">
+                      Publicar
+                    </ActionButton>
+                    <ActionButton disabled={pending} onClick={() => onStatus(terrain.id, "RESERVED")}>
+                      Reservar
+                    </ActionButton>
+                    <ActionButton disabled={pending} onClick={() => onArchive(terrain.id)} tone="danger">
+                      Arquivar
+                    </ActionButton>
+                    <ActionButton
+                      disabled={pending}
+                      onClick={() => {
+                        if (confirmAction("Excluir este terreno da listagem?")) {
+                          onDelete(terrain.id);
+                        }
+                      }}
+                      tone="danger"
+                    >
+                      <Trash2 size={14} />
+                      Excluir
+                    </ActionButton>
+                  </div>
+                </td>
+              </tr>
+              <tr className="bg-black/[0.02] dark:bg-white/[0.02]">
+                <td className="px-4 pb-4 pt-0" colSpan={5}>
+                  <EditPanel label="Editar terreno">
+                    <TerrainEditForm condominiums={condominiums} disabled={pending} onSubmit={onUpdate} terrain={terrain} />
+                    <AdminImageManager
+                      disabled={imagePending}
+                      emptyText="Nenhuma imagem cadastrada para este terreno."
+                      images={terrain.images}
+                      onAdd={(formData) => onAddImage(terrain.id, formData)}
+                      onRemove={onRemoveImage}
+                      title="Imagens do terreno"
+                    />
+                  </EditPanel>
+                </td>
+              </tr>
+            </Fragment>
           );
         })}
       </AdminTable>
