@@ -1,7 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { AUTH_LOGOUT_EVENT } from "@/stores/auth-store";
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -16,6 +17,13 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         }
       })
   );
+
+  useEffect(() => {
+    const clearCachedUserData = () => queryClient.clear();
+
+    window.addEventListener(AUTH_LOGOUT_EVENT, clearCachedUserData);
+    return () => window.removeEventListener(AUTH_LOGOUT_EVENT, clearCachedUserData);
+  }, [queryClient]);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

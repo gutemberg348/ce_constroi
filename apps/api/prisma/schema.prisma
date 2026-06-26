@@ -228,6 +228,7 @@ model Terrain {
   zoning        String?
   metadata      Json?
   status        TerrainStatus @default(DRAFT)
+  isFeaturedOnHome Boolean @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   deletedAt     DateTime?
@@ -245,6 +246,7 @@ model Terrain {
   @@index([city, state])
   @@index([neighborhood])
   @@index([status])
+  @@index([isFeaturedOnHome])
   @@index([price])
   @@index([areaM2])
   @@index([deletedAt])

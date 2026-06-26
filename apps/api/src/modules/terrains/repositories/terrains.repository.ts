@@ -40,6 +40,7 @@ export class TerrainsRepository {
       ...(query.neighborhood ? { neighborhood: { equals: query.neighborhood, mode: "insensitive" } } : {}),
       ...(query.state ? { state: { equals: query.state, mode: "insensitive" } } : {}),
       ...(query.minAreaM2 ? { areaM2: { gte: query.minAreaM2 } } : {}),
+      ...(query.featuredOnHome !== undefined ? { isFeaturedOnHome: query.featuredOnHome } : {}),
       ...(query.minPrice || query.maxPrice
         ? {
             price: {

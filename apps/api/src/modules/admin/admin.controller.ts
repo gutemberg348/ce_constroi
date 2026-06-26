@@ -15,6 +15,7 @@ import { RejectArchitectDto } from "./dto/reject-architect.dto";
 import { UpdateAdminArchitectDto } from "./dto/update-admin-architect.dto";
 import { UpdateAdminStatusDto } from "./dto/update-admin-status.dto";
 import { UpdateAdminUserDto } from "./dto/update-admin-user.dto";
+import { UpdateTerrainFeaturedDto } from "./dto/update-terrain-featured.dto";
 
 @ApiTags("admin")
 @ApiBearerAuth()
@@ -75,6 +76,11 @@ export class AdminController {
     @Body() dto: UpdateAdminStatusDto
   ) {
     return this.adminService.updateTerrainStatus(id, user.sub, dto.status);
+  }
+
+  @Patch("terrains/:id/featured-home")
+  updateTerrainFeatured(@Param("id") id: string, @Body() dto: UpdateTerrainFeaturedDto) {
+    return this.adminService.updateTerrainFeatured(id, dto.isFeaturedOnHome);
   }
 
   @Patch("terrains/:id")

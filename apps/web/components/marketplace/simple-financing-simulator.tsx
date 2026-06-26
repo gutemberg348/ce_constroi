@@ -201,25 +201,29 @@ const selectClass =
 const panelClass = "rounded-[8px] border border-[var(--line)] bg-[var(--panel)] p-5";
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "5511999999999";
 
-function loadSavedSimulationForm(): Partial<QuickForm> {
+function simulationFormStorageKey(userId?: string | null) {
+  return userId ? `${SIMULATION_FORM_STORAGE_KEY}.${userId}` : `${SIMULATION_FORM_STORAGE_KEY}.visitante`;
+}
+
+function loadSavedSimulationForm(storageKey: string): Partial<QuickForm> {
   if (typeof window === "undefined") {
     return {};
   }
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(SIMULATION_FORM_STORAGE_KEY) ?? "{}") as Partial<QuickForm>;
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Partial<QuickForm>;
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }
 }
 
-function saveSimulationForm(form: QuickForm) {
+function saveSimulationForm(storageKey: string, form: QuickForm) {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.setItem(SIMULATION_FORM_STORAGE_KEY, JSON.stringify(form));
+  window.localStorage.setItem(storageKey, JSON.stringify(form));
 }
 
 type ViaCepResponse = {
@@ -1048,6 +1052,7 @@ export function SimpleFinancingSimulator() {
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const storageKey = useMemo(() => simulationFormStorageKey(user?.id), [user?.id]);
   const searchKey = searchParams.toString();
   const loginHref = `/login?next=${encodeURIComponent(`/simulacao${searchKey ? `?${searchKey}` : ""}`)}` as Route;
   const initialForm = useMemo(() => getInitialForm(new URLSearchParams(searchKey)), [searchKey]);
@@ -1099,12 +1104,10 @@ export function SimpleFinancingSimulator() {
   );
   const hasPackage = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
   const [form, setForm] = useState<QuickForm>(() => {
-    const savedForm = loadSavedSimulationForm();
     const hasPackageFromUrl = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
 
     return {
       ...initialForm,
-      ...savedForm,
       ...(hasPackageFromUrl
         ? {
             packageMode: initialForm.packageMode,
@@ -1127,9 +1130,13 @@ export function SimpleFinancingSimulator() {
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       setForm((current) => {
-        const savedForm = loadSavedSimulationForm();
+        const savedForm = loadSavedSimulationForm(storageKey);
         const hasPackageFromUrl = terrainPrice > 0 || projectPrice > 0 || buildCost > 0;
 
         return {
@@ -1148,11 +1155,15 @@ export function SimpleFinancingSimulator() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [buildCost, initialForm, projectPrice, terrainPrice]);
+  }, [buildCost, hasHydrated, initialForm, projectPrice, storageKey, terrainPrice]);
 
   useEffect(() => {
-    saveSimulationForm(form);
-  }, [form]);
+    if (!hasHydrated) {
+      return;
+    }
+
+    saveSimulationForm(storageKey, form);
+  }, [form, hasHydrated, storageKey]);
 
   useEffect(() => {
     if (!user) {
