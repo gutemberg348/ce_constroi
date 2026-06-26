@@ -24,3 +24,17 @@ export async function register(input: RegisterInput) {
   const response = await api.post<AuthTokens>("/auth/register", input);
   return unwrap<AuthTokens>(response);
 }
+
+type AuthMessage = {
+  message: string;
+};
+
+export async function requestPasswordReset(email: string) {
+  const response = await api.post<AuthMessage>("/auth/forgot-password", { email });
+  return unwrap<AuthMessage>(response);
+}
+
+export async function resetPassword(input: { token: string; password: string }) {
+  const response = await api.post<AuthMessage>("/auth/reset-password", input);
+  return unwrap<AuthMessage>(response);
+}

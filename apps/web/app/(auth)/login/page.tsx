@@ -116,6 +116,11 @@ function LoginForm() {
           <Input autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@empresa.com" type="email" value={email} />
           <Input autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Senha" type="password" value={password} />
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <div className="flex justify-end">
+            <Link className="text-sm font-semibold text-[var(--accent)]" href="/esqueci-senha">
+              Esqueci minha senha
+            </Link>
+          </div>
           <Button className="w-full" type="submit">
             <LogIn size={18} />
             Entrar

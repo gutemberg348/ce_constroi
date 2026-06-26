@@ -128,11 +128,27 @@ model User {
   favorites        Favorite[]
   notifications    Notification[]
   siteEvents       SiteEvent[]
+  passwordResets   PasswordResetToken[]
 
   @@index([role])
   @@index([status])
   @@index([deletedAt])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Architect {

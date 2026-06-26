@@ -900,6 +900,7 @@ export default function AdminPage() {
         email: formText(formData, "email"),
         phone: formText(formData, "phone"),
         document: formText(formData, "document"),
+        password: optionalText(formData, "password"),
         role: formText(formData, "role") as UserRole,
         status: formText(formData, "status") as UserStatus
       }),
@@ -1821,6 +1822,7 @@ function UserEditForm({
       <input className={inputClass()} defaultValue={adminUser.email} name="email" placeholder="E-mail" required />
       <input className={inputClass()} defaultValue={adminUser.phone ?? ""} name="phone" placeholder="Telefone" />
       <input className={inputClass()} defaultValue={adminUser.document ?? ""} name="document" placeholder="Documento" />
+      <input className={inputClass()} minLength={8} name="password" placeholder="Nova senha (opcional)" type="password" />
       <select className={inputClass()} defaultValue={adminUser.role} name="role">
         {(["CUSTOMER", "TERRAIN_OWNER", "ARCHITECT", "ADMIN"] as UserRole[]).map((role) => (
           <option key={role} value={role}>

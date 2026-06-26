@@ -72,7 +72,9 @@ export async function updateAdminUserStatus(id: string, status: UserStatus) {
   return unwrap<AdminUser>(response);
 }
 
-export type UpdateAdminUserInput = Partial<Pick<AdminUser, "name" | "email" | "phone" | "document" | "role" | "status">>;
+export type UpdateAdminUserInput = Partial<Pick<AdminUser, "name" | "email" | "phone" | "document" | "role" | "status">> & {
+  password?: string;
+};
 
 export async function updateAdminUser(id: string, input: UpdateAdminUserInput) {
   const response = await api.patch<AdminUser>(`/admin/users/${id}`, input);

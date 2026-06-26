@@ -29,6 +29,23 @@ Swagger: `http://localhost:3333/docs`
 
 Web: `http://localhost:3000`
 
+## Recuperacao de senha por e-mail
+
+O e-mail e usado somente quando a pessoa seleciona `Esqueci minha senha`. Configure estas variaveis no `.env` da API:
+
+```env
+WEB_PUBLIC_URL=https://seu-dominio.com
+SMTP_HOST=smtp.seuprovedor.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu-email@dominio.com
+SMTP_PASSWORD=sua-senha-de-aplicativo
+SMTP_FROM=seu-email@dominio.com
+PASSWORD_RESET_TTL_MINUTES=30
+```
+
+Para Gmail, use uma senha de aplicativo; a senha normal da conta nao funciona. Cadastro e login nao enviam e-mail.
+
 ## Docker
 
 ```bash

@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole, UserStatus } from "@/generated/prisma/enums";
+import { UsersRepository } from "@/modules/users/repositories/users.repository";
 
 type JwtPayload = {
   sub: string;
@@ -12,7 +13,10 @@ type JwtPayload = {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly usersRepository: UsersRepository
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -20,7 +24,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
     });
   }
 
-  validate(payload: JwtPayload) {
-    return payload;
+  async validate(payload: JwtPayload) {
+    const user = await this.usersRepository.findById(payload.sub);
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException("Esta conta esta indisponivel.");
+    }
+
+    return { sub: user.id, email: user.email, role: user.role };
   }
 }

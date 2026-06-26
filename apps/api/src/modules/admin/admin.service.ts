@@ -244,7 +244,10 @@ export class AdminService {
 
     return this.prisma.user.update({
       where: { id: userId },
-      data: { status },
+      data: {
+        status,
+        ...(status === UserStatus.ACTIVE ? {} : { refreshTokenHash: null })
+      },
       select: {
         id: true,
         name: true,
@@ -260,6 +263,7 @@ export class AdminService {
 
   async updateUser(userId: string, dto: UpdateAdminUserDto) {
     await this.findUserOrFail(userId);
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 12) : undefined;
 
     const data: Prisma.UserUpdateInput = {
       ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -267,7 +271,9 @@ export class AdminService {
       ...(dto.phone !== undefined ? { phone: this.emptyToNull(dto.phone) } : {}),
       ...(dto.document !== undefined ? { document: this.emptyToNull(dto.document) } : {}),
       ...(dto.role !== undefined ? { role: dto.role } : {}),
-      ...(dto.status !== undefined ? { status: dto.status } : {})
+      ...(dto.status !== undefined ? { status: dto.status } : {}),
+      ...(dto.status && dto.status !== UserStatus.ACTIVE ? { refreshTokenHash: null } : {}),
+      ...(passwordHash ? { passwordHash, refreshTokenHash: null } : {})
     };
 
     return this.prisma.user.update({

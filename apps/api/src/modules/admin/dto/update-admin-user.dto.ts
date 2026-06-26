@@ -24,6 +24,12 @@ export class UpdateAdminUserDto {
   @IsOptional()
   document?: string;
 
+  @ApiPropertyOptional({ minLength: 8 })
+  @IsString()
+  @MinLength(8)
+  @IsOptional()
+  password?: string;
+
   @ApiPropertyOptional({ enum: UserRole })
   @IsEnum(UserRole)
   @IsOptional()

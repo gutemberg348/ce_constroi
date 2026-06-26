@@ -55,7 +55,12 @@ function getRefreshToken() {
 }
 
 function isAuthRequest(url?: string) {
-  return Boolean(url && ["/auth/login", "/auth/register", "/auth/refresh"].some((path) => url.includes(path)));
+  return Boolean(
+    url &&
+      ["/auth/login", "/auth/register", "/auth/refresh", "/auth/forgot-password", "/auth/reset-password"].some((path) =>
+        url.includes(path)
+      )
+  );
 }
 
 api.interceptors.request.use((config) => {
