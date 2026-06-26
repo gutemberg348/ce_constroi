@@ -460,6 +460,45 @@ export class AdminService {
     return updated;
   }
 
+  async updateTerrainFeatured(terrainId: string, isFeaturedOnHome: boolean) {
+    await this.findTerrainOrFail(terrainId);
+
+    await this.prisma.$executeRaw`
+      UPDATE "terrains"
+      SET "isFeaturedOnHome" = ${isFeaturedOnHome}, "updatedAt" = NOW()
+      WHERE "id" = ${terrainId} AND "deletedAt" IS NULL
+    `;
+
+    return this.prisma.terrain.findFirst({
+      where: { id: terrainId, deletedAt: null },
+      include: {
+        owner: { select: { id: true, name: true, email: true, phone: true } },
+        images: {
+          where: { deletedAt: null },
+          orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+          take: 6
+        },
+        condominium: {
+          include: {
+            images: {
+              where: { deletedAt: null },
+              orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+              take: 10
+            }
+          }
+        },
+        _count: {
+          select: {
+            compatibilities: true,
+            simulations: true,
+            orders: true,
+            favorites: true
+          }
+        }
+      }
+    });
+  }
+
   async updateTerrain(terrainId: string, dto: UpdateTerrainDto) {
     await this.findTerrainOrFail(terrainId);
     const { metadata, condominiumId, ...data } = dto;

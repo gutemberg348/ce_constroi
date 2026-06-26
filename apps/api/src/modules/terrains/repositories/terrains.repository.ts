@@ -40,7 +40,6 @@ export class TerrainsRepository {
       ...(query.neighborhood ? { neighborhood: { equals: query.neighborhood, mode: "insensitive" } } : {}),
       ...(query.state ? { state: { equals: query.state, mode: "insensitive" } } : {}),
       ...(query.minAreaM2 ? { areaM2: { gte: query.minAreaM2 } } : {}),
-      ...(query.featuredOnHome !== undefined ? { isFeaturedOnHome: query.featuredOnHome } : {}),
       ...(query.minPrice || query.maxPrice
         ? {
             price: {
@@ -50,6 +49,21 @@ export class TerrainsRepository {
           }
         : {})
     };
+
+    if (query.featuredOnHome !== undefined) {
+      const featuredTerrains = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT "id"
+        FROM "terrains"
+        WHERE "isFeaturedOnHome" = ${query.featuredOnHome}
+      `;
+      const featuredTerrainIds = featuredTerrains.map((terrain) => terrain.id);
+
+      if (!featuredTerrainIds.length) {
+        return [[], 0] as const;
+      }
+
+      where.id = { in: featuredTerrainIds };
+    }
 
     return this.prisma.$transaction([
       this.prisma.terrain.findMany({
