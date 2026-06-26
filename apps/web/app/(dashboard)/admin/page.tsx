@@ -562,23 +562,88 @@ async function newsInputFromFormData(formData: FormData, fallbackImageUrl = ""):
 
 function hasFormImageInput(formData: FormData) {
   const imageFile = formData.get("imageFile");
-  return Boolean(formText(formData, "imageUrl")) || Boolean(imageFile && typeof imageFile !== "string" && imageFile.size > 0);
+  const imageFiles = formData.getAll("imageFiles");
+  return (
+    Boolean(formText(formData, "imageUrl")) ||
+    Boolean(imageFile && typeof imageFile !== "string" && imageFile.size > 0) ||
+    imageFiles.some((file) => file && typeof file !== "string" && file.size > 0)
+  );
 }
 
-async function formImageInput(formData: FormData) {
-  const url = await formDataImageValue(formData, "imageFile", formText(formData, "imageUrl"));
+const adminImageOptions = {
+  maxWidth: 1400,
+  maxHeight: 1000,
+  outputType: "image/jpeg",
+  quality: 0.78
+} as const;
+
+function formImageFiles(formData: FormData) {
+  const files = formData
+    .getAll("imageFiles")
+    .filter((file): file is File => Boolean(file && typeof file !== "string" && file.size > 0));
+  const singleFile = formData.get("imageFile");
+
+  if (singleFile && typeof singleFile !== "string" && singleFile.size > 0) {
+    files.push(singleFile);
+  }
+
+  return files;
+}
+
+function formImageCount(formData: FormData) {
+  return formImageFiles(formData).length + (formText(formData, "imageUrl") ? 1 : 0);
+}
+
+async function imageInputFromFile(file: File, formData: FormData, index: number) {
+  const fileFormData = new FormData();
+  fileFormData.set("imageFile", file);
+  const url = await formDataImageValue(fileFormData, "imageFile", "", adminImageOptions);
 
   if (!url) {
-    throw new Error("Envie um arquivo ou informe uma URL da imagem.");
+    throw new Error("Nao foi possivel preparar a imagem.");
   }
+
+  const baseSortOrder = formNumber(formData, "sortOrder") ?? 0;
 
   return {
     url,
     storageKey: url,
-    altText: optionalText(formData, "altText"),
-    sortOrder: formNumber(formData, "sortOrder") ?? 0,
-    isCover: formData.get("isCover") === "on"
+    altText: optionalText(formData, "altText") || file.name,
+    sortOrder: baseSortOrder + index,
+    isCover: formData.get("isCover") === "on" && index === 0
   };
+}
+
+async function formImageInputs(formData: FormData, maxImages = 10) {
+  const files = formImageFiles(formData).slice(0, maxImages);
+  const inputs = [];
+
+  for (const [index, file] of files.entries()) {
+    inputs.push(await imageInputFromFile(file, formData, index));
+  }
+
+  const imageUrl = formText(formData, "imageUrl");
+
+  if (imageUrl && inputs.length < maxImages) {
+    inputs.push({
+      url: imageUrl,
+      storageKey: imageUrl,
+      altText: optionalText(formData, "altText"),
+      sortOrder: (formNumber(formData, "sortOrder") ?? 0) + inputs.length,
+      isCover: formData.get("isCover") === "on" && inputs.length === 0
+    });
+  }
+
+  if (!inputs.length) {
+    throw new Error("Envie um arquivo ou informe uma URL da imagem.");
+  }
+
+  return inputs;
+}
+
+async function formImageInput(formData: FormData) {
+  const [input] = await formImageInputs(formData, 1);
+  return input;
 }
 
 function condominiumInputFromFormData(formData: FormData): CondominiumInput {
@@ -965,7 +1030,11 @@ export default function AdminPage() {
       const condominium = await createAdminCondominium(condominiumInputFromFormData(formData));
 
       if (hasFormImageInput(formData)) {
-        await addAdminCondominiumImage(condominium.id, await formImageInput(formData));
+        const imageInputs = await formImageInputs(formData, 10);
+
+        for (const imageInput of imageInputs) {
+          await addAdminCondominiumImage(condominium.id, imageInput);
+        }
       }
 
       return condominium;
@@ -979,8 +1048,13 @@ export default function AdminPage() {
   });
   const condominiumDeleteMutation = useMutation({ mutationFn: deleteAdminCondominium, onSuccess: invalidateAdmin });
   const condominiumImageAddMutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) =>
-      addAdminCondominiumImage(id, await formImageInput(formData)),
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+      const imageInputs = await formImageInputs(formData, 10);
+
+      for (const imageInput of imageInputs) {
+        await addAdminCondominiumImage(id, imageInput);
+      }
+    },
     onSuccess: invalidateAdmin
   });
   const condominiumImageRemoveMutation = useMutation({
@@ -2062,6 +2136,8 @@ function CondominiumsSection({
                     disabled={imagePending}
                     emptyText="Nenhuma imagem cadastrada para este condominio."
                     images={condominium.images}
+                    maxImages={10}
+                    multiple
                     onAdd={(formData) => onAddImage(condominium.id, formData)}
                     onRemove={onRemoveImage}
                     title={`Fotos do condominio (${condominium.images?.length ?? 0}/10)`}
@@ -2102,10 +2178,10 @@ function CondominiumCreateForm({
       <CondominiumFields />
       <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] p-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="xl:col-span-4">
-          <p className="text-sm font-semibold">Imagem inicial</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">Opcional. O relatorio aceita ate 10 fotos por condominio.</p>
+          <p className="text-sm font-semibold">Fotos iniciais</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">Opcional. Selecione ate 10 fotos para o relatorio do condominio.</p>
         </div>
-        <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+        <input accept="image/*" className={inputClass()} multiple name="imageFiles" type="file" />
         <input className={inputClass()} name="imageUrl" placeholder="Ou URL da imagem" type="url" />
         <input className={inputClass()} name="altText" placeholder="Descricao da imagem" />
         <label className="flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold">
@@ -2617,6 +2693,8 @@ function AdminImageManager({
   emptyText,
   images,
   disabled,
+  maxImages,
+  multiple,
   onAdd,
   onRemove
 }: {
@@ -2624,6 +2702,8 @@ function AdminImageManager({
   emptyText: string;
   images?: AssetImage[];
   disabled: boolean;
+  maxImages?: number;
+  multiple?: boolean;
   onAdd: (formData: FormData) => void;
   onRemove: (id: string) => void;
 }) {
@@ -2634,6 +2714,8 @@ function AdminImageManager({
 
     return (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
   });
+  const remainingImages = typeof maxImages === "number" ? Math.max(maxImages - sortedImages.length, 0) : undefined;
+  const isAddDisabled = disabled || remainingImages === 0;
 
   return (
     <div className="mt-5 border-t border-[var(--line)] pt-5">
@@ -2642,7 +2724,13 @@ function AdminImageManager({
           <p className="text-xs font-semibold uppercase text-[var(--muted)]">Midia</p>
           <h4 className="text-lg font-semibold">{title}</h4>
         </div>
-        <span className="text-xs text-[var(--muted)]">Para trocar a capa, envie uma nova imagem marcada como capa.</span>
+        <span className="text-xs text-[var(--muted)]">
+          {typeof remainingImages === "number"
+            ? remainingImages > 0
+              ? `Restam ${remainingImages} ${remainingImages === 1 ? "foto" : "fotos"} para completar.`
+              : "Limite de fotos atingido."
+            : "Para trocar a capa, envie uma nova imagem marcada como capa."}
+        </span>
       </div>
 
       {sortedImages.length ? (
@@ -2684,13 +2772,24 @@ function AdminImageManager({
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
-          onAdd(new FormData(form));
+          const formData = new FormData(form);
+
+          if (typeof remainingImages === "number") {
+            const selectedCount = formImageCount(formData);
+
+            if (selectedCount > remainingImages) {
+              alert(`Voce pode enviar mais ${remainingImages} ${remainingImages === 1 ? "foto" : "fotos"} neste condominio.`);
+              return;
+            }
+          }
+
+          onAdd(formData);
           form.reset();
         }}
       >
         <label className="grid gap-2 text-sm font-medium">
-          <span>Arquivo da imagem</span>
-          <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+          <span>{multiple ? "Arquivos das imagens" : "Arquivo da imagem"}</span>
+          <input accept="image/*" className={inputClass()} multiple={multiple} name={multiple ? "imageFiles" : "imageFile"} type="file" />
         </label>
         <label className="grid gap-2 text-sm font-medium">
           <span>Ou URL da imagem</span>
@@ -2702,9 +2801,9 @@ function AdminImageManager({
           <input className="h-4 w-4 accent-[var(--accent)]" name="isCover" type="checkbox" />
           Usar como capa principal
         </label>
-        <Button className="md:justify-self-start" disabled={disabled} type="submit" variant="secondary">
+        <Button className="md:justify-self-start" disabled={isAddDisabled} type="submit" variant="secondary">
           <ImageIcon size={16} />
-          Adicionar / trocar imagem
+          {multiple ? "Adicionar fotos" : "Adicionar / trocar imagem"}
         </Button>
       </form>
     </div>
