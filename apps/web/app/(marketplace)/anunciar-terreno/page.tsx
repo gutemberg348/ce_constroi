@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { readFileAsDataUrl } from "@/lib/files";
 import { toNumber } from "@/lib/format";
 import { getApiErrorMessage } from "@/services/api";
+import { getCondominiums } from "@/services/condominiums";
 import { getSiteSettings } from "@/services/settings";
 import { createTerrain } from "@/services/terrains";
 import { createTerrainImage } from "@/services/terrain-images";
@@ -33,6 +34,7 @@ type AnnouncementForm = {
   situation: string;
   intention: string;
   developmentType: "OPEN" | "CLOSED";
+  condominiumId: string;
   expectedValue: string;
   iptuValue: string;
   condominiumValue: string;
@@ -61,6 +63,7 @@ const initialForm: AnnouncementForm = {
   situation: "Liberado para construcao",
   intention: "Venda",
   developmentType: "OPEN",
+  condominiumId: "",
   expectedValue: "",
   iptuValue: "",
   condominiumValue: "",
@@ -91,6 +94,10 @@ export default function AnnounceTerrainPage() {
     queryKey: ["site-settings"],
     queryFn: getSiteSettings
   });
+  const condominiumsQuery = useQuery({
+    queryKey: ["condominiums", "announce"],
+    queryFn: () => getCondominiums({ limit: 100 })
+  });
   const [form, setForm] = useState<AnnouncementForm>(initialForm);
   const [photoSlots, setPhotoSlots] = useState([0, 1, 2, 3]);
   const [photos, setPhotos] = useState<Array<File | null>>([null, null, null, null]);
@@ -102,6 +109,7 @@ export default function AnnounceTerrainPage() {
 
   const canAnnounce = Boolean(accessToken && (user?.role === "TERRAIN_OWNER" || user?.role === "ADMIN"));
   const selectedPhotoCount = photos.filter(Boolean).length;
+  const condominiums = condominiumsQuery.data?.items ?? [];
 
   const ownerName = form.ownerName || user?.name || "";
   const ownerEmail = form.ownerEmail || user?.email || "";
@@ -216,6 +224,7 @@ export default function AnnounceTerrainPage() {
         city: form.city,
         state: form.state,
         zipCode: onlyDigits(form.cep),
+        condominiumId: form.condominiumId || undefined,
         areaM2,
         frontageM,
         depthM,
@@ -419,6 +428,14 @@ export default function AnnounceTerrainPage() {
               >
                 <option value="OPEN">Local aberto</option>
                 <option value="CLOSED">Condomínio ou loteamento fechado</option>
+              </select>
+              <select className={`${inputClass()} md:col-span-2`} onChange={(event) => update("condominiumId", event.target.value)} value={form.condominiumId}>
+                <option value="">Nao vincular a condominio</option>
+                {condominiums.map((condominium) => (
+                  <option key={condominium.id} value={condominium.id}>
+                    {condominium.name} - {[condominium.neighborhood, condominium.city, condominium.state].filter(Boolean).join(", ")}
+                  </option>
+                ))}
               </select>
               <CurrencyInput onValueChange={(value) => update("expectedValue", value)} placeholder="Valor aproximado" required value={form.expectedValue} />
               <CurrencyInput onValueChange={(value) => update("iptuValue", value)} placeholder="IPTU (opcional)" value={form.iptuValue} />

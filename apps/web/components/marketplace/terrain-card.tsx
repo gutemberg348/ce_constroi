@@ -32,6 +32,9 @@ export function TerrainCard({ terrain }: { terrain: Terrain }) {
             <span className="min-w-0 truncate">{location}</span>
           </div>
           <h3 className="mt-2 line-clamp-2 break-words text-base font-semibold leading-snug sm:text-lg">{terrain.title}</h3>
+          {terrain.condominium ? (
+            <p className="mt-1 line-clamp-1 text-xs font-semibold text-[var(--accent)]">{terrain.condominium.name}</p>
+          ) : null}
         </div>
         <p className="line-clamp-2 break-words text-sm leading-6 text-[var(--muted)]">{terrain.description}</p>
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">

@@ -81,6 +81,31 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
               </div>
             ))}
           </div>
+          {terrain.condominium ? (
+            <div className="mt-4 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4">
+              <p className="text-xs font-semibold uppercase text-[var(--muted)]">Informacoes do condominio</p>
+              <h2 className="mt-1 break-words text-xl font-semibold">{terrain.condominium.name}</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {[terrain.condominium.address, terrain.condominium.neighborhood, terrain.condominium.city, terrain.condominium.state]
+                  .filter(Boolean)
+                  .join(", ")}
+              </p>
+              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                {terrain.condominium.developer ? <InfoLine label="Incorporadora" value={terrain.condominium.developer} /> : null}
+                {terrain.condominium.builder ? <InfoLine label="Construtora" value={terrain.condominium.builder} /> : null}
+                {terrain.condominium.condominiumValue ? <InfoLine label="Condominio" value={money(terrain.condominium.condominiumValue)} /> : null}
+                {terrain.condominium.constructionRules ? <InfoLine label="Padrao de construcao" value={terrain.condominium.constructionRules} /> : null}
+              </div>
+              {terrain.condominium.description ? (
+                <p className="mt-3 break-words text-sm leading-6 text-[var(--muted)]">{terrain.condominium.description}</p>
+              ) : null}
+              <div className="mt-3 grid gap-2 text-sm">
+                {terrain.condominium.leisureInfrastructure ? <InfoLine label="Lazer" value={terrain.condominium.leisureInfrastructure} /> : null}
+                {terrain.condominium.securityInfrastructure ? <InfoLine label="Seguranca" value={terrain.condominium.securityInfrastructure} /> : null}
+                {terrain.condominium.servicesInfrastructure ? <InfoLine label="Servicos" value={terrain.condominium.servicesInfrastructure} /> : null}
+              </div>
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-2 sm:mt-6 sm:flex sm:flex-wrap sm:gap-3">
             <AuthenticatedSimulationLink className="w-full sm:w-auto" href={`/simulacao?${terrainSimulationParams.toString()}`}>
               Simular somente terreno
@@ -97,5 +122,14 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
       </div>
       <TerrainProjectSelector terrain={terrain} />
     </section>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[8px] border border-[var(--line)] px-3 py-2">
+      <p className="text-xs uppercase text-[var(--muted)]">{label}</p>
+      <strong className="mt-1 block break-words text-[var(--foreground)]">{value}</strong>
+    </div>
   );
 }

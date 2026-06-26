@@ -191,31 +191,33 @@ model SiteEvent {
 }
 
 model Terrain {
-  id           String        @id @default(cuid())
-  ownerId      String?
-  title        String
-  slug         String        @unique
-  description  String
-  address      String
-  neighborhood String?
-  city         String
-  state        String
-  country      String        @default("BR")
-  zipCode      String?
-  latitude     Decimal?      @db.Decimal(10, 7)
-  longitude    Decimal?      @db.Decimal(10, 7)
-  areaM2       Decimal       @db.Decimal(12, 2)
-  frontageM    Decimal?      @db.Decimal(10, 2)
-  depthM       Decimal?      @db.Decimal(10, 2)
-  price        Decimal       @db.Decimal(14, 2)
-  zoning       String?
-  metadata     Json?
-  status       TerrainStatus @default(DRAFT)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?
+  id            String        @id @default(cuid())
+  ownerId       String?
+  condominiumId String?
+  title         String
+  slug          String        @unique
+  description   String
+  address       String
+  neighborhood  String?
+  city          String
+  state         String
+  country       String        @default("BR")
+  zipCode       String?
+  latitude      Decimal?      @db.Decimal(10, 7)
+  longitude     Decimal?      @db.Decimal(10, 7)
+  areaM2        Decimal       @db.Decimal(12, 2)
+  frontageM     Decimal?      @db.Decimal(10, 2)
+  depthM        Decimal?      @db.Decimal(10, 2)
+  price         Decimal       @db.Decimal(14, 2)
+  zoning        String?
+  metadata      Json?
+  status        TerrainStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
 
   owner           User?                  @relation("TerrainOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  condominium     Condominium?           @relation(fields: [condominiumId], references: [id], onDelete: SetNull)
   images          TerrainImage[]
   compatibilities ProjectCompatibility[]
   simulations     Simulation[]
@@ -223,6 +225,7 @@ model Terrain {
   favorites       Favorite[]
 
   @@index([ownerId])
+  @@index([condominiumId])
   @@index([city, state])
   @@index([neighborhood])
   @@index([status])
@@ -230,6 +233,57 @@ model Terrain {
   @@index([areaM2])
   @@index([deletedAt])
   @@map("terrains")
+}
+
+model Condominium {
+  id                     String    @id @default(cuid())
+  name                   String
+  slug                   String    @unique
+  address                String
+  neighborhood           String?
+  city                   String
+  state                  String
+  zipCode                String?
+  developer              String?
+  builder                String?
+  description            String
+  leisureInfrastructure  String?
+  securityInfrastructure String?
+  servicesInfrastructure String?
+  condominiumValue       Decimal?  @db.Decimal(14, 2)
+  constructionRules      String?
+  isActive               Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
+
+  terrains Terrain[]
+  images   CondominiumImage[]
+
+  @@index([city, state])
+  @@index([neighborhood])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("condominiums")
+}
+
+model CondominiumImage {
+  id            String    @id @default(cuid())
+  condominiumId String
+  url           String
+  storageKey    String
+  altText       String?
+  sortOrder     Int       @default(0)
+  isCover       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+
+  @@index([condominiumId])
+  @@index([deletedAt])
+  @@map("condominium_images")
 }
 
 model TerrainImage {

@@ -33,6 +33,11 @@ export class CreateTerrainDto {
   @IsOptional()
   zipCode?: string;
 
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  condominiumId?: string;
+
   @ApiProperty()
   @Type(() => Number)
   @IsNumber()

@@ -20,7 +20,19 @@ export class TerrainsRepository {
               { address: { contains: query.search, mode: "insensitive" } },
               { neighborhood: { contains: query.search, mode: "insensitive" } },
               { city: { contains: query.search, mode: "insensitive" } },
-              { state: { contains: query.search, mode: "insensitive" } }
+              { state: { contains: query.search, mode: "insensitive" } },
+              {
+                condominium: {
+                  is: {
+                    OR: [
+                      { name: { contains: query.search, mode: "insensitive" } },
+                      { address: { contains: query.search, mode: "insensitive" } },
+                      { neighborhood: { contains: query.search, mode: "insensitive" } },
+                      { city: { contains: query.search, mode: "insensitive" } }
+                    ]
+                  }
+                }
+              }
             ]
           }
         : {}),
@@ -49,6 +61,15 @@ export class TerrainsRepository {
             where: { deletedAt: null },
             orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
             take: 6
+          },
+          condominium: {
+            include: {
+              images: {
+                where: { deletedAt: null },
+                orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+                take: 10
+              }
+            }
           },
           compatibilities: {
             where: { deletedAt: null },
@@ -79,6 +100,15 @@ export class TerrainsRepository {
         images: {
           where: { deletedAt: null },
           orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }]
+        },
+        condominium: {
+          include: {
+            images: {
+              where: { deletedAt: null },
+              orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+              take: 10
+            }
+          }
         },
         compatibilities: {
           where: { deletedAt: null },

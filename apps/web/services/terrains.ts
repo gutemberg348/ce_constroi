@@ -9,6 +9,7 @@ export type CreateTerrainInput = {
   city: string;
   state: string;
   zipCode?: string;
+  condominiumId?: string;
   areaM2: number;
   price: number;
   frontageM?: number;

@@ -57,7 +57,8 @@ export class TerrainsService {
       zoning: dto.zoning,
       metadata: dto.metadata as Prisma.InputJsonValue | undefined,
       status: user.role === UserRole.ADMIN ? TerrainStatus.AVAILABLE : TerrainStatus.PENDING_REVIEW,
-      owner: user.role === UserRole.ADMIN ? undefined : { connect: { id: user.sub } }
+      owner: user.role === UserRole.ADMIN ? undefined : { connect: { id: user.sub } },
+      condominium: dto.condominiumId ? { connect: { id: dto.condominiumId } } : undefined
     });
   }
 
@@ -68,10 +69,13 @@ export class TerrainsService {
       throw new ForbiddenException("You can only update your own terrain");
     }
 
-    const { metadata, ...data } = dto;
+    const { metadata, condominiumId, ...data } = dto;
 
     return this.terrainsRepository.update(id, {
       ...data,
+      ...(condominiumId !== undefined
+        ? { condominium: condominiumId ? { connect: { id: condominiumId } } : { disconnect: true } }
+        : {}),
       ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {}),
       ...(user.role === UserRole.ADMIN ? {} : { status: TerrainStatus.PENDING_REVIEW })
     });

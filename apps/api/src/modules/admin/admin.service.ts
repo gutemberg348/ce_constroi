@@ -368,7 +368,19 @@ export class AdminService {
               { address: { contains: query.search, mode: "insensitive" as const } },
               { neighborhood: { contains: query.search, mode: "insensitive" as const } },
               { city: { contains: query.search, mode: "insensitive" as const } },
-              { state: { contains: query.search, mode: "insensitive" as const } }
+              { state: { contains: query.search, mode: "insensitive" as const } },
+              {
+                condominium: {
+                  is: {
+                    OR: [
+                      { name: { contains: query.search, mode: "insensitive" as const } },
+                      { address: { contains: query.search, mode: "insensitive" as const } },
+                      { neighborhood: { contains: query.search, mode: "insensitive" as const } },
+                      { city: { contains: query.search, mode: "insensitive" as const } }
+                    ]
+                  }
+                }
+              }
             ]
           }
         : {})
@@ -386,6 +398,15 @@ export class AdminService {
             where: { deletedAt: null },
             orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
             take: 6
+          },
+          condominium: {
+            include: {
+              images: {
+                where: { deletedAt: null },
+                orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+                take: 10
+              }
+            }
           },
           _count: {
             select: {
@@ -435,12 +456,15 @@ export class AdminService {
 
   async updateTerrain(terrainId: string, dto: UpdateTerrainDto) {
     await this.findTerrainOrFail(terrainId);
-    const { metadata, ...data } = dto;
+    const { metadata, condominiumId, ...data } = dto;
 
     return this.prisma.terrain.update({
       where: { id: terrainId },
       data: {
         ...data,
+        ...(condominiumId !== undefined
+          ? { condominium: condominiumId ? { connect: { id: condominiumId } } : { disconnect: true } }
+          : {}),
         ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {})
       },
       include: {
@@ -449,6 +473,15 @@ export class AdminService {
           where: { deletedAt: null },
           orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
           take: 6
+        },
+        condominium: {
+          include: {
+            images: {
+              where: { deletedAt: null },
+              orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+              take: 10
+            }
+          }
         },
         _count: {
           select: {
@@ -478,6 +511,15 @@ export class AdminService {
           where: { deletedAt: null },
           orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
           take: 6
+        },
+        condominium: {
+          include: {
+            images: {
+              where: { deletedAt: null },
+              orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+              take: 10
+            }
+          }
         },
         _count: {
           select: {

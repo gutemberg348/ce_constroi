@@ -92,6 +92,15 @@ import {
   updateAdminUserStatus
 } from "@/services/admin";
 import {
+  addAdminCondominiumImage,
+  createAdminCondominium,
+  deleteAdminCondominium,
+  getAllAdminCondominiums,
+  removeAdminCondominiumImage,
+  updateAdminCondominium,
+  type CondominiumInput
+} from "@/services/condominiums";
+import {
   createNewsPost,
   deleteNewsPost,
   getAdminNews,
@@ -107,6 +116,7 @@ import {
   AssetImage,
   ArchitectProfile,
   ArchitectStatus,
+  Condominium,
   OrderStatus,
   NewsPost,
   NewsStatus,
@@ -128,6 +138,7 @@ type AdminSection =
   | "proprietarios"
   | "arquitetos"
   | "terrenos"
+  | "condominios"
   | "projetos"
   | "noticias"
   | "simulacoes"
@@ -150,6 +161,7 @@ const adminSections: AdminNavItem[] = [
   { id: "proprietarios", href: { pathname: "/admin/proprietarios" }, path: "/admin/proprietarios", label: "Proprietarios", description: "Donos de terrenos", icon: ShieldAlert },
   { id: "arquitetos", href: { pathname: "/admin/arquitetos" }, path: "/admin/arquitetos", label: "Arquitetos", description: "Aprovacao e curadoria", icon: Building2 },
   { id: "terrenos", href: { pathname: "/admin/terrenos" }, path: "/admin/terrenos", label: "Terrenos", description: "Catalogo de lotes", icon: Map },
+  { id: "condominios", href: { pathname: "/admin/condominios" }, path: "/admin/condominios", label: "Condominios", description: "Dados dos condominios", icon: Building2 },
   { id: "projetos", href: { pathname: "/admin/projetos" }, path: "/admin/projetos", label: "Projetos", description: "Casas e modelos", icon: ClipboardList },
   { id: "noticias", href: { pathname: "/admin/noticias" }, path: "/admin/noticias", label: "Noticias", description: "Conteudos e novidades", icon: Newspaper },
   { id: "simulacoes", href: { pathname: "/admin/simulacoes" }, path: "/admin/simulacoes", label: "Simulacoes", description: "Resultados financeiros", icon: CreditCard },
@@ -569,6 +581,26 @@ async function formImageInput(formData: FormData) {
   };
 }
 
+function condominiumInputFromFormData(formData: FormData): CondominiumInput {
+  return {
+    name: formText(formData, "name"),
+    address: formText(formData, "address"),
+    neighborhood: optionalText(formData, "neighborhood"),
+    city: formText(formData, "city"),
+    state: formText(formData, "state"),
+    zipCode: optionalText(formData, "zipCode"),
+    developer: optionalText(formData, "developer"),
+    builder: optionalText(formData, "builder"),
+    description: formText(formData, "description"),
+    leisureInfrastructure: optionalText(formData, "leisureInfrastructure"),
+    securityInfrastructure: optionalText(formData, "securityInfrastructure"),
+    servicesInfrastructure: optionalText(formData, "servicesInfrastructure"),
+    condominiumValue: formNumber(formData, "condominiumValue"),
+    constructionRules: optionalText(formData, "constructionRules"),
+    isActive: formData.get("isActive") === "on"
+  };
+}
+
 function dateTime(value?: string) {
   if (!value) {
     return "-";
@@ -729,6 +761,11 @@ export default function AdminPage() {
     queryFn: () => getAllAdminTerrains(),
     enabled: Boolean(accessToken && isAdmin && (activeSection === "terrenos" || activeSection === "projetos"))
   });
+  const condominiumsQuery = useQuery({
+    queryKey: ["admin", "condominiums"],
+    queryFn: () => getAllAdminCondominiums(),
+    enabled: Boolean(accessToken && isAdmin && (activeSection === "condominios" || activeSection === "terrenos"))
+  });
   const projectsQuery = useQuery({
     queryKey: ["admin", "projects"],
     queryFn: () => getAdminProjects({ limit: 100 }),
@@ -763,6 +800,7 @@ export default function AdminPage() {
   const invalidateAdmin = async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin"] });
     await queryClient.invalidateQueries({ queryKey: ["terrains"] });
+    await queryClient.invalidateQueries({ queryKey: ["condominiums"] });
     await queryClient.invalidateQueries({ queryKey: ["projects"] });
     await queryClient.invalidateQueries({ queryKey: ["news"] });
     await queryClient.invalidateQueries({ queryKey: ["home", "news"] });
@@ -844,6 +882,7 @@ export default function AdminPage() {
         city: formText(formData, "city"),
         state: formText(formData, "state"),
         zipCode: optionalText(formData, "zipCode"),
+        condominiumId: optionalText(formData, "condominiumId"),
         zoning: optionalText(formData, "zoning"),
         areaM2: requiredFormNumber(formData, "areaM2", "Area total"),
         frontageM: formNumber(formData, "frontageM"),
@@ -889,6 +928,7 @@ export default function AdminPage() {
         city: formText(formData, "city"),
         state: formText(formData, "state"),
         zipCode: optionalText(formData, "zipCode"),
+        condominiumId: optionalText(formData, "condominiumId"),
         zoning: optionalText(formData, "zoning"),
         areaM2: formNumber(formData, "areaM2"),
         frontageM: formNumber(formData, "frontageM"),
@@ -917,6 +957,34 @@ export default function AdminPage() {
   });
   const terrainImageRemoveMutation = useMutation({
     mutationFn: removeAdminTerrainImage,
+    onSuccess: invalidateAdmin
+  });
+
+  const condominiumCreateMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const condominium = await createAdminCondominium(condominiumInputFromFormData(formData));
+
+      if (hasFormImageInput(formData)) {
+        await addAdminCondominiumImage(condominium.id, await formImageInput(formData));
+      }
+
+      return condominium;
+    },
+    onSuccess: invalidateAdmin
+  });
+  const condominiumUpdateMutation = useMutation({
+    mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
+      updateAdminCondominium(id, condominiumInputFromFormData(formData)),
+    onSuccess: invalidateAdmin
+  });
+  const condominiumDeleteMutation = useMutation({ mutationFn: deleteAdminCondominium, onSuccess: invalidateAdmin });
+  const condominiumImageAddMutation = useMutation({
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) =>
+      addAdminCondominiumImage(id, await formImageInput(formData)),
+    onSuccess: invalidateAdmin
+  });
+  const condominiumImageRemoveMutation = useMutation({
+    mutationFn: removeAdminCondominiumImage,
     onSuccess: invalidateAdmin
   });
 
@@ -994,6 +1062,7 @@ export default function AdminPage() {
     usersQuery,
     architectsQuery,
     terrainsQuery,
+    condominiumsQuery,
     projectsQuery,
     newsQuery,
     simulationsQuery,
@@ -1007,6 +1076,7 @@ export default function AdminPage() {
   const users = usersQuery.data?.items ?? [];
   const architects = architectsQuery.data ?? [];
   const terrains = terrainsQuery.data?.items ?? [];
+  const condominiums = condominiumsQuery.data?.items ?? [];
   const projects = projectsQuery.data?.items ?? [];
   const news = newsQuery.data?.items ?? [];
   const simulations = simulationsQuery.data?.items ?? [];
@@ -1027,6 +1097,8 @@ export default function AdminPage() {
                 ? metrics?.architects
                 : item.id === "terrenos"
                   ? metrics?.terrains
+                : item.id === "condominios"
+                  ? condominiumsQuery.data?.meta.total
                 : item.id === "projetos"
                   ? metrics?.projects
                   : item.id === "noticias"
@@ -1043,7 +1115,7 @@ export default function AdminPage() {
 
         return { ...item, count };
       }),
-    [metrics, newsTotal]
+    [condominiumsQuery.data?.meta.total, metrics, newsTotal]
   );
 
   if (!hasHydrated) {
@@ -1242,6 +1314,7 @@ export default function AdminPage() {
 
           {activeSection === "terrenos" ? (
             <TerrainsSection
+              condominiums={condominiums}
               createError={terrainCreateMutation.error}
               createPending={terrainCreateMutation.isPending}
               createSuccess={terrainCreateMutation.isSuccess}
@@ -1265,6 +1338,30 @@ export default function AdminPage() {
                 terrainImageRemoveMutation.isPending
               }
               terrains={terrains}
+            />
+          ) : null}
+
+          {activeSection === "condominios" ? (
+            <CondominiumsSection
+              condominiums={condominiums}
+              createError={condominiumCreateMutation.error}
+              createPending={condominiumCreateMutation.isPending}
+              createSuccess={condominiumCreateMutation.isSuccess}
+              imageError={condominiumImageAddMutation.error ?? condominiumImageRemoveMutation.error}
+              imagePending={condominiumImageAddMutation.isPending || condominiumImageRemoveMutation.isPending}
+              isLoading={condominiumsQuery.isLoading}
+              onAddImage={(id, formData) => condominiumImageAddMutation.mutate({ id, formData })}
+              onCreate={(formData) => condominiumCreateMutation.mutate(formData)}
+              onDelete={(id) => condominiumDeleteMutation.mutate(id)}
+              onRemoveImage={(id) => condominiumImageRemoveMutation.mutate(id)}
+              onUpdate={(id, formData) => condominiumUpdateMutation.mutate({ id, formData })}
+              pending={
+                condominiumCreateMutation.isPending ||
+                condominiumUpdateMutation.isPending ||
+                condominiumDeleteMutation.isPending ||
+                condominiumImageAddMutation.isPending ||
+                condominiumImageRemoveMutation.isPending
+              }
             />
           ) : null}
 
@@ -1865,8 +1962,220 @@ function ArchitectEditForm({
   );
 }
 
+function CondominiumsSection({
+  condominiums,
+  isLoading,
+  pending,
+  createPending,
+  createSuccess,
+  createError,
+  imagePending,
+  imageError,
+  onCreate,
+  onUpdate,
+  onDelete,
+  onAddImage,
+  onRemoveImage
+}: {
+  condominiums: Condominium[];
+  isLoading: boolean;
+  pending: boolean;
+  createPending: boolean;
+  createSuccess: boolean;
+  createError: unknown;
+  imagePending: boolean;
+  imageError: unknown;
+  onCreate: (formData: FormData) => void;
+  onUpdate: (id: string, formData: FormData) => void;
+  onDelete: (id: string) => void;
+  onAddImage: (id: string, formData: FormData) => void;
+  onRemoveImage: (id: string) => void;
+}) {
+  return (
+    <section className={panelClass()}>
+      <SectionHeader eyebrow="Catalogo" title="Condominios" total={condominiums.length} />
+      <CondominiumCreateForm disabled={createPending} onSubmit={onCreate} />
+      {createSuccess ? (
+        <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">Condominio cadastrado com sucesso.</p>
+      ) : null}
+      {createError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel cadastrar o condominio: {errorMessage(createError)}</p>
+      ) : null}
+      {imageError ? (
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel alterar a imagem: {errorMessage(imageError)}</p>
+      ) : null}
+
+      <AdminTable columns={["Condominio", "Local", "Estrutura", "Status", "Acoes"]} empty="Nenhum condominio cadastrado." isLoading={isLoading}>
+        {condominiums.map((condominium) => (
+          <tr className="align-top" key={condominium.id}>
+            <td className="px-4 py-4">
+              <strong>{condominium.name}</strong>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {condominium.developer ? `Incorporadora: ${condominium.developer}` : "Incorporadora nao informada"}
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {condominium.builder ? `Construtora: ${condominium.builder}` : "Construtora nao informada"}
+              </p>
+            </td>
+            <td className="px-4 py-4">
+              <p>{[condominium.neighborhood, condominium.city, condominium.state].filter(Boolean).join(", ")}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{condominium.address}</p>
+              {condominium.condominiumValue ? (
+                <p className="mt-1 text-xs text-[var(--muted)]">Condominio {money(condominium.condominiumValue)}</p>
+              ) : null}
+            </td>
+            <td className="px-4 py-4">
+              <p className="line-clamp-2 text-sm">{condominium.description}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {(condominium._count?.terrains ?? 0)} {(condominium._count?.terrains ?? 0) === 1 ? "lote vinculado" : "lotes vinculados"}
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{condominium.images?.length ?? 0}/10 fotos</p>
+            </td>
+            <td className="px-4 py-4">
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                  condominium.isActive ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"
+                }`}
+              >
+                {condominium.isActive ? "Ativo" : "Inativo"}
+              </span>
+            </td>
+            <td className="px-4 py-4">
+              <div className="flex min-w-[260px] flex-wrap gap-2">
+                <ActionButton
+                  disabled={pending}
+                  onClick={() => {
+                    if (confirmAction("Excluir este condominio? Os terrenos vinculados ficam cadastrados, mas sem o vinculo.")) {
+                      onDelete(condominium.id);
+                    }
+                  }}
+                  tone="danger"
+                >
+                  <Trash2 size={14} />
+                  Excluir
+                </ActionButton>
+              </div>
+              <div className="mt-3">
+                <EditPanel label="Editar condominio">
+                  <CondominiumEditForm condominium={condominium} disabled={pending} onSubmit={onUpdate} />
+                  <AdminImageManager
+                    disabled={imagePending}
+                    emptyText="Nenhuma imagem cadastrada para este condominio."
+                    images={condominium.images}
+                    onAdd={(formData) => onAddImage(condominium.id, formData)}
+                    onRemove={onRemoveImage}
+                    title={`Fotos do condominio (${condominium.images?.length ?? 0}/10)`}
+                  />
+                </EditPanel>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </AdminTable>
+    </section>
+  );
+}
+
+function CondominiumCreateForm({
+  disabled,
+  onSubmit
+}: {
+  disabled: boolean;
+  onSubmit: (formData: FormData) => void;
+}) {
+  return (
+    <form
+      className="mb-5 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(new FormData(event.currentTarget));
+      }}
+    >
+      <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Novo condominio</p>
+          <h4 className="mt-1 text-lg font-semibold">Cadastrar condominio</h4>
+        </div>
+        <span className="text-xs text-[var(--muted)]">Depois vincule os lotes pelo cadastro do terreno.</span>
+      </div>
+      <CondominiumFields />
+      <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] p-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="xl:col-span-4">
+          <p className="text-sm font-semibold">Imagem inicial</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">Opcional. O relatorio aceita ate 10 fotos por condominio.</p>
+        </div>
+        <input accept="image/*" className={inputClass()} name="imageFile" type="file" />
+        <input className={inputClass()} name="imageUrl" placeholder="Ou URL da imagem" type="url" />
+        <input className={inputClass()} name="altText" placeholder="Descricao da imagem" />
+        <label className="flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold">
+          <input className="h-4 w-4 accent-[var(--accent)]" defaultChecked name="isCover" type="checkbox" />
+          Usar como capa
+        </label>
+      </div>
+      <Button className="mt-4 w-full md:w-auto" disabled={disabled} type="submit" variant="secondary">
+        <Building2 size={16} />
+        {disabled ? "Cadastrando..." : "Cadastrar condominio"}
+      </Button>
+    </form>
+  );
+}
+
+function CondominiumEditForm({
+  condominium,
+  disabled,
+  onSubmit
+}: {
+  condominium: Condominium;
+  disabled: boolean;
+  onSubmit: (id: string, formData: FormData) => void;
+}) {
+  return (
+    <form
+      className="grid gap-3"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(condominium.id, new FormData(event.currentTarget));
+      }}
+    >
+      <CondominiumFields condominium={condominium} />
+      <Button disabled={disabled} type="submit" variant="secondary">
+        <Pencil size={16} />
+        Salvar condominio
+      </Button>
+    </form>
+  );
+}
+
+function CondominiumFields({ condominium }: { condominium?: Condominium }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <input className={inputClass()} defaultValue={condominium?.name ?? ""} name="name" placeholder="Nome do condominio" required />
+      <input className={inputClass()} defaultValue={condominium?.city ?? ""} name="city" placeholder="Cidade" required />
+      <input className={inputClass()} defaultValue={condominium?.state ?? ""} name="state" placeholder="Estado" required />
+      <input className={inputClass()} defaultValue={condominium?.neighborhood ?? ""} name="neighborhood" placeholder="Bairro" />
+      <input className={`${inputClass()} xl:col-span-2`} defaultValue={condominium?.address ?? ""} name="address" placeholder="Endereco" required />
+      <input className={inputClass()} defaultValue={condominium?.zipCode ?? ""} name="zipCode" placeholder="CEP" />
+      <CurrencyInput defaultValue={condominium?.condominiumValue ? String(condominium.condominiumValue) : ""} name="condominiumValue" placeholder="Valor de condominio" />
+      <input className={inputClass()} defaultValue={condominium?.developer ?? ""} name="developer" placeholder="Incorporadora" />
+      <input className={inputClass()} defaultValue={condominium?.builder ?? ""} name="builder" placeholder="Construtora" />
+      <label className="flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold">
+        <input className="h-4 w-4 accent-[var(--accent)]" defaultChecked={condominium?.isActive ?? true} name="isActive" type="checkbox" />
+        Ativo no site
+      </label>
+      <textarea className={`${textareaClass()} xl:col-span-4`} defaultValue={condominium?.description ?? ""} name="description" placeholder="Descricao" required />
+      <textarea className={`${textareaClass()} xl:col-span-2`} defaultValue={condominium?.leisureInfrastructure ?? ""} name="leisureInfrastructure" placeholder="Infraestrutura de lazer" />
+      <textarea className={`${textareaClass()} xl:col-span-2`} defaultValue={condominium?.securityInfrastructure ?? ""} name="securityInfrastructure" placeholder="Infraestrutura de seguranca" />
+      <textarea className={`${textareaClass()} xl:col-span-2`} defaultValue={condominium?.servicesInfrastructure ?? ""} name="servicesInfrastructure" placeholder="Infraestrutura de servicos" />
+      <textarea className={`${textareaClass()} xl:col-span-2`} defaultValue={condominium?.constructionRules ?? ""} name="constructionRules" placeholder="Regulamento interno e padrao de construcao" />
+    </div>
+  );
+}
+
 function TerrainsSection({
   terrains,
+  condominiums,
   isLoading,
   pending,
   createPending,
@@ -1884,6 +2193,7 @@ function TerrainsSection({
   onRemoveImage
 }: {
   terrains: Terrain[];
+  condominiums: Condominium[];
   isLoading: boolean;
   pending: boolean;
   createPending: boolean;
@@ -1903,7 +2213,7 @@ function TerrainsSection({
   return (
     <section className={panelClass()}>
       <SectionHeader eyebrow="Catalogo" title="Terrenos" total={terrains.length} />
-      <TerrainCreateForm disabled={createPending} onSubmit={onCreate} />
+      <TerrainCreateForm condominiums={condominiums} disabled={createPending} onSubmit={onCreate} />
       {createSuccess ? (
         <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">Terreno cadastrado e publicado com sucesso.</p>
       ) : null}
@@ -1925,6 +2235,9 @@ function TerrainsSection({
               <p className="mt-1 text-xs text-[var(--muted)]">
                 {[details.propertyType, details.destination, details.situation].filter(Boolean).join(" / ") || "Tipo nao informado"}
               </p>
+              {terrain.condominium ? (
+                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Condominio: {terrain.condominium.name}</p>
+              ) : null}
             </td>
             <td className="px-4 py-4">
               <p>{[terrain.neighborhood, terrain.city, terrain.state].filter(Boolean).join(", ")}</p>
@@ -1971,7 +2284,7 @@ function TerrainsSection({
               </div>
               <div className="mt-3">
                 <EditPanel label="Editar terreno">
-                  <TerrainEditForm disabled={pending} onSubmit={onUpdate} terrain={terrain} />
+                  <TerrainEditForm condominiums={condominiums} disabled={pending} onSubmit={onUpdate} terrain={terrain} />
                   <AdminImageManager
                     disabled={imagePending}
                     emptyText="Nenhuma imagem cadastrada para este terreno."
@@ -1992,9 +2305,11 @@ function TerrainsSection({
 }
 
 function TerrainCreateForm({
+  condominiums,
   disabled,
   onSubmit
 }: {
+  condominiums: Condominium[];
   disabled: boolean;
   onSubmit: (formData: FormData) => void;
 }) {
@@ -2026,6 +2341,14 @@ function TerrainCreateForm({
         <input className={inputClass()} min={0} name="frontageM" placeholder="Frente em metros" type="number" />
         <input className={inputClass()} min={0} name="depthM" placeholder="Fundo em metros" type="number" />
         <input className={inputClass()} name="zoning" placeholder="Zoneamento" />
+        <select className={selectClass()} defaultValue="" name="condominiumId">
+          <option value="">Sem condominio vinculado</option>
+          {condominiums.map((condominium) => (
+            <option key={condominium.id} value={condominium.id}>
+              {condominium.name} - {[condominium.city, condominium.state].filter(Boolean).join("/")}
+            </option>
+          ))}
+        </select>
         <select className={selectClass()} defaultValue="Terreno" name="propertyType" required>
           <option value="Area">Area</option>
           <option value="Chacara">Chacara</option>
@@ -2076,10 +2399,12 @@ function TerrainCreateForm({
 
 function TerrainEditForm({
   terrain,
+  condominiums,
   disabled,
   onSubmit
 }: {
   terrain: Terrain;
+  condominiums: Condominium[];
   disabled: boolean;
   onSubmit: (id: string, formData: FormData, metadata?: Record<string, unknown>) => void;
 }) {
@@ -2106,6 +2431,14 @@ function TerrainEditForm({
       <input className={inputClass()} defaultValue={String(terrain.frontageM ?? "")} name="frontageM" placeholder="Frente" type="number" />
       <input className={inputClass()} defaultValue={String(terrain.depthM ?? "")} name="depthM" placeholder="Fundo" type="number" />
       <input className={inputClass()} defaultValue={terrain.zoning ?? ""} name="zoning" placeholder="Zoneamento" />
+      <select className={selectClass()} defaultValue={terrain.condominiumId ?? terrain.condominium?.id ?? ""} name="condominiumId">
+        <option value="">Sem condominio vinculado</option>
+        {condominiums.map((condominium) => (
+          <option key={condominium.id} value={condominium.id}>
+            {condominium.name} - {[condominium.city, condominium.state].filter(Boolean).join("/")}
+          </option>
+        ))}
+      </select>
       <select className={selectClass()} defaultValue={details.propertyType ?? "Terreno"} name="propertyType">
         <option value="Area">Area</option>
         <option value="Chacara">Chacara</option>

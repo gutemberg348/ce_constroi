@@ -116,7 +116,17 @@ export async function updateAdminTerrainStatus(id: string, status: TerrainStatus
 export type UpdateAdminTerrainInput = Partial<
   Pick<
     Terrain,
-    "title" | "description" | "address" | "neighborhood" | "city" | "state" | "areaM2" | "frontageM" | "depthM" | "price"
+    | "title"
+    | "description"
+    | "address"
+    | "neighborhood"
+    | "city"
+    | "state"
+    | "condominiumId"
+    | "areaM2"
+    | "frontageM"
+    | "depthM"
+    | "price"
   >
 > & {
   zipCode?: string;

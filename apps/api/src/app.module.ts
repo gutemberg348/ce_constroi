@@ -12,6 +12,7 @@ import { UsersModule } from "./modules/users/users.module";
 import { ArchitectsModule } from "./modules/architects/architects.module";
 import { TerrainsModule } from "./modules/terrains/terrains.module";
 import { TerrainImagesModule } from "./modules/terrain-images/terrain-images.module";
+import { CondominiumsModule } from "./modules/condominiums/condominiums.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
 import { ProjectImagesModule } from "./modules/project-images/project-images.module";
 import { CompatibilityModule } from "./modules/compatibility/compatibility.module";
@@ -47,6 +48,7 @@ import { NewsModule } from "./modules/news/news.module";
     ArchitectsModule,
     TerrainsModule,
     TerrainImagesModule,
+    CondominiumsModule,
     ProjectsModule,
     ProjectImagesModule,
     CompatibilityModule,

@@ -40,6 +40,7 @@ export type Paginated<T> = {
 
 export type Terrain = {
   id: string;
+  condominiumId?: string | null;
   title: string;
   slug: string;
   description: string;
@@ -61,6 +62,7 @@ export type Terrain = {
     email: string;
     phone?: string;
   } | null;
+  condominium?: Condominium | null;
   _count?: {
     compatibilities?: number;
     simulations?: number;
@@ -130,6 +132,34 @@ export type AssetImage = {
   altText?: string;
   sortOrder?: number;
   isCover?: boolean;
+};
+
+export type Condominium = {
+  id: string;
+  name: string;
+  slug: string;
+  address: string;
+  neighborhood?: string | null;
+  city: string;
+  state: string;
+  zipCode?: string | null;
+  developer?: string | null;
+  builder?: string | null;
+  description: string;
+  leisureInfrastructure?: string | null;
+  securityInfrastructure?: string | null;
+  servicesInfrastructure?: string | null;
+  condominiumValue?: number | string | null;
+  constructionRules?: string | null;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  images?: AssetImage[];
+  terrains?: Terrain[];
+  _count?: {
+    terrains?: number;
+  };
 };
 
 export type Favorite = {
