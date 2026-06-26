@@ -41,7 +41,7 @@ export function TerrainBrowser() {
             <Input
               className="pl-10"
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por terreno ou condominio"
+              placeholder="Buscar por terreno ou condominio/loteamento"
               value={search}
             />
           </label>

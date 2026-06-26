@@ -155,13 +155,22 @@ type AdminNavItem = {
   icon: LucideIcon;
 };
 
+type ViaCepResponse = {
+  erro?: boolean;
+  cep?: string;
+  logradouro?: string;
+  bairro?: string;
+  localidade?: string;
+  uf?: string;
+};
+
 const adminSections: AdminNavItem[] = [
   { id: "dashboard", href: { pathname: "/admin" }, path: "/admin", label: "Painel", description: "Numeros e filas principais", icon: Activity },
   { id: "clientes", href: { pathname: "/admin/clientes" }, path: "/admin/clientes", label: "Clientes", description: "Compradores e simulacoes", icon: Users },
   { id: "proprietarios", href: { pathname: "/admin/proprietarios" }, path: "/admin/proprietarios", label: "Proprietarios", description: "Donos de terrenos", icon: ShieldAlert },
   { id: "arquitetos", href: { pathname: "/admin/arquitetos" }, path: "/admin/arquitetos", label: "Arquitetos", description: "Aprovacao e curadoria", icon: Building2 },
   { id: "terrenos", href: { pathname: "/admin/terrenos" }, path: "/admin/terrenos", label: "Terrenos", description: "Catalogo de lotes", icon: Map },
-  { id: "condominios", href: { pathname: "/admin/condominios" }, path: "/admin/condominios", label: "Condominios", description: "Dados dos condominios", icon: Building2 },
+  { id: "condominios", href: { pathname: "/admin/condominios" }, path: "/admin/condominios", label: "Condominios/Loteamentos", description: "Dados dos condominios e loteamentos", icon: Building2 },
   { id: "projetos", href: { pathname: "/admin/projetos" }, path: "/admin/projetos", label: "Projetos", description: "Casas e modelos", icon: ClipboardList },
   { id: "noticias", href: { pathname: "/admin/noticias" }, path: "/admin/noticias", label: "Noticias", description: "Conteudos e novidades", icon: Newspaper },
   { id: "simulacoes", href: { pathname: "/admin/simulacoes" }, path: "/admin/simulacoes", label: "Simulacoes", description: "Resultados financeiros", icon: CreditCard },
@@ -221,6 +230,15 @@ function simulationCustomerEmail(simulation: AdminSimulation) {
 
 function simulationTextValue(value: unknown, fallback = "Nao informado") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function maskCep(value: string) {
+  const digits = onlyDigits(value).slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
 }
 
 function simulationMoneyValue(simulation: AdminSimulation, key: string, fallback: number | string) {
@@ -2067,19 +2085,19 @@ function CondominiumsSection({
 }) {
   return (
     <section className={panelClass()}>
-      <SectionHeader eyebrow="Catalogo" title="Condominios" total={condominiums.length} />
+      <SectionHeader eyebrow="Catalogo" title="Condominios/Loteamentos" total={condominiums.length} />
       <CondominiumCreateForm disabled={createPending} onSubmit={onCreate} />
       {createSuccess ? (
-        <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">Condominio cadastrado com sucesso.</p>
+        <p className="mb-4 rounded-[8px] bg-emerald-500/10 p-3 text-sm text-emerald-700">Condominio/Loteamento cadastrado com sucesso.</p>
       ) : null}
       {createError ? (
-        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel cadastrar o condominio: {errorMessage(createError)}</p>
+        <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel cadastrar o condominio/loteamento: {errorMessage(createError)}</p>
       ) : null}
       {imageError ? (
         <p className="mb-4 rounded-[8px] bg-red-500/10 p-3 text-sm text-red-600">Nao foi possivel alterar a imagem: {errorMessage(imageError)}</p>
       ) : null}
 
-      <AdminTable columns={["Condominio", "Local", "Estrutura", "Status", "Acoes"]} empty="Nenhum condominio cadastrado." isLoading={isLoading}>
+      <AdminTable columns={["Condominio/Loteamento", "Local", "Estrutura", "Status", "Acoes"]} empty="Nenhum condominio/loteamento cadastrado." isLoading={isLoading}>
         {condominiums.map((condominium) => (
           <tr className="align-top" key={condominium.id}>
             <td className="px-4 py-4">
@@ -2095,7 +2113,7 @@ function CondominiumsSection({
               <p>{[condominium.neighborhood, condominium.city, condominium.state].filter(Boolean).join(", ")}</p>
               <p className="mt-1 text-xs text-[var(--muted)]">{condominium.address}</p>
               {condominium.condominiumValue ? (
-                <p className="mt-1 text-xs text-[var(--muted)]">Condominio {money(condominium.condominiumValue)}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">Condominio/Loteamento {money(condominium.condominiumValue)}</p>
               ) : null}
             </td>
             <td className="px-4 py-4">
@@ -2119,7 +2137,7 @@ function CondominiumsSection({
                 <ActionButton
                   disabled={pending}
                   onClick={() => {
-                    if (confirmAction("Excluir este condominio? Os terrenos vinculados ficam cadastrados, mas sem o vinculo.")) {
+                    if (confirmAction("Excluir este condominio/loteamento? Os terrenos vinculados ficam cadastrados, mas sem o vinculo.")) {
                       onDelete(condominium.id);
                     }
                   }}
@@ -2130,17 +2148,17 @@ function CondominiumsSection({
                 </ActionButton>
               </div>
               <div className="mt-3">
-                <EditPanel label="Editar condominio">
+                <EditPanel label="Editar condominio/loteamento">
                   <CondominiumEditForm condominium={condominium} disabled={pending} onSubmit={onUpdate} />
                   <AdminImageManager
                     disabled={imagePending}
-                    emptyText="Nenhuma imagem cadastrada para este condominio."
+                    emptyText="Nenhuma imagem cadastrada para este condominio/loteamento."
                     images={condominium.images}
                     maxImages={10}
                     multiple
                     onAdd={(formData) => onAddImage(condominium.id, formData)}
                     onRemove={onRemoveImage}
-                    title={`Fotos do condominio (${condominium.images?.length ?? 0}/10)`}
+                    title={`Fotos do condominio/loteamento (${condominium.images?.length ?? 0}/10)`}
                   />
                 </EditPanel>
               </div>
@@ -2170,8 +2188,8 @@ function CondominiumCreateForm({
     >
       <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-center">
         <div>
-          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Novo condominio</p>
-          <h4 className="mt-1 text-lg font-semibold">Cadastrar condominio</h4>
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">Novo condominio/loteamento</p>
+          <h4 className="mt-1 text-lg font-semibold">Cadastrar condominio/loteamento</h4>
         </div>
         <span className="text-xs text-[var(--muted)]">Depois vincule os lotes pelo cadastro do terreno.</span>
       </div>
@@ -2179,7 +2197,7 @@ function CondominiumCreateForm({
       <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] p-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="xl:col-span-4">
           <p className="text-sm font-semibold">Fotos iniciais</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">Opcional. Selecione ate 10 fotos para o relatorio do condominio.</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">Opcional. Selecione ate 10 fotos para o relatorio do condominio/loteamento.</p>
         </div>
         <input accept="image/*" className={inputClass()} multiple name="imageFiles" type="file" />
         <input className={inputClass()} name="imageUrl" placeholder="Ou URL da imagem" type="url" />
@@ -2191,7 +2209,7 @@ function CondominiumCreateForm({
       </div>
       <Button className="mt-4 w-full md:w-auto" disabled={disabled} type="submit" variant="secondary">
         <Building2 size={16} />
-        {disabled ? "Cadastrando..." : "Cadastrar condominio"}
+        {disabled ? "Cadastrando..." : "Cadastrar condominio/loteamento"}
       </Button>
     </form>
   );
@@ -2218,22 +2236,118 @@ function CondominiumEditForm({
       <CondominiumFields condominium={condominium} />
       <Button disabled={disabled} type="submit" variant="secondary">
         <Pencil size={16} />
-        Salvar condominio
+        Salvar condominio/loteamento
       </Button>
     </form>
   );
 }
 
 function CondominiumFields({ condominium }: { condominium?: Condominium }) {
+  const [addressForm, setAddressForm] = useState({
+    zipCode: maskCep(condominium?.zipCode ?? ""),
+    address: condominium?.address ?? "",
+    neighborhood: condominium?.neighborhood ?? "",
+    city: condominium?.city ?? "",
+    state: condominium?.state ?? ""
+  });
+  const [cepMessage, setCepMessage] = useState("");
+  const [isCepLoading, setIsCepLoading] = useState(false);
+  const [shouldLookupCep, setShouldLookupCep] = useState(false);
+
+  useEffect(() => {
+    setAddressForm({
+      zipCode: maskCep(condominium?.zipCode ?? ""),
+      address: condominium?.address ?? "",
+      neighborhood: condominium?.neighborhood ?? "",
+      city: condominium?.city ?? "",
+      state: condominium?.state ?? ""
+    });
+    setCepMessage("");
+    setIsCepLoading(false);
+    setShouldLookupCep(false);
+  }, [condominium?.id, condominium?.zipCode, condominium?.address, condominium?.neighborhood, condominium?.city, condominium?.state]);
+
+  useEffect(() => {
+    if (!shouldLookupCep) {
+      return;
+    }
+
+    const cep = onlyDigits(addressForm.zipCode);
+
+    if (cep.length !== 8) {
+      const timer = window.setTimeout(() => setCepMessage(""), 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setIsCepLoading(true);
+      setCepMessage("Buscando endereco pelo CEP...");
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+          signal: controller.signal
+        });
+        const data = (await response.json()) as ViaCepResponse;
+
+        if (data.erro) {
+          setCepMessage("CEP nao encontrado.");
+          return;
+        }
+
+        setAddressForm((current) => ({
+          ...current,
+          zipCode: maskCep(data.cep ?? current.zipCode),
+          address: data.logradouro || current.address,
+          neighborhood: data.bairro || current.neighborhood,
+          city: data.localidade || current.city,
+          state: data.uf || current.state
+        }));
+        setCepMessage("Endereco preenchido pelo CEP.");
+      } catch {
+        if (!controller.signal.aborted) {
+          setCepMessage("Nao foi possivel buscar o CEP agora.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsCepLoading(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [addressForm.zipCode, shouldLookupCep]);
+
+  function updateAddressField(key: keyof typeof addressForm, value: string) {
+    setAddressForm((current) => ({ ...current, [key]: value }));
+  }
+
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      <input className={inputClass()} defaultValue={condominium?.name ?? ""} name="name" placeholder="Nome do condominio" required />
-      <input className={inputClass()} defaultValue={condominium?.city ?? ""} name="city" placeholder="Cidade" required />
-      <input className={inputClass()} defaultValue={condominium?.state ?? ""} name="state" placeholder="Estado" required />
-      <input className={inputClass()} defaultValue={condominium?.neighborhood ?? ""} name="neighborhood" placeholder="Bairro" />
-      <input className={`${inputClass()} xl:col-span-2`} defaultValue={condominium?.address ?? ""} name="address" placeholder="Endereco" required />
-      <input className={inputClass()} defaultValue={condominium?.zipCode ?? ""} name="zipCode" placeholder="CEP" />
-      <CurrencyInput defaultValue={condominium?.condominiumValue ? String(condominium.condominiumValue) : ""} name="condominiumValue" placeholder="Valor de condominio" />
+      <input className={inputClass()} defaultValue={condominium?.name ?? ""} name="name" placeholder="Nome do condominio/loteamento" required />
+      <div className="grid gap-1">
+        <input
+          className={inputClass()}
+          inputMode="numeric"
+          name="zipCode"
+          onChange={(event) => {
+            updateAddressField("zipCode", maskCep(event.target.value));
+            setShouldLookupCep(true);
+          }}
+          placeholder="CEP"
+          required
+          value={addressForm.zipCode}
+        />
+        <span className="text-[11px] text-[var(--muted)]">{isCepLoading ? "Buscando..." : cepMessage || "Digite o CEP para preencher o endereco."}</span>
+      </div>
+      <input className={inputClass()} name="city" onChange={(event) => updateAddressField("city", event.target.value)} placeholder="Cidade" required value={addressForm.city} />
+      <input className={inputClass()} maxLength={2} name="state" onChange={(event) => updateAddressField("state", event.target.value.toUpperCase())} placeholder="Estado" required value={addressForm.state} />
+      <input className={inputClass()} name="neighborhood" onChange={(event) => updateAddressField("neighborhood", event.target.value)} placeholder="Bairro" value={addressForm.neighborhood} />
+      <input className={`${inputClass()} xl:col-span-2`} name="address" onChange={(event) => updateAddressField("address", event.target.value)} placeholder="Endereco" required value={addressForm.address} />
+      <CurrencyInput defaultValue={condominium?.condominiumValue ? String(condominium.condominiumValue) : ""} name="condominiumValue" placeholder="Valor de condominio/loteamento" />
       <input className={inputClass()} defaultValue={condominium?.developer ?? ""} name="developer" placeholder="Incorporadora" />
       <input className={inputClass()} defaultValue={condominium?.builder ?? ""} name="builder" placeholder="Construtora" />
       <label className="flex items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 py-2 text-sm font-semibold">
@@ -2312,7 +2426,7 @@ function TerrainsSection({
                 {[details.propertyType, details.destination, details.situation].filter(Boolean).join(" / ") || "Tipo nao informado"}
               </p>
               {terrain.condominium ? (
-                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Condominio: {terrain.condominium.name}</p>
+                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Condominio/Loteamento: {terrain.condominium.name}</p>
               ) : null}
             </td>
             <td className="px-4 py-4">
@@ -2329,7 +2443,7 @@ function TerrainsSection({
                 <p className="mt-1 text-xs text-[var(--muted)]">
                   {details.iptuValue ? `IPTU ${money(details.iptuValue)}` : ""}
                   {details.iptuValue && details.condominiumValue ? " / " : ""}
-                  {details.condominiumValue ? `Condominio ${money(details.condominiumValue)}` : ""}
+                  {details.condominiumValue ? `Condominio/Loteamento ${money(details.condominiumValue)}` : ""}
                 </p>
               ) : null}
             </td>
@@ -2418,7 +2532,7 @@ function TerrainCreateForm({
         <input className={inputClass()} min={0} name="depthM" placeholder="Fundo em metros" type="number" />
         <input className={inputClass()} name="zoning" placeholder="Zoneamento" />
         <select className={selectClass()} defaultValue="" name="condominiumId">
-          <option value="">Sem condominio vinculado</option>
+          <option value="">Sem condominio/loteamento vinculado</option>
           {condominiums.map((condominium) => (
             <option key={condominium.id} value={condominium.id}>
               {condominium.name} - {[condominium.city, condominium.state].filter(Boolean).join("/")}
@@ -2429,9 +2543,9 @@ function TerrainCreateForm({
           <option value="Area">Area</option>
           <option value="Chacara">Chacara</option>
           <option value="Lote">Lote</option>
-          <option value="Lote em condominio">Lote em condominio</option>
+          <option value="Lote em condominio/loteamento">Lote em condominio/loteamento</option>
           <option value="Terreno">Terreno</option>
-          <option value="Terreno em condominio">Terreno em condominio</option>
+          <option value="Terreno em condominio/loteamento">Terreno em condominio/loteamento</option>
         </select>
         <select className={selectClass()} defaultValue="Residencial" name="destination" required>
           <option value="Residencial">Residencial</option>
@@ -2444,10 +2558,10 @@ function TerrainCreateForm({
         </select>
         <select className={selectClass()} defaultValue="OPEN" name="developmentType" required>
           <option value="OPEN">Local aberto</option>
-          <option value="CLOSED">Condomínio ou loteamento fechado</option>
+          <option value="CLOSED">Condominio/Loteamento fechado</option>
         </select>
         <CurrencyInput name="iptuValue" placeholder="IPTU" />
-        <CurrencyInput name="condominiumValue" placeholder="Condominio" />
+        <CurrencyInput name="condominiumValue" placeholder="Condominio/Loteamento" />
         <textarea className={`${textareaClass()} xl:col-span-4`} name="description" placeholder="Descricao do terreno" required />
       </div>
 
@@ -2508,7 +2622,7 @@ function TerrainEditForm({
       <input className={inputClass()} defaultValue={String(terrain.depthM ?? "")} name="depthM" placeholder="Fundo" type="number" />
       <input className={inputClass()} defaultValue={terrain.zoning ?? ""} name="zoning" placeholder="Zoneamento" />
       <select className={selectClass()} defaultValue={terrain.condominiumId ?? terrain.condominium?.id ?? ""} name="condominiumId">
-        <option value="">Sem condominio vinculado</option>
+        <option value="">Sem condominio/loteamento vinculado</option>
         {condominiums.map((condominium) => (
           <option key={condominium.id} value={condominium.id}>
             {condominium.name} - {[condominium.city, condominium.state].filter(Boolean).join("/")}
@@ -2519,9 +2633,9 @@ function TerrainEditForm({
         <option value="Area">Area</option>
         <option value="Chacara">Chacara</option>
         <option value="Lote">Lote</option>
-        <option value="Lote em condominio">Lote em condominio</option>
+        <option value="Lote em condominio/loteamento">Lote em condominio/loteamento</option>
         <option value="Terreno">Terreno</option>
-        <option value="Terreno em condominio">Terreno em condominio</option>
+        <option value="Terreno em condominio/loteamento">Terreno em condominio/loteamento</option>
       </select>
       <select className={selectClass()} defaultValue={details.destination ?? "Residencial"} name="destination">
         <option value="Residencial">Residencial</option>
@@ -2534,10 +2648,10 @@ function TerrainEditForm({
       </select>
       <select className={selectClass()} defaultValue={developmentType ?? "OPEN"} name="developmentType">
         <option value="OPEN">Local aberto</option>
-        <option value="CLOSED">Condomínio ou loteamento fechado</option>
+        <option value="CLOSED">Condominio/Loteamento fechado</option>
       </select>
       <CurrencyInput defaultValue={details.iptuValue ? String(details.iptuValue) : ""} name="iptuValue" placeholder="IPTU" />
-      <CurrencyInput defaultValue={details.condominiumValue ? String(details.condominiumValue) : ""} name="condominiumValue" placeholder="Condominio" />
+      <CurrencyInput defaultValue={details.condominiumValue ? String(details.condominiumValue) : ""} name="condominiumValue" placeholder="Condominio/Loteamento" />
       <textarea className={`${textareaClass()} md:col-span-2`} defaultValue={terrain.description} name="description" placeholder="Descricao" />
       <Button className="md:col-span-2" disabled={disabled} type="submit" variant="secondary">
         <Pencil size={16} />
@@ -2778,7 +2892,7 @@ function AdminImageManager({
             const selectedCount = formImageCount(formData);
 
             if (selectedCount > remainingImages) {
-              alert(`Voce pode enviar mais ${remainingImages} ${remainingImages === 1 ? "foto" : "fotos"} neste condominio.`);
+              alert(`Voce pode enviar mais ${remainingImages} ${remainingImages === 1 ? "foto" : "fotos"} neste condominio/loteamento.`);
               return;
             }
           }

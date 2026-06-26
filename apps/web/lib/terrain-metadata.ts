@@ -78,8 +78,8 @@ export function terrainDevelopmentLabel(type?: TerrainDevelopmentType) {
   }
 
   if (type === "CLOSED") {
-    return "Condomínio ou loteamento fechado";
+    return "Condominio/Loteamento fechado";
   }
 
-  return "Não informado";
+  return "Nao informado";
 }

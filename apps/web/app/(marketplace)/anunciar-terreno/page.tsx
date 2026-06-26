@@ -114,6 +114,7 @@ export default function AnnounceTerrainPage() {
   const ownerName = form.ownerName || user?.name || "";
   const ownerEmail = form.ownerEmail || user?.email || "";
   const effectiveCreci = form.creci.trim() || settingsQuery.data?.defaultCreci?.trim() || "";
+  const isClosedDevelopment = form.developmentType === "CLOSED";
 
   const title = useMemo(() => {
     const place = form.neighborhood || form.city || "novo anuncio";
@@ -122,6 +123,15 @@ export default function AnnounceTerrainPage() {
 
   function update<Key extends keyof AnnouncementForm>(key: Key, value: AnnouncementForm[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateDevelopmentType(value: AnnouncementForm["developmentType"]) {
+    setForm((current) => ({
+      ...current,
+      developmentType: value,
+      condominiumId: value === "CLOSED" ? current.condominiumId : "",
+      condominiumValue: value === "CLOSED" ? current.condominiumValue : ""
+    }));
   }
 
   async function consultCep() {
@@ -195,7 +205,7 @@ export default function AnnounceTerrainPage() {
     const depthM = toNumber(form.depthM);
     const price = toNumber(form.expectedValue);
     const iptuValue = toNumber(form.iptuValue);
-    const condominiumValue = toNumber(form.condominiumValue);
+    const condominiumValue = isClosedDevelopment ? toNumber(form.condominiumValue) : 0;
 
     if (!areaM2 || !frontageM || !depthM || !price) {
       setError("Informe area total, frente, fundo e valor aproximado.");
@@ -224,7 +234,7 @@ export default function AnnounceTerrainPage() {
         city: form.city,
         state: form.state,
         zipCode: onlyDigits(form.cep),
-        condominiumId: form.condominiumId || undefined,
+        condominiumId: isClosedDevelopment ? form.condominiumId || undefined : undefined,
         areaM2,
         frontageM,
         depthM,
@@ -253,7 +263,7 @@ export default function AnnounceTerrainPage() {
             frontageM,
             depthM,
             iptuValue: iptuValue || undefined,
-            condominiumValue: condominiumValue || undefined,
+            condominiumValue: isClosedDevelopment && condominiumValue ? condominiumValue : undefined,
             usefulArea: toNumber(form.usefulArea),
             features: form.features
           },
@@ -403,9 +413,9 @@ export default function AnnounceTerrainPage() {
                 <option>Area</option>
                 <option>Chacara</option>
                 <option>Lote</option>
-                <option>Lote em condominio</option>
+                <option>Lote em condominio/loteamento</option>
                 <option>Terreno</option>
-                <option>Terreno em condominio</option>
+                <option>Terreno em condominio/loteamento</option>
               </select>
               <select className={inputClass()} onChange={(event) => update("destination", event.target.value)} value={form.destination}>
                 <option>Residencial</option>
@@ -423,23 +433,27 @@ export default function AnnounceTerrainPage() {
               </select>
               <select
                 className={inputClass()}
-                onChange={(event) => update("developmentType", event.target.value as AnnouncementForm["developmentType"])}
+                onChange={(event) => updateDevelopmentType(event.target.value as AnnouncementForm["developmentType"])}
                 value={form.developmentType}
               >
                 <option value="OPEN">Local aberto</option>
-                <option value="CLOSED">Condomínio ou loteamento fechado</option>
+                <option value="CLOSED">Condominio/Loteamento fechado</option>
               </select>
-              <select className={`${inputClass()} md:col-span-2`} onChange={(event) => update("condominiumId", event.target.value)} value={form.condominiumId}>
-                <option value="">Nao vincular a condominio</option>
-                {condominiums.map((condominium) => (
-                  <option key={condominium.id} value={condominium.id}>
-                    {condominium.name} - {[condominium.neighborhood, condominium.city, condominium.state].filter(Boolean).join(", ")}
-                  </option>
-                ))}
-              </select>
+              {isClosedDevelopment ? (
+                <select className={`${inputClass()} md:col-span-2`} onChange={(event) => update("condominiumId", event.target.value)} value={form.condominiumId}>
+                  <option value="">Nao vincular a condominio/loteamento</option>
+                  {condominiums.map((condominium) => (
+                    <option key={condominium.id} value={condominium.id}>
+                      {condominium.name} - {[condominium.neighborhood, condominium.city, condominium.state].filter(Boolean).join(", ")}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <CurrencyInput onValueChange={(value) => update("expectedValue", value)} placeholder="Valor aproximado" required value={form.expectedValue} />
               <CurrencyInput onValueChange={(value) => update("iptuValue", value)} placeholder="IPTU (opcional)" value={form.iptuValue} />
-              <CurrencyInput onValueChange={(value) => update("condominiumValue", value)} placeholder="Condominio (opcional)" value={form.condominiumValue} />
+              {isClosedDevelopment ? (
+                <CurrencyInput onValueChange={(value) => update("condominiumValue", value)} placeholder="Condominio/Loteamento (opcional)" value={form.condominiumValue} />
+              ) : null}
               <Input inputMode="decimal" onChange={(event) => update("totalArea", event.target.value)} placeholder="Area total do terreno (m2)" required value={form.totalArea} />
               <Input inputMode="decimal" onChange={(event) => update("frontageM", event.target.value)} placeholder="Frente do terreno (m)" required value={form.frontageM} />
               <Input inputMode="decimal" onChange={(event) => update("depthM", event.target.value)} placeholder="Fundo do terreno (m)" required value={form.depthM} />
@@ -509,14 +523,14 @@ export default function AnnounceTerrainPage() {
                 {form.propertyType} - {form.destination}
               </p>
               <p>{form.situation}</p>
-              {form.iptuValue || form.condominiumValue ? (
+              {form.iptuValue || (isClosedDevelopment && form.condominiumValue) ? (
                 <p>
                   {form.iptuValue ? `IPTU ${form.iptuValue}` : ""}
-                  {form.iptuValue && form.condominiumValue ? " / " : ""}
-                  {form.condominiumValue ? `Condominio ${form.condominiumValue}` : ""}
+                  {form.iptuValue && isClosedDevelopment && form.condominiumValue ? " / " : ""}
+                  {isClosedDevelopment && form.condominiumValue ? `Condominio/Loteamento ${form.condominiumValue}` : ""}
                 </p>
               ) : null}
-              <p>{form.developmentType === "CLOSED" ? "Local fechado" : "Local aberto"}</p>
+              <p>{isClosedDevelopment ? "Condominio/Loteamento fechado" : "Local aberto"}</p>
               <p>{selectedPhotoCount} foto(s) anexada(s)</p>
               <p>
                 Responsavel: {form.announcerType}

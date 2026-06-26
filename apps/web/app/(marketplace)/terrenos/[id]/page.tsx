@@ -30,7 +30,7 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
     ["Frente", terrain.frontageM ? `${terrain.frontageM} m` : "Nao informado"],
     ["Fundo", terrain.depthM ? `${terrain.depthM} m` : "Nao informado"],
     propertyDetails.iptuValue ? ["IPTU", money(propertyDetails.iptuValue)] : null,
-    propertyDetails.condominiumValue ? ["Condominio", money(propertyDetails.condominiumValue)] : null
+    propertyDetails.condominiumValue ? ["Condominio/Loteamento", money(propertyDetails.condominiumValue)] : null
   ].filter(Boolean) as Array<[string, string]>;
   const gallery = [
     ...(terrain.images ?? []).map((image, index) => ({
@@ -83,7 +83,7 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
           </div>
           {terrain.condominium ? (
             <div className="mt-4 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4">
-              <p className="text-xs font-semibold uppercase text-[var(--muted)]">Informacoes do condominio</p>
+              <p className="text-xs font-semibold uppercase text-[var(--muted)]">Informacoes do condominio/loteamento</p>
               <h2 className="mt-1 break-words text-xl font-semibold">{terrain.condominium.name}</h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                 {[terrain.condominium.address, terrain.condominium.neighborhood, terrain.condominium.city, terrain.condominium.state]
@@ -93,7 +93,7 @@ export default async function TerrainDetailPage({ params }: { params: Promise<{ 
               <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                 {terrain.condominium.developer ? <InfoLine label="Incorporadora" value={terrain.condominium.developer} /> : null}
                 {terrain.condominium.builder ? <InfoLine label="Construtora" value={terrain.condominium.builder} /> : null}
-                {terrain.condominium.condominiumValue ? <InfoLine label="Condominio" value={money(terrain.condominium.condominiumValue)} /> : null}
+                {terrain.condominium.condominiumValue ? <InfoLine label="Condominio/Loteamento" value={money(terrain.condominium.condominiumValue)} /> : null}
                 {terrain.condominium.constructionRules ? <InfoLine label="Padrao de construcao" value={terrain.condominium.constructionRules} /> : null}
               </div>
               {terrain.condominium.description ? (
