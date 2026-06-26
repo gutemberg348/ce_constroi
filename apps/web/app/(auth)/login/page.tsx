@@ -7,6 +7,7 @@ import { Building2, Crown, LogIn, User, UserCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { login } from "@/services/auth";
 import { getSafePostAuthPath } from "@/lib/navigation";
 import { getApiErrorMessage } from "@/services/api";
@@ -114,7 +115,7 @@ function LoginForm() {
         </div>
         <div className="space-y-4">
           <Input autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@empresa.com" type="email" value={email} />
-          <Input autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Senha" type="password" value={password} />
+          <PasswordInput autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Senha" value={password} />
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <div className="flex justify-end">
             <Link className="text-sm font-semibold text-[var(--accent)]" href="/esqueci-senha">

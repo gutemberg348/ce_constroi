@@ -6,6 +6,7 @@ import { FormEvent, Suspense, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { getSafePostAuthPath } from "@/lib/navigation";
 import { getApiErrorMessage } from "@/services/api";
 import { register, type RegisterInput } from "@/services/auth";
@@ -107,7 +108,7 @@ function RegisterForm() {
             required
             value={phone}
           />
-          <Input autoComplete="new-password" minLength={8} name="password" placeholder="Senha" required type="password" />
+          <PasswordInput autoComplete="new-password" minLength={8} name="password" placeholder="Senha" required />
           <div className="grid grid-cols-3 gap-2">
             {[
               ["CUSTOMER", "Cliente"],

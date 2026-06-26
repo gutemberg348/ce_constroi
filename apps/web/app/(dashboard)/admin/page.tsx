@@ -15,6 +15,7 @@ import {
   FileText,
   Image as ImageIcon,
   Map,
+  Maximize2,
   Newspaper,
   Pencil,
   RefreshCw,
@@ -2823,6 +2824,7 @@ function AdminImageManager({
   onAdd: (formData: FormData) => void;
   onRemove: (id: string) => void;
 }) {
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const sortedImages = [...(images ?? [])].sort((left, right) => {
     if (left.isCover !== right.isCover) {
       return left.isCover ? -1 : 1;
@@ -2832,6 +2834,29 @@ function AdminImageManager({
   });
   const remainingImages = typeof maxImages === "number" ? Math.max(maxImages - sortedImages.length, 0) : undefined;
   const isAddDisabled = disabled || remainingImages === 0;
+  const previewImage = previewIndex === null ? null : sortedImages[previewIndex];
+
+  useEffect(() => {
+    if (previewIndex === null) {
+      return;
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPreviewIndex(null);
+      }
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [previewIndex]);
+
+  function movePreview(direction: -1 | 1) {
+    setPreviewIndex((current) => {
+      const index = current ?? 0;
+      return (index + direction + sortedImages.length) % sortedImages.length;
+    });
+  }
 
   return (
     <div className="mt-5 border-t border-[var(--line)] pt-5">
@@ -2850,12 +2875,25 @@ function AdminImageManager({
       </div>
 
       {sortedImages.length ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="flex snap-x gap-3 overflow-x-auto pb-3 [scrollbar-width:thin]">
           {sortedImages.map((image, index) => (
-            <article className="overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)]" key={image.id ?? `${image.url}-${index}`}>
-              <div className="aspect-[16/10] bg-black/5">
-                <PrivacyImage alt={image.altText ?? `Imagem ${index + 1}`} className="h-full w-full object-cover" src={image.url} />
-              </div>
+            <article className="w-56 shrink-0 snap-start overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--panel)]" key={image.id ?? `${image.url}-${index}`}>
+              <button
+                aria-label={`Ampliar ${image.isCover ? "a capa principal" : `a imagem ${index + 1}`}`}
+                className="focus-ring group relative block aspect-[4/3] w-full overflow-hidden bg-black/5 text-left"
+                onClick={() => setPreviewIndex(index)}
+                title="Ampliar imagem"
+                type="button"
+              >
+                <PrivacyImage
+                  alt={image.altText ?? `Imagem ${index + 1}`}
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]"
+                  src={image.url}
+                />
+                <span className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-black/65 text-white opacity-0 transition group-hover:opacity-100">
+                  <Maximize2 size={15} />
+                </span>
+              </button>
               <div className="grid gap-3 p-3 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <strong>{image.isCover ? "Capa principal" : `Imagem ${index + 1}`}</strong>
@@ -2881,6 +2919,72 @@ function AdminImageManager({
       ) : (
         <div className="rounded-[8px] border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">{emptyText}</div>
       )}
+
+      {previewImage ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true">
+          <div className="grid max-h-full w-full max-w-6xl gap-3">
+            <div className="flex items-center justify-between gap-3 text-white">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold uppercase text-white/65">{title}</p>
+                <h4 className="truncate text-base font-semibold">{previewImage.isCover ? "Capa principal" : `Imagem ${(previewIndex ?? 0) + 1}`}</h4>
+              </div>
+              <button
+                aria-label="Fechar visualizacao"
+                className="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-white/12 text-white transition hover:bg-white/20"
+                onClick={() => setPreviewIndex(null)}
+                title="Fechar"
+                type="button"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative flex min-h-0 items-center justify-center overflow-hidden rounded-[8px] bg-black">
+              <PrivacyImage alt={previewImage.altText ?? "Imagem ampliada"} className="max-h-[72vh] w-full object-contain" src={previewImage.url} />
+              {sortedImages.length > 1 ? (
+                <>
+                  <button
+                    aria-label="Imagem anterior"
+                    className="focus-ring absolute left-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[8px] bg-white/15 text-white transition hover:bg-white/25"
+                    onClick={() => movePreview(-1)}
+                    title="Imagem anterior"
+                    type="button"
+                  >
+                    <ChevronLeft size={23} />
+                  </button>
+                  <button
+                    aria-label="Proxima imagem"
+                    className="focus-ring absolute right-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[8px] bg-white/15 text-white transition hover:bg-white/25"
+                    onClick={() => movePreview(1)}
+                    title="Proxima imagem"
+                    type="button"
+                  >
+                    <ChevronRight size={23} />
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            {sortedImages.length > 1 ? (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {sortedImages.map((image, index) => (
+                  <button
+                    aria-label={`Ver imagem ${index + 1}`}
+                    className={`focus-ring h-16 w-24 shrink-0 overflow-hidden rounded-[8px] border transition ${
+                      index === previewIndex ? "border-white ring-2 ring-white/50" : "border-white/25 opacity-70 hover:opacity-100"
+                    }`}
+                    key={`${image.id ?? image.url}-preview-${index}`}
+                    onClick={() => setPreviewIndex(index)}
+                    type="button"
+                  >
+                    <PrivacyImage alt="" className="h-full w-full object-cover" src={image.url} />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <form
         className="mt-4 grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--background)] p-4 md:grid-cols-2"

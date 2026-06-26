@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { getApiErrorMessage } from "@/services/api";
 import { resetPassword } from "@/services/auth";
 
@@ -69,8 +69,8 @@ function ResetPasswordForm() {
         <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Escolha uma senha com pelo menos 8 caracteres. Ao concluir, as sessoes abertas serao encerradas.</p>
 
         <div className="mt-6 space-y-4">
-          <Input autoComplete="new-password" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="Nova senha" required type="password" value={password} />
-          <Input autoComplete="new-password" minLength={8} onChange={(event) => setConfirmation(event.target.value)} placeholder="Confirme a nova senha" required type="password" value={confirmation} />
+          <PasswordInput autoComplete="new-password" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="Nova senha" required value={password} />
+          <PasswordInput autoComplete="new-password" minLength={8} onChange={(event) => setConfirmation(event.target.value)} placeholder="Confirme a nova senha" required value={confirmation} />
           {error ? <p className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
           {message ? (
             <div className="rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
